@@ -1,0 +1,314 @@
+<html>
+
+<head>
+    <title>Print Penjualan ${data.noPenjualan}</title>
+    <style>
+        @page {
+            size: letter;
+            margin: 0.5cm;
+        }
+
+        body,
+        table,
+        td,
+        th {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 8pt;
+            margin: 0;
+            padding: 2px;
+            color: #000;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 21cm;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .company-info {
+            width: 60%;
+        }
+
+        .company-name {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .invoice-title {
+            width: 40%;
+            text-align: right;
+        }
+
+        .invoice-header {
+            font-size: 11pt;
+            font-weight: bold;
+            border: 1px solid #000;
+            padding: 5px 15px;
+            display: inline-block;
+        }
+
+        .info-section {
+            display: flex;
+            margin-bottom: 5px;
+            border-top: 1px double #000;
+            border-bottom: 1px double #000;
+            padding: 5px 0;
+        }
+
+        .info-left {
+            width: 55%;
+        }
+
+        .info-right {
+            width: 45%;
+        }
+
+        .info-row {
+            display: flex;
+            margin-bottom: 1px;
+        }
+
+        .label {
+            width: 120px;
+        }
+
+        .separator {
+            width: 15px;
+        }
+
+        .value {
+            flex: 1;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 5px;
+        }
+
+        .items-table th {
+            border-bottom: 1px solid #000;
+            padding: 3px 2px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .items-table td {
+            padding: 2px 2px;
+            vertical-align: top;
+        }
+
+        .text-right {
+            text-align: right !important;
+        }
+
+        .text-center {
+            text-align: center !important;
+        }
+
+        .footer-section {
+            display: flex;
+            margin-top: 5px;
+            border-top: 1px solid #000;
+            padding-top: 5px;
+        }
+
+        .footer-left {
+            width: 65%;
+            font-size: 8pt;
+        }
+
+        .footer-right {
+            width: 35%;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1px;
+        }
+
+        .grand-total {
+            font-weight: bold;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+            padding: 3px 0;
+            margin: 3px 0;
+        }
+
+        .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .sig-box {
+            width: 30%;
+        }
+
+        .sig-line {
+            margin-top: 40px;
+        }
+
+        .uppercase {
+            text-transform: uppercase;
+        }
+
+        .group-header {
+            font-weight: bold;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="company-info">
+                <div class="company-name">PASA AUTO</div>
+                <div>JL. REGENSI 2 RUKO WISMA HARAPAN BLOK D5 NO. 25,</div>
+                <div>GEMBOR, PERIUK, KOTA TANGERANG</div>
+                <div>TLP: 0813 8101 46747</div>
+            </div>
+            <div class="invoice-title">
+                <div class="invoice-header">FAKTUR PENJUALAN</div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="info-left">
+                <div class="info-row">
+                    <div class="label">Kepada YTH,</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">NAMA PEMILIK</div>
+                    <div class="separator">:</div>
+                    <div class="value uppercase">${data.namaPelanggan || 'TUNAI'}</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">ALAMAT</div>
+                    <div class="separator">:</div>
+                    <div class="value uppercase">${data.alamatPelanggan || '-'}</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">MERK - JENIS</div>
+                    <div class="separator">:</div>
+                    <div class="value uppercase">${data.merk || '-'} ${data.model || ''}</div>
+                </div>
+            </div>
+            <div class="info-right">
+                <div class="info-row">
+                    <div class="label">NO POLISI</div>
+                    <div class="separator">:</div>
+                    <div class="value uppercase">${data.nopol || '-'}</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">KM</div>
+                    <div class="separator">:</div>
+                    <div class="value">${data.km || '-'}</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">MEKANIK</div>
+                    <div class="separator">:</div>
+                    <div class="value uppercase">${data.namaMekanik || '-'}</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">NO FAKTUR</div>
+                    <div class="separator">:</div>
+                    <div class="value">${data.noPenjualan}</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">TANGGAL</div>
+                    <div class="separator">:</div>
+                    <div class="value">${data.tanggal}</div>
+                </div>
+            </div>
+        </div>
+
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th width="5%">NO</th>
+                    <th width="50%">JASA & BARANG</th>
+                    <th width="15%" class="text-right">HARGA</th>
+                    <th width="10%" class="text-right">QTY</th>
+                    <th width="20%" class="text-right">TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${(() => {
+                    const jasaItems = data.items.filter(i => i.type === 'JASA');
+                    const barangItems = data.items.filter(i => i.type === 'BARANG');
+                    let html = '';
+                    let rowNo = 1;
+
+                    if (jasaItems.length > 0) {
+                        let firstRow = 'Jasa ';
+                        jasaItems.forEach(item => {
+                            html += `
+                            <tr>
+                                <td class="group-header">${firstRow}</td>
+                                <td>${rowNo++}</td>
+                                <td class="uppercase">${item.nama}</td>
+                                <td class="text-right">${formatNumber(item.harga)}</td>
+                                <td class="text-right">${item.qty}</td>
+                                <td class="text-right">${formatNumber(item.subTotal)}</td>
+                            </tr>`;
+                            firstRow = '';
+                        });
+                    }
+
+                    if (barangItems.length > 0) {
+                        let firstRow = 'Barang ';
+                        barangItems.forEach(item => {
+                            html += `
+                            <tr>
+                                <td class="group-header">${firstRow}</td>
+                                <td>${rowNo++}</td>
+                                <td class="uppercase">${item.nama}</td>
+                                <td class="text-right">${formatNumber(item.harga)}</td>
+                                <td class="text-right">${item.qty}</td>
+                                <td class="text-right">${formatNumber(item.subTotal)}</td>
+                            </tr>`;
+                            firstRow = '';
+                        });
+                    }
+                    return html;
+                })()}
+            </tbody>
+        </table>
+
+        <div class="footer-section">
+            <div class="footer-left">
+                <br/>
+                <div>Diterima</div>
+                <div class="sig-line"></div>
+                <br/>
+                <div>Untuk pembayaran transfer ke rek. BCA 8820626291 a/n PAIYO</div>
+            </div>
+            <div class="footer-right">
+                <div class="total-row grand-total">
+                    <div>Grand Total:</div>
+                    <div>${formatCurrency(data.grandTotal)}</div>
+                </div>
+                <br/>
+                <div class="text-center">
+                    <div>Hormat Kami,</div>
+                    <div class="sig-line"></div>
+                    <div>( PASA AUTO )</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
