@@ -2,8 +2,7 @@
   <div class="q-pa-sm">
     <!-- Toolbar -->
     <q-toolbar class="shadow-1 rounded-borders q-mb-lg ">
-
-      <div class="col" v-if="enableSearch">
+      <div class="col q-mr-sm" v-if="enableSearch">
         <q-input dense standout="bg-primary" v-model="internalSearch" input-class="search-field text-left"
                  :placeholder="!searchPlaceholder ? searchPlaceholder : $t('search')">
           <template v-slot:append>
@@ -13,11 +12,7 @@
           </template>
         </q-input>
       </div>
-
-      <div class="col-auto q-pl-sm">
-        <slot name="toolbar-filters"></slot>
-      </div>
-
+      <slot name="toolbar-filters"></slot>
     </q-toolbar>
 
     <!-- Table -->

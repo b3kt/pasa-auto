@@ -50,9 +50,6 @@ public class TbPembelianEntity extends BaseEntity {
     @Column(name = "diskon", precision = 18, scale = 2)
     private BigDecimal diskon;
 
-    @Column(name = "ppn", precision = 18, scale = 2)
-    private BigDecimal ppn;
-
     @Column(name = "keterangan", length = 500)
     private String keterangan;
 

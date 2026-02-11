@@ -24,4 +24,5 @@ public class TbJasaEntity extends BaseEntity {
     @Column(name = "estimasi_waktu")
     private Integer estimasiWaktu;
 
+    private transient Integer hargaMaster;
 }

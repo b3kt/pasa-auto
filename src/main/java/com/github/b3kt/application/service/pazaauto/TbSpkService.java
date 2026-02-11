@@ -214,6 +214,9 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
                                 .ifPresent(pelanggan -> {
                                     entity.setPelangganId(pelanggan.getId());
                                     entity.setNamaPelanggan(pelanggan.getNamaPelanggan());
+                                    entity.setAlamatPelanggan(pelanggan.getAlamat());
+                                    entity.setMerkKendaraan(pelanggan.getMerk());
+                                    entity.setJenisKendaraan(pelanggan.getJenis());
                                 });
                     }
                 });
@@ -229,5 +232,19 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
                 .map(TbSpkEntity::getNoSpk)
                 .findFirst()
                 .orElse(spkNumber + "00");
+    }
+
+    public List<TbSpkEntity> findUnprocessedSpk() {
+        List<TbSpkEntity> list = repository.find("statusSpk in ('PROSES', 'SELESAI') and noSpk not in (select noSpk from TbPenjualanEntity where noSpk is not null)").list();
+        fillRequiredFields(list);
+        return list;
+    }
+
+    public TbSpkEntity findByNoSpk(String noSpk) {
+        TbSpkEntity entity = repository.find("noSpk", noSpk).firstResult();
+        if (entity != null) {
+            fillRequiredFields(List.of(entity));
+        }
+        return entity;
     }
 }

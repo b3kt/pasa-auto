@@ -50,6 +50,31 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
     }
 
     @GET
+    @Path("/by-no-spk/{noSpk}")
+    public Response findByNoSpk(@PathParam("noSpk") String noSpk) {
+        return Response.ok(ApiResponse.success(service.findByNoSpk(noSpk))).build();
+    }
+
+    @GET
+    @Path("/unprocessed")
+    public Response getUnprocessedSpk() {
+        return Response.ok(ApiResponse.success(service.findUnprocessedSpk())).build();
+    }
+
+    @GET
+    @Path("/{id}")
+    public Response getById(@PathParam("id") String id) {
+        TbSpkEntity entity = getService().findById(parseId(id));
+
+        fillKaryawanDetail(entity);
+        fillPelangganDetail(entity);
+        fillKendaraanDetail(entity);
+
+        return Response.ok(ApiResponse.success(entity)).build();
+    }
+
+
+    @GET
     @Path("/get-next-spk-number")
     public Response getNextSpk() {
         String lastSpkNumber = service.getNextSpkNumber(spkNoformatter.format(LocalDateTime.now()));
@@ -103,11 +128,22 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
     }
 
     private void fillPelangganDetail(TbSpkEntity entity) {
+
+        TbPelangganEntity pelanggan = null;
         if (Objects.isNull(entity.getPelangganId())) {
-            TbPelangganEntity pelanggan = pelangganService.findByNopol(entity.getNopol());
+            pelanggan = pelangganService.findByNopol(entity.getNopol());
             if (Objects.nonNull(pelanggan)) {
                 entity.setPelangganId(pelanggan.getId());
             }
+        }else{
+            pelanggan = pelangganService.findById(entity.getPelangganId());
+        }
+
+        if(Objects.nonNull(pelanggan)){
+            entity.setNamaPelanggan(pelanggan.getNamaPelanggan());
+            entity.setAlamatPelanggan(pelanggan.getAlamat());
+            entity.setMerkKendaraan(pelanggan.getMerk());
+            entity.setJenisKendaraan(pelanggan.getJenis());
         }
     }
 

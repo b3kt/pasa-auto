@@ -62,26 +62,14 @@ public class TbSpkEntity extends BaseEntity {
     @Column(name = "updated_by")
     private String updatedBy;
 
-    @Column(name = "diskon", precision = 18, scale = 2)
-    private BigDecimal diskon;
-
-    @Column(name = "keluhan", length = 1000)
-    private String keluhan;
-
     @Column(name = "keterangan", length = 1000)
     private String keterangan;
 
     @Column(name = "km_saat_ini")
     private Integer kmSaatIni;
 
-    @Column(name = "ppn", precision = 18, scale = 2)
-    private BigDecimal ppn;
-
     @Column(name = "status", length = 20)
     private String status;
-
-    @Column(name = "id_cs")
-    private Long csId;
 
     @Column(name = "id_mekanik")
     private Long mekanikId;
@@ -98,5 +86,17 @@ public class TbSpkEntity extends BaseEntity {
 
     @Transient
     private String namaPelanggan;
+
+    @Transient
+    private String alamatPelanggan;
+
+    @Transient
+    private String merkKendaraan;
+
+    @Transient
+    private String jenisKendaraan;
+
+    @Transient
+    private BigDecimal grandTotal;
 
 }

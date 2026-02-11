@@ -8,22 +8,29 @@
                       :on-edit="openEditDialog" create-label="Tambah data Karyawan" ref="tableRef"
                       search-placeholder="Search by name or email...">
           <template v-slot:toolbar-filters>
-            <div class="col" style="min-width: 150px">
+            <div class="row items-center q-gutter-sm">
               <q-select v-model="filterStatus" multiple :options="statusOptions" label="Status" dense options-dense flat
                         outlined/>
+              <q-input v-model="dateRangeText" label="Date Range" outlined dense readonly>
+                               <template v-slot:append>
+                                   <q-icon name="event" class="cursor-pointer">
+                                       <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                                           <q-date v-model="dateRange" range>
+                                               <div class="row items-center justify-end q-gutter-sm">
+                                                   <q-btn label="Clear" color="primary" flat @click="clearDateRange" />
+                                                   <q-btn label="OK" color="primary" flat v-close-popup />
+                                               </div>
+                                           </q-date>
+                                       </q-popup-proxy>
+                                   </q-icon>
+                               </template>
+                           </q-input>
             </div>
           </template>
           <template v-slot:body-cell-statusSpk="props">
             <q-badge :color="getStatusColor(props.row.statusSpk)">
               {{ props.row.statusSpk || 'N/A' }}
             </q-badge>
-          </template>
-          <template v-slot:body-cell-diskon="props">-->
-            {{ formatCurrency(props.row.diskon) }}
-          </template>
-
-          <template v-slot:body-cell-ppn="props">
-            {{ formatCurrency(props.row.ppn) }}
           </template>
         </GenericTable>
       </template>
@@ -855,18 +862,10 @@ const renderTemplate = (template, context) => {
 
 const finishProcess = async () => {
   // Save current SPK data first to ensure we have latest totals
-  await saveSpk()
+  //await saveSpk()
 
   // Generate penjualan number
-  await generatePenjualanNumber()
-
-  // Reset payment data
-  paymentData.value = {
-    ...paymentData.value,
-    uangDibayar: grandTotal.value,
-    kembalian: 0,
-    metodePembayaran: 'CASH'
-  }
+  await generatePenjualanNumber(formData.value.noSpk)
 
   // Open payment dialog
   showPaymentDialog.value = true
@@ -969,26 +968,8 @@ const saveSpk = async () => {
 }
 
 // Payment dialog functions
-const generatePenjualanNumber = async () => {
-  try {
-    const response = await api.get('/api/pazaauto/penjualan/next-number')
-    if (response.data.success) {
-      paymentData.value.noPenjualan = response.data.data
-    } else {
-      // Fallback to manual generation if endpoint doesn't exist
-      const date = new Date()
-      const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '')
-      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
-      paymentData.value.noPenjualan = `PNJ-${dateStr}-${random}`
-    }
-  } catch (error) {
-    // Fallback to manual generation
-    const date = new Date()
-    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '')
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
-    paymentData.value.noPenjualan = `PNJ-${dateStr}-${random}`
-    console.log(error)
-  }
+const generatePenjualanNumber = async (spkNo) => {
+  paymentData.value.noPenjualan = `F-${spkNo}`
 }
 
 const calculateKembalian = () => {

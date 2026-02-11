@@ -1,145 +1,169 @@
 <template>
     <q-page padding>
-        <div class="q-pa-md">
-            <!-- Toolbar with Tambah data button and Search -->
-            <q-toolbar class="shadow-1 rounded-borders q-mb-lg">
-                <!-- <q-btn flat :label="$t('create') + ' Penjualan'" icon="add" color="white" class="bg-primary"
-                    @click="openCreateDialog" /> -->
-                <q-space />
-                <div class="col-auto q-mr-md">
-                    <q-checkbox v-model="filterToday" label="Filter Penjualan hari ini" dense />
-                </div>
-                <div class="col-2">
-                    <q-select v-model="filterStatus" multiple :options="statusOptions" label="Status Pembayaran" dense
-                        options-dense flat outlined />
-                </div>
-                <div class="col-6">
-                    <q-input dense standout="bg-primary" v-model="searchText" input-class="search-field text-left"
-                        class="q-ml-md" placeholder="Search by No Penjualan or SPK...">
-                        <template v-slot:append>
-                            <q-icon v-if="searchText === ''" name="search" />
-                            <q-icon v-else name="clear" class="cursor-pointer" @click="searchText = ''" />
-                        </template>
-                    </q-input>
-                </div>
-            </q-toolbar>
+        <q-splitter v-model="splitterModel" :limits="[50, 100]" style="height: calc(100vh - 100px)">
+            <template v-slot:before>
+                <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
+                    @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
+                    :on-edit="openEditDialog" row-key="noPenjualan" ref="tableRef"
+                    search-placeholder="Search by No Penjualan or SPK..."
+                    dense>
 
-            <!-- Data Table -->
-            <q-table class="my-sticky-header-table" flat bordered :rows="rows" :columns="columns" row-key="noPenjualan"
-                :loading="loading" v-model:pagination="pagination" @request="onRequest" binary-state-sort>
-
-                <template v-slot:body-cell-grandTotal="props">
-                        {{ formatCurrency(props.row.grandTotal) }}
-                </template>
-
-                <template v-slot:body-cell-statusPembayaran="props">
-                        <q-badge :color="getStatusColor(props.row.statusPembayaran)">
-                            {{ props.row.statusPembayaran }}
-                        </q-badge>
-                </template>
-
-                <template v-slot:body-cell-actions="props">
-                        <q-btn flat dense round icon="print" color="secondary" @click="printPenjualan(props.row)">
-                            <q-tooltip>Print</q-tooltip>
-                        </q-btn>
-                        <q-btn flat dense round icon="edit" color="primary" @click="openEditDialog(props.row)">
-                            <q-tooltip>Edit</q-tooltip>
-                        </q-btn>
-                </template>
-            </q-table>
-        </div>
-
-        <!-- Create/Edit Dialog -->
-        <GenericDialog v-model="showDialog" min-width="700px" max-width="800px">
-            <template #header>
-                <q-card-section class="bg-primary text-white">
-                    <div class="row items-center">
-                        <div class="col">
-                            <div class="text-h5">{{ isEditMode ? 'PENJUALAN' : 'PENJUALAN' }}</div>
-                            <div class="text-subtitle2">{{ formData.noPenjualan || 'New Invoice' }}</div>
+                    <template v-slot:toolbar-filters>
+                        <div class="row items-center q-gutter-sm">
+                            <!-- <q-checkbox class="col" v-model="filterToday" label="Penjualan hari ini" dense /> -->
+                            <q-select v-model="filterStatus" multiple :options="statusOptions" label="Status Pembayaran"
+                                dense options-dense flat outlined style="min-width: 150px" />
+                           <q-input v-model="dateRangeText" label="Date Range" outlined dense readonly>
+                               <template v-slot:append>
+                                   <q-icon name="event" class="cursor-pointer">
+                                       <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                                           <q-date v-model="dateRange" range>
+                                               <div class="row items-center justify-end q-gutter-sm">
+                                                   <q-btn label="Clear" color="primary" flat @click="clearDateRange" />
+                                                   <q-btn label="OK" color="primary" flat v-close-popup />
+                                               </div>
+                                           </q-date>
+                                       </q-popup-proxy>
+                                   </q-icon>
+                               </template>
+                           </q-input>
                         </div>
-                        <div class="col-auto text-right">
-                            <div class="text-subtitle2">Date: {{ new Date().toLocaleDateString('id-ID') }}</div>
-                            <q-badge :color="getStatusColor(formData.statusPembayaran)" class="q-mt-xs">
-                                {{ formData.statusPembayaran || 'NEW' }}
+                    </template>
+
+                    <template v-slot:body-cell-grandTotal="props">
+                        <q-td class="right" >
+                            {{ formatCurrency(props.row.grandTotal) }}
+                        </q-td>
+                    </template>
+
+                    <template v-slot:body-cell-statusPembayaran="props">
+                        <q-td>
+                            <q-badge :color="getStatusColor(props.row.statusPembayaran)" style="width: 100px">
+                                {{ props.row.statusPembayaran }}
                             </q-badge>
-                        </div>
-                    </div>
-                </q-card-section>
+                        </q-td>
+                    </template>
+
+                    <template v-slot:body-cell-actions="props">
+                        <q-td :props="props" class="text-center">
+                            <q-btn flat dense round icon="print" color="secondary" @click.stop="printPenjualan(props.row)">
+                                <q-tooltip>Print</q-tooltip>
+                            </q-btn>
+                            <q-btn flat dense round icon="edit" color="primary" @click.stop="openEditDialog(props.row)">
+                                <q-tooltip>Edit</q-tooltip>
+                            </q-btn>
+                        </q-td>
+                    </template>
+                </GenericTable>
             </template>
 
-            <q-separator />
+            <template v-slot:after>
+                <div class="q-pa-md scroll" style="height: 100%">
+                    <div class="row items-center q-mb-lg">
+                        <div class="text-h6">Detail Penjualan</div>
+                        <q-space />
+                        <q-btn v-if="isEditMode" flat round dense icon="add" @click="openCreateDialog">
+                            <q-tooltip>New</q-tooltip>
+                        </q-btn>
+                    </div>
 
-            <q-form @submit.prevent="closeDialog" class="q-gutter-md q-mt-md">
-                <!-- Invoice Information Section -->
-                <div>
-                    <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-md">Invoice Information</div>
-                    <div class="row q-col-gutter-md">
-                        <div class="col-6">
-                            <q-input v-model="formData.noPenjualan" label="No Penjualan" outlined dense readonly />
+                    <q-form class="q-gutter-md" @submit="handleSave">
+                        <!-- SPK Selection -->
+                        <!-- <div v-if="!isEditMode">
+                            <q-select v-model="selectedSpk" label="Pilih SPK *" outlined dense
+                                :options="filteredSpkOptions" :option-label="opt => `${opt.noSpk} - ${opt.namaPelanggan}`"
+                                option-value="id" use-input input-debounce="300" @filter="filterSpk"
+                                @update:model-value="onSpkChange" :loading="loadingSpk"
+                                :rules="[val => !!val || 'SPK harus dipilih']" clearable>
+                                <template v-slot:no-option>
+                                    <q-item>
+                                        <q-item-section class="text-grey">
+                                            No unprocessed SPK found
+                                        </q-item-section>
+                                    </q-item>
+                                </template>
+                            </q-select>
+                        </div> -->
+
+                      <!-- Customer Info -->
+                        <SPKCustomerInfo v-model:namaPelanggan="formData.namaPelanggan" v-model:alamat="formData.alamat"
+                            v-model:merk="formData.merk" v-model:jenis="formData.jenis" :nopol="formData.nopol"
+                            :isNewCustomer="false" />
+
+                        <!-- Invoice Information Section -->
+                        <div class="q-mb-lg">
+                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Invoice Information</div>
+                            <div class="row q-col-gutter-sm">
+                                <div class="col-12">
+                                    <q-input v-model="formData.noPenjualan" label="No Penjualan" outlined dense
+                                        readonly />
+                                </div>
+                                <div class="col-12">
+                                    <q-input v-model="formData.tanggalJamPenjualan" label="Tanggal Penjualan" outlined
+                                        dense type="datetime-local" stack-label :readonly="!isEditable" />
+                                </div>
+                                <div class="col-12">
+                                    <q-input v-model="formData.noSpk" label="No SPK" outlined dense readonly />
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <q-input v-model="formData.tanggalJamPenjualan" label="Tanggal Penjualan" outlined dense
-                                type="datetime-local" stack-label readonly />
+
+                        <!-- Details Editor -->
+                        <SPKDetailsEditor v-model:details="formData.details"
+                            :allJasaOptions="allJasaOptions"
+                            :allBarangOptions="allBarangOptions"
+                            :canEdit="formData.statusSpk === 'PROSES' && formData.statusPembayaran !== 'LUNAS'"
+                            :noSpk="formData.noSpk" />
+
+                        <!-- Payment Details Section -->
+                        <div class="bg-grey-2 q-pa-md rounded-borders q-mb-lg">
+                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Payment Details</div>
+                            <div class="row q-col-gutter-sm">
+                              <div class="col-12">
+                                <q-input v-model="formData.statusPembayaran" label="Total" outlined
+                                         dense readonly :model-value="formatCurrency(grandTotal)" />
+                              </div>
+                              <div class="col-12">
+                                    <q-input v-model="formData.statusPembayaran" label="Status Pembayaran" outlined
+                                        dense readonly :model-value="determinePaymentStatus()"
+                                        :class="determinePaymentStatusStyle()"
+                                    />
+                                </div>
+                                <div class="col-12">
+                                    <q-select v-model="formData.metodePembayaran"
+                                        :options="['CASH', 'TRANSFER', 'DEBIT', 'KREDIT']" label="Metode Pembayaran"
+                                        outlined dense :readonly="!isEditable" />
+                                </div>
+                                <div class="col-12">
+                                    <q-input v-model.number="formData.uangDibayar" label="Uang Dibayar" outlined dense
+                                        type="number" prefix="Rp" :readonly="!isEditable"
+                                        @update:model-value="calculateKembalian" />
+                                </div>
+                                <div class="col-12">
+                                    <q-input v-model.number="formData.kembalian" label="Kembalian" outlined dense
+                                        type="number" prefix="Rp" readonly />
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="row q-col-gutter-md q-mt-xs">
-                        <div class="col-6">
-                            <q-input v-model="formData.noSpk" label="No SPK" outlined dense readonly />
+
+                        <!-- Additional Notes -->
+                        <div>
+                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Additional Information</div>
+                            <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea"
+                                rows="3" :readonly="!isEditable" />
                         </div>
-                        <div class="col-6">
-                            <q-input v-model.number="formData.grandTotal" label="Grand Total" outlined dense
-                                type="number" prefix="Rp" readonly />
+
+                        <div class="row justify-end q-mt-md q-gutter-sm">
+                            <q-btn label="Print" icon="print" color="secondary" @click="printPenjualan(formData)"
+                                v-if="formData.noPenjualan" />
+                            <q-btn label="Simpan" type="submit" color="primary" :loading="saving" v-if="isEditable" />
                         </div>
-                    </div>
+                    </q-form>
                 </div>
-
-                <q-separator class="q-my-md" />
-
-                <!-- Payment Details Section -->
-                <div class="bg-grey-2 q-pa-md rounded-borders">
-                    <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-md">Payment Details</div>
-                    <div class="row q-col-gutter-md">
-                        <div class="col-4">
-                            <q-input v-model="formData.statusPembayaran" label="Status Pembayaran" outlined dense
-                                readonly />
-                        </div>
-                        <div class="col-4">
-                            <q-input v-model="formData.metodePembayaran" label="Metode Pembayaran" outlined dense
-                                readonly />
-                        </div>
-                        <div class="col-4">
-                            <q-input v-model.number="formData.uangDibayar" label="Uang Dibayar" outlined dense
-                                type="number" prefix="Rp" readonly />
-                        </div>
-                    </div>
-                    <div class="row q-col-gutter-md q-mt-xs">
-                        <div class="col-6">
-                            <q-input v-model.number="formData.kembalian" label="Kembalian" outlined dense type="number"
-                                prefix="Rp" readonly />
-                        </div>
-                        <div class="col-6">
-                            <q-input v-model.number="formData.diskon" label="Diskon" outlined dense type="number"
-                                prefix="Rp" readonly />
-                        </div>
-                    </div>
-                </div>
-
-                <q-separator class="q-my-md" />
-
-                <!-- Additional Notes -->
-                <div>
-                    <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-md">Additional Information
-                    </div>
-                    <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea" rows="3"
-                        readonly />
-                </div>
-            </q-form>
-            <template #actions>
-                <q-btn label="Close" color="primary" @click="closeDialog" />
             </template>
-        </GenericDialog>
+        </q-splitter>
 
+        <!-- Keep Delete and Print Dialogs as they are global or large -->
         <!-- Delete Confirmation Dialog -->
         <GenericDialog v-model="showDeleteDialog" title="Konfirmasi hapus data" min-width="400px" position="standard">
             Are you sure you want to delete Penjualan <strong>{{ itemToDelete?.noPenjualan }}</strong>?
@@ -152,7 +176,8 @@
         <!-- Print Preview Dialog -->
         <GenericDialog v-model="showPrintDialog" title="Print Preview" min-width="800px" max-width="90vw">
             <div class="q-pa-sm" style="height: 70vh; width: 100%;">
-                <iframe :srcdoc="printPreviewContent" style="width: 100%; height: 100%; border: 1px solid #ccc;"></iframe>
+                <iframe :srcdoc="printPreviewContent"
+                    style="width: 100%; height: 100%; border: 1px solid #ccc;"></iframe>
             </div>
             <template #actions>
                 <q-btn flat label="Batalkan" color="primary" @click="showPrintDialog = false" />
@@ -163,10 +188,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, nextTick, computed } from 'vue'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
+import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
+import SPKDetailsEditor from 'components/SPKDetailsEditor.vue'
+import SPKCustomerInfo from 'components/SPKCustomerInfo.vue'
 import fakturTemplate from 'assets/template/faktur.template?raw'
 
 const $q = useQuasar()
@@ -200,13 +228,85 @@ const deleting = ref(false)
 const searchText = ref('')
 const filterStatus = ref(loadFilterFromStorage())
 const filterToday = ref(false)
+const dateRange = ref({ from: '', to: '' })
+
+// Computed property for date range display text
+const dateRangeText = computed(() => {
+    if (!dateRange.value.from && !dateRange.value.to) {
+        return ''
+    }
+    if (dateRange.value.from && dateRange.value.to) {
+        return `${dateRange.value.from} - ${dateRange.value.to}`
+    }
+    if (dateRange.value.from) {
+        return `From: ${dateRange.value.from}`
+    }
+    if (dateRange.value.to) {
+        return `To: ${dateRange.value.to}`
+    }
+    return ''
+})
 const rows = ref([])
-const showDialog = ref(false)
 const showDeleteDialog = ref(false)
 const isEditMode = ref(false)
 const itemToDelete = ref(null)
 const showPrintDialog = ref(false)
 const printPreviewContent = ref('')
+const splitterModel = ref(50)
+const tableRef = ref(null)
+
+const selectedSpk = ref(null)
+
+// SPK Options for new record
+const unprocessedSpkOptions = ref([])
+const filteredSpkOptions = ref([])
+const loadingSpk = ref(false)
+
+// Options for SPKDetailsEditor
+const allJasaOptions = ref([])
+const allBarangOptions = ref([])
+
+// Computed values for SPKDetailsEditor
+const jasaRows = computed(() => {
+    if (!formData.value.details) return []
+    return formData.value.details
+        .filter(d => d.jasaId)
+        .map(d => {
+            const jasa = allJasaOptions.value.find(j => j.id === d.jasaId)
+            const harga = d.harga !== undefined && d.harga !== null ? d.harga : (jasa ? jasa.hargaJasa : 0)
+            const namaItem = jasa ? jasa.namaJasa : d.namaItem || 'Unknown Service'
+            return { ...d, harga, namaItem }
+        })
+})
+
+const barangRows = computed(() => {
+    if (!formData.value.details) return []
+    return formData.value.details
+        .filter(d => d.sparepartId)
+        .map(d => {
+            const barang = allBarangOptions.value.find(b => b.id === d.sparepartId)
+            const harga = d.harga !== undefined && d.harga !== null ? d.harga : (barang ? barang.hargaJual : 0)
+            const namaItem = barang ? barang.namaBarang : d.namaItem || 'Unknown Part'
+            return { ...d, harga, namaItem }
+        })
+})
+
+const subtotalJasa = computed(() => {
+    return jasaRows.value.reduce((sum, row) => sum + (row.harga * row.jumlah), 0)
+})
+
+const subtotalBarang = computed(() => {
+    return barangRows.value.reduce((sum, row) => sum + (row.harga * row.jumlah), 0)
+})
+
+const grandTotal = computed(() => {
+  return subtotalBarang.value + subtotalJasa.value;
+})
+
+const isEditable = computed(() => {
+    if (!isEditMode.value) return true
+    return formData.value.statusSpk !== 'SELESAI'
+})
 
 // Status options
 const statusOptions = ref([
@@ -231,12 +331,25 @@ const formData = ref({
     grandTotal: 0,
     statusPembayaran: 'BELUM_LUNAS',
     metodePembayaran: 'CASH',
-    keterangan: ''
+    keterangan: '',
+    // SPK related fields
+    details: [],
+    statusSpk: '',
+    namaPelanggan: '',
+    alamat: '',
+    merk: '',
+    jenis: '',
+    nopol: '',
+    uangDibayar: 0,
+    kembalian: 0,
+    diskon: 0
 })
 
 // Table columns
 const columns = [
-    {
+
+
+  {
         name: 'noPenjualan',
         required: true,
         label: 'No Penjualan',
@@ -258,25 +371,19 @@ const columns = [
         field: 'noSpk',
         sortable: true
     },
+  {
+    name: 'statusPembayaran',
+    label: 'Status',
+    align: 'center',
+    field: 'statusPembayaran',
+    sortable: true
+  },
     {
         name: 'grandTotal',
         label: 'Grand Total',
         align: 'right',
         field: 'grandTotal',
         sortable: true
-    },
-    {
-        name: 'statusPembayaran',
-        label: 'Status',
-        align: 'center',
-        field: 'statusPembayaran',
-        sortable: true
-    },
-    {
-        name: 'actions',
-        label: 'Actions',
-        align: 'center',
-        field: 'actions'
     }
 ]
 
@@ -307,6 +414,24 @@ const fetchPenjualan = async (paginationData = pagination.value) => {
             params.filterToday = true
         }
 
+        // Add date range filter
+        if (dateRange.value.from) {
+            // Format date to yyyy/MM/dd format
+            const fromDate = new Date(dateRange.value.from)
+            const formattedFrom = fromDate.getFullYear() + '/' +
+                String(fromDate.getMonth() + 1).padStart(2, '0') + '/' +
+                String(fromDate.getDate()).padStart(2, '0')
+            params.startDate = formattedFrom
+        }
+        if (dateRange.value.to) {
+            // Format date to yyyy/MM/dd format
+            const toDate = new Date(dateRange.value.to)
+            const formattedTo = toDate.getFullYear() + '/' +
+                String(toDate.getMonth() + 1).padStart(2, '0') + '/' +
+                String(toDate.getDate()).padStart(2, '0')
+            params.endDate = formattedTo
+        }
+
         const response = await api.get('/api/pazaauto/penjualan/paginated', { params })
         if (response.data.success) {
             const pageData = response.data.data
@@ -335,27 +460,258 @@ const onRequest = (props) => {
     fetchPenjualan(pagination.value)
 }
 
-const openEditDialog = (row) => {
-    isEditMode.value = true
-    formData.value = { ...row }
-    showDialog.value = true
+const onSearch = (val) => {
+    searchText.value = val
+    pagination.value.page = 1
+    fetchPenjualan()
 }
 
-const closeDialog = () => {
-    showDialog.value = false
+const openEditDialog = async (row) => {
+    isEditMode.value = true
+    try {
+        // Fetch full penjualan details
+        const response = await api.get(`/api/pazaauto/penjualan/${row.noPenjualan}`)
+        if (response.data.success) {
+            formData.value = { ...response.data.data }
+            // If linked to SPK, fetch SPK details to populate customer info and items
+            if (formData.value.noSpk) {
+                await fetchSpkDetails(formData.value.noSpk)
+            }
+        } else {
+            formData.value = { ...row }
+        }
+        formData.value.grandTotal = grandTotal
+    } catch (error) {
+        console.error('Failed to fetch penjualan details:', error)
+        formData.value = { ...row }
+    }
+
+    nextTick(() => {
+        tableRef.value?.selectRowByItem(row)
+    })
+}
+
+const fetchSpkDetails = async (noSpk) => {
+    try {
+        const response = await api.get(`/api/pazaauto/spk/by-no-spk/${noSpk}`)
+        if (response.data.success) {
+            const spk = response.data.data
+            formData.value = {
+                ...formData.value,
+                statusSpk: spk.statusSpk,
+                namaPelanggan: spk.namaPelanggan,
+                alamat: spk.alamat,
+                merk: spk.merk,
+                jenis: spk.jenis,
+                nopol: spk.nopol,
+                details: spk.details || []
+            }
+        }
+    } catch (error) {
+        console.error('Failed to fetch SPK details:', error)
+    }
+}
+
+const openCreateDialog = async () => {
+    isEditMode.value = false
     resetForm()
+    await fetchUnprocessedSpk()
+}
+
+const fetchUnprocessedSpk = async () => {
+    loadingSpk.value = true
+    try {
+        const response = await api.get('/api/pazaauto/spk/unprocessed')
+        if (response.data.success) {
+            unprocessedSpkOptions.value = response.data.data
+            filteredSpkOptions.value = [...unprocessedSpkOptions.value]
+        }
+    } catch (error) {
+        console.error('Failed to fetch unprocessed SPKs:', error)
+    } finally {
+        loadingSpk.value = false
+    }
+}
+
+const filterSpk = (val, update) => {
+    update(() => {
+        if (val === '') {
+            filteredSpkOptions.value = unprocessedSpkOptions.value
+        } else {
+            const needle = val.toLowerCase()
+            filteredSpkOptions.value = unprocessedSpkOptions.value.filter(
+                v => v.noSpk.toLowerCase().indexOf(needle) > -1 || (v.namaPelanggan && v.namaPelanggan.toLowerCase().indexOf(needle) > -1)
+            )
+        }
+    })
+}
+
+const onSpkChange = async (spk) => {
+    if (!spk) {
+        resetForm()
+        return
+    }
+    try {
+        // Fetch full SPK details including its line items
+        const response = await api.get(`/api/pazaauto/spk/${spk.id}`)
+        if (response.data.success) {
+            const spkData = response.data.data
+            formData.value = {
+                ...formData.value,
+                noSpk: spkData.noSpk,
+                noPenjualan: `F-${spkData.noSpk}`,
+                statusSpk: spkData.statusSpk,
+                namaPelanggan: spkData.namaPelanggan,
+                alamat: spkData.alamatPelanggan,
+                merk: spkData.merkKendaraan,
+                jenis: spkData.jenisKendaraan,
+                nopol: spkData.nopol,
+                details: spkData.details || [],
+                grandTotal: calculateGrandTotal(spkData.details),
+                uangDibayar: 0,
+                kembalian: 0,
+                diskon: spkData.diskon || 0
+            }
+        }
+    } catch (error) {
+        console.error('Failed to fetch selected SPK details:', error)
+    }
+}
+
+const calculateGrandTotal = (details) => {
+    if (!details) return 0
+    return details.reduce((sum, item) => {
+        const harga = item.harga || 0
+        return sum + (harga * (item.jumlah || 0))
+    }, 0)
+}
+
+const fetchJasa = async () => {
+    try {
+        const response = await api.get('/api/pazaauto/jasa')
+        if (response.data.success) {
+            allJasaOptions.value = response.data.data || []
+        }
+    } catch (error) {
+        console.error('Failed to fetch jasa:', error)
+    }
+}
+
+const fetchBarang = async () => {
+    try {
+        const response = await api.get('/api/pazaauto/barang')
+        if (response.data.success) {
+            allBarangOptions.value = response.data.data || []
+        }
+    } catch (error) {
+        console.error('Failed to fetch barang:', error)
+    }
 }
 
 const resetForm = () => {
+    selectedSpk.value = null
     formData.value = {
         noPenjualan: '',
-        tanggalJamPenjualan: new Date().toISOString().slice(0, 16), // Format YYYY-MM-DDTHH:mm
+        tanggalJamPenjualan: new Date().toISOString().slice(0, 16),
         noSpk: '',
         grandTotal: 0,
         statusPembayaran: 'BELUM_LUNAS',
         metodePembayaran: 'CASH',
-        keterangan: ''
+        keterangan: '',
+        details: [],
+        statusSpk: '',
+        namaPelanggan: '',
+        alamat: '',
+        merk: '',
+        jenis: '',
+        nopol: '',
+        uangDibayar: 0,
+        kembalian: 0,
+        diskon: 0
     }
+}
+
+const saving = ref(false)
+
+const handleSave = async () => {
+    saving.value = true
+    try {
+        // Prepare Penjualan data
+        const penjualanData = {
+            noPenjualan: formData.value.noPenjualan,
+            tanggalJamPenjualan: formData.value.tanggalJamPenjualan,
+            noSpk: formData.value.noSpk,
+            grandTotal: formData.value.grandTotal,
+            uangDibayar: formData.value.uangDibayar,
+            kembalian: formData.value.kembalian,
+            metodePembayaran: formData.value.metodePembayaran,
+            statusPembayaran: determinePaymentStatus(),
+            diskon: formData.value.diskon,
+            keterangan: formData.value.keterangan || `Penjualan for SPK ${formData.value.noSpk}`
+        }
+
+        let response
+        if (isEditMode.value) {
+            response = await api.put(`/api/pazaauto/penjualan/${formData.value.noPenjualan}`, penjualanData)
+        } else {
+            response = await api.post('/api/pazaauto/penjualan', penjualanData)
+        }
+
+        if (response.data.success) {
+            $q.notify({
+                type: 'positive',
+                message: isEditMode.value ? 'Penjualan updated successfully' : 'Penjualan created successfully'
+            })
+            await fetchPenjualan()
+            if (!isEditMode.value) {
+                isEditMode.value = true
+            }
+        }
+    } catch (error) {
+        $q.notify({
+            type: 'negative',
+            message: error.response?.data?.message || error.message || 'Failed to save penjualan',
+            caption: error.response?.data?.details || ''
+        })
+    } finally {
+        saving.value = false
+    }
+}
+
+const determinePaymentStatus = () => {
+  if(formData.value.statusPembayaran === null) {
+    if (formData.value.uangDibayar >= grandTotal.value) {
+      return 'LUNAS'
+    } else if (formData.value.uangDibayar > 0) {
+      return 'DP'
+    } else {
+      return 'BELUM_LUNAS'
+    }
+  } else {
+    return formData.value.statusPembayaran
+  }
+}
+
+const determinePaymentStatusStyle = () => {
+  if(formData.value.statusPembayaran === null) {
+    if (formData.value.uangDibayar >= grandTotal.value) {
+      return 'bg-green'
+    } else if (formData.value.uangDibayar > 0) {
+      return 'bg-yellow'
+    } else {
+      return 'bg-red'
+    }
+  } else {
+    if (formData.value.statusPembayaran === 'LUNAS') {
+      return 'bg-green'
+    } else {
+      return 'bg-red'
+    }
+  }
+}
+
+const calculateKembalian = () => {
+    formData.value.kembalian = (formData.value.uangDibayar || 0) - (grandTotal.value || 0)
 }
 
 const deletePenjualan = async () => {
@@ -485,6 +841,10 @@ const renderTemplate = (template, context) => {
     }
 }
 
+const clearDateRange = () => {
+    dateRange.value = { from: '', to: '' }
+}
+
 // Watchers
 let searchTimeout = null
 watch(searchText, () => {
@@ -508,15 +868,23 @@ watch(filterToday, () => {
     fetchPenjualan()
 })
 
+watch(dateRange, () => {
+    pagination.value.page = 1
+    fetchPenjualan()
+}, { deep: true })
+
 // Lifecycle
 onMounted(() => {
     fetchPenjualan()
+    fetchJasa()
+    fetchBarang()
+    openCreateDialog()
 })
 </script>
 
 <style lang="sass" scoped>
 .my-sticky-header-table
-  max-height: 70vh
+  max-height: 100%
 
   thead tr th
     position: sticky
@@ -525,4 +893,10 @@ onMounted(() => {
 
   thead tr:first-child th
     top: 0
+
+  tr.selected td:after, tr.selected td:before
+    content: none
+    background: none
+  th:hover, td:hover, tr:hover
+    background: none
 </style>

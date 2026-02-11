@@ -51,9 +51,9 @@
                 <q-td key="total" :props="props" class="text-right">
                   {{ formatCurrency(props.row.harga * props.row.jumlah) }}
                 </q-td>
-                <q-td key="actions" :props="props" class="text-center" v-if="canEdit">
+                <q-td key="actions" :props="props" class="text-center" >
                   <q-btn flat dense round icon="delete" color="negative" size="sm"
-                         @click="removeDetail(props.row)"/>
+                         @click="removeDetail(props.row)" v-if="canEdit"/>
                 </q-td>
               </q-tr>
             </template>
@@ -122,9 +122,9 @@
                 <q-td key="total" :props="props" class="text-right">
                   {{ formatCurrency(props.row.harga * props.row.jumlah) }}
                 </q-td>
-                <q-td key="actions" :props="props" class="text-center" v-if="canEdit">
+                <q-td key="actions" :props="props" class="text-center" >
                   <q-btn flat dense round icon="delete" color="negative" size="sm"
-                         @click="removeDetail(props.row)"/>
+                         @click="removeDetail(props.row)" v-if="canEdit"/>
                 </q-td>
               </q-tr>
             </template>
@@ -166,6 +166,10 @@ import {ref, computed} from 'vue'
 // import {useQuasar} from 'quasar'
 // const $q = useQuasar();
 const props = defineProps({
+  id: {
+    type: Number,
+    required: true
+  },
   details: {
     type: Array,
     required: true
@@ -211,15 +215,15 @@ const jasaColumns = [
   {name: 'no', label: 'No', align: 'left', field: 'no', autoWidth: true},
   {name: 'namaJasa', label: 'Jasa', align: 'left', field: 'namaItem', autoWidth: false},
   {name: 'harga', label: 'Biaya', align: 'right', field: 'harga', autoWidth: true, minWidth: '200px'},
-  {name: 'actions', label: '', align: 'center'}
+  {name: 'actions', label: '', align: 'center',autoWidth: true }
 ]
 
 const barangColumns = [
-  {name: 'no', label: 'NO', align: 'left', field: 'no'},
+  {name: 'no', label: 'NO', align: 'left', field: 'no', autoWidth: true},
   {name: 'namaBarang', label: 'Barang', align: 'left', field: 'namaItem'},
   {name: 'harga', label: 'Harga', align: 'right', field: 'harga'},
   {name: 'jumlah', label: 'Jumlah', align: 'center', field: 'jumlah'},
-  {name: 'actions', label: '', align: 'center'}
+  {name: 'actions', label: '', align: 'center', autoWidth: true}
 ]
 
 const jasaRows = computed(() => {
