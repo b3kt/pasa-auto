@@ -54,12 +54,12 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         
-    - name: Upload test results
-      uses: actions/upload-artifact
-      if: always()
-      with:
-        name: test-results
-        path: |
-          target/surefire-reports/
-          target/failsafe-reports/
-          target/site/jacoco/
+    # - name: Upload test results
+    #   uses: actions/upload-artifact
+    #   if: always()
+    #   with:
+    #     name: test-results
+    #     path: |
+    #       target/surefire-reports/
+    #       target/failsafe-reports/
+    #       target/site/jacoco/
