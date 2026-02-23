@@ -4,8 +4,8 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.b3kt</groupId>
-    <artifactId>quarkus-quasar</artifactId>
-    <version></version>
+    <artifactId>pasa-auto</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
 
     <properties>
         <compiler-plugin.version>3.14.1</compiler-plugin.version>
