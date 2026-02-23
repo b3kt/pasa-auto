@@ -1,6 +1,8 @@
 <template>
     <q-page padding>
-        <q-splitter v-model="splitterModel" :limits="[70, 100]" style="height: calc(100vh - 100px)">
+
+
+        <q-splitter v-model="splitterModel" :limits="formData.id !== null ? [70, 100] : [100,100]" style="height: calc(100vh - 100px)">
             <template v-slot:before>
                 <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
                     @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
@@ -10,7 +12,6 @@
 
                     <template v-slot:toolbar-filters>
                         <div class="row items-center q-gutter-sm">
-                            <!-- <q-checkbox class="col" v-model="filterToday" label="Penjualan hari ini" dense /> -->
                             <q-select v-model="filterStatus" multiple :options="statusOptions" label="Status Pembayaran"
                                 dense options-dense flat outlined style="min-width: 150px" />
                            <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly>
@@ -63,7 +64,7 @@
                 </GenericTable>
             </template>
 
-        
+
             <template v-slot:after >
                 <div class="q-pa-md scroll" style="height: calc(100vh - 100px)">
                     <div class="row items-center q-mb-lg">
@@ -74,11 +75,11 @@
                     <q-form class="q-gutter-md" @submit="handleSave">
 
                         <!-- Customer Info -->
-                        <SPKCustomerInfo 
-                            v-model:namaPelanggan="formData.namaPelanggan" 
+                        <SPKCustomerInfo
+                            v-model:namaPelanggan="formData.namaPelanggan"
                             v-model:alamat="formData.alamatPelanggan"
-                            v-model:merk="formData.merkKendaraan" 
-                            v-model:jenis="formData.jenisKendaraan" 
+                            v-model:merk="formData.merkKendaraan"
+                            v-model:jenis="formData.jenisKendaraan"
                             v-model:nopol="formData.noPolisi"
                             :isNewCustomer="false" />
 
@@ -92,7 +93,7 @@
                                 </div>
                                 <div class="col-12">
                                     <q-input v-model="formData.tanggalJamPenjualan" label="Tanggal Penjualan" outlined
-                                        dense type="datetime-local" stack-label :readonly="!isEditable" />
+                                        dense type="datetime-local" stack-label readonly />
                                 </div>
                                 <div class="col-12">
                                     <q-input v-model="formData.noSpk" label="No SPK" outlined dense readonly />
@@ -123,7 +124,7 @@
                                 </div>
                                 <div class="col-12">
                                     <q-input v-model="formData.metodePembayaran" label="Metode Pembayaran" outlined
-                                        dense readonly />    
+                                        dense readonly />
                                 </div>
                                 <div class="col-12">
                                     <q-input v-model.number="formData.uangDibayar" label="Uang Dibayar" outlined dense
@@ -218,7 +219,12 @@ const deleting = ref(false)
 const searchText = ref('')
 const filterStatus = ref(loadFilterFromStorage())
 const filterToday = ref(false)
-const dateRange = ref({ from: '', to: '' })
+const todayVal = new Date()
+const yesterdayVal = date.subtractFromDate(todayVal, { days: 1 })
+const dateRange = ref({
+    from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'),
+    to: date.formatDate(todayVal, 'YYYY/MM/DD')
+})
 
 // Computed property for date range display text
 const dateRangeText = computed(() => {
@@ -533,7 +539,7 @@ const resetForm = () => {
     selectedSpk.value = null
     formData.value = {
         noPenjualan: '',
-        tanggalJamPenjualan: new Date().toISOString().slice(0, 16),
+        tanggalJamPenjualan: null,
         noSpk: '',
         grandTotal: 0,
         statusPembayaran: 'BELUM_LUNAS',

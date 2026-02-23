@@ -1,254 +1,172 @@
 <template>
     <q-page padding>
-        <div class="q-pa-md">
-            <!-- Toolbar with Tambah data button and Search -->
-            <q-toolbar class="shadow-1 rounded-borders q-mb-lg">
-                <q-btn flat :label="$t('create') + ' Pembelian'" icon="add" color="white" class="bg-primary"
-                    @click="openCreateDialog" />
-                <q-space />
-                <div class="col-2">
-                    <q-select v-model="filterJenisPembelian" :options="jenisPembelianOptions" label="Jenis Pembelian"
-                        dense options-dense flat outlined clearable />
-                </div>
-                <div class="col-2">
-                    <q-select v-model="filterKategoriOperasional" :options="kategoriOperasionalOptions"
-                        label="Kategori Operasional" dense options-dense flat outlined clearable />
-                </div>
-                <div class="col-6">
-                    <q-input dense standout="bg-primary" v-model="searchText" input-class="search-field text-left"
-                        class="q-ml-md" placeholder="Search by No Pembelian...">
-                        <template v-slot:append>
-                            <q-icon v-if="searchText === ''" name="search" />
-                            <q-icon v-else name="clear" class="cursor-pointer" @click="searchText = ''" />
-                        </template>
-                    </q-input>
-                </div>
-            </q-toolbar>
+        <q-splitter v-model="splitterModel" :limits="[50, 100]" style="height: calc(100vh - 100px)">
+            <template v-slot:before>
+                <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
+                    @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
+                    :on-edit="openEditDialog" row-key="noPembelian" ref="tableRef"
+                    search-placeholder="Search by No Pembelian..."
+                    dense>
 
-            <!-- Data Table -->
-            <q-table class="my-sticky-header-table" flat bordered :rows="rows" :columns="columns" row-key="id"
-                :loading="loading" v-model:pagination="pagination" @request="onRequest" binary-state-sort>
+                    <template v-slot:toolbar-filters>
+                        <div class="row items-center q-gutter-sm">
+                            <q-select v-model="filterJenisPembelian" :options="jenisPembelianOptions" label="Jenis Pembelian"
+                                dense options-dense flat outlined clearable style="min-width: 150px" />
+                            <q-select v-model="filterKategoriOperasional" :options="kategoriOperasionalOptions"
+                                label="Kategori Operasional" dense options-dense flat outlined clearable style="min-width: 150px" />
+                            <q-select v-model="filterStatus" multiple :options="statusOptions" label="Status Pembayaran"
+                                dense options-dense flat outlined style="min-width: 150px" />
+                           <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly>
+                               <template v-slot:append>
+                                   <q-icon name="event" class="cursor-pointer">
+                                       <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                                           <q-date v-model="dateRange" range>
+                                               <div class="row items-center justify-end q-gutter-sm">
+                                                   <q-btn label="Clear" color="primary" flat @click="clearDateRange" />
+                                                   <q-btn label="OK" color="primary" flat v-close-popup />
+                                               </div>
+                                           </q-date>
+                                       </q-popup-proxy>
+                                   </q-icon>
+                               </template>
+                           </q-input>
+                        </div>
+                    </template>
 
-                <template v-slot:body-cell-jenisPembelian="props">
-                        <q-badge :color="props.row.jenisPembelian === 'SPAREPART' ? 'blue' : props.row.jenisPembelian === 'BARANG' ? 'green' : 'purple'">
-                            {{ props.row.jenisPembelian }}
-                        </q-badge>
-                </template>
+                    <template v-slot:body-cell-grandTotal="props">
+                        <q-td class="right" >
+                            {{ formatCurrency(props.row.grandTotal) }}
+                        </q-td>
+                    </template>
 
-                <template v-slot:body-cell-grandTotal="props">
-                        {{ formatCurrency(props.row.grandTotal) }}
-                </template>
+                    <template v-slot:body-cell-tanggalPembelian="props">
+                        <q-td class="right" >
+                            {{ formatDateTime(props.row.tanggalPembelian) }}
+                        </q-td>
+                    </template>
 
-                <template v-slot:body-cell-statusPembayaran="props">
-                        <q-badge :color="getStatusColor(props.row.statusPembayaran)">
-                            {{ props.row.statusPembayaran }}
-                        </q-badge>
-                </template>
+                    <template v-slot:body-cell-statusPembayaran="props">
+                        <q-td>
+                            <q-badge :color="getStatusColor(props.row.statusPembayaran)" style="width: 100px">
+                                {{ props.row.statusPembayaran }}
+                            </q-badge>
+                        </q-td>
+                    </template>
 
-                <template v-slot:body-cell-actions="props">
-                        <q-btn flat dense round icon="visibility" color="info" @click="viewDetails(props.row)">
-                            <q-tooltip>View Details</q-tooltip>
-                        </q-btn>
-                        <q-btn flat dense round icon="edit" color="primary" @click="openEditDialog(props.row)">
-                            <q-tooltip>Edit</q-tooltip>
-                        </q-btn>
-                        <q-btn flat dense round icon="delete" color="negative" @click="confirmDelete(props.row)">
-                            <q-tooltip>Delete</q-tooltip>
-                        </q-btn>
-                </template>
-            </q-table>
-        </div>
+                    <template v-slot:body-cell-actions="props">
+                        <q-td :props="props" class="text-center">
+                            <q-btn flat dense round icon="print" color="secondary" @click.stop="printPembelian(props.row)">
+                                <q-tooltip>Print</q-tooltip>
+                            </q-btn>
+                            <q-btn flat dense round icon="edit" color="primary" @click.stop="openEditDialog(props.row)">
+                                <q-tooltip>Edit</q-tooltip>
+                            </q-btn>
+                        </q-td>
+                    </template>
+                </GenericTable>
+            </template>
 
-        <!-- Create/Edit Dialog -->
-        <GenericDialog v-model="showDialog" :title="isEditMode ? 'Edit Pembelian' : 'Tambah data Pembelian'"
-            min-width="90vw">
-            <q-form @submit="savePembelian" id="pembelian-form">
-                <!-- Purchase Type Selector -->
-                <div class="row q-mb-md">
-                    <q-option-group v-model="formData.jenisPembelian" :options="jenisPembelianRadioOptions"
-                        color="primary" inline @update:model-value="onJenisPembelianChange" />
-                </div>
-
-                <div class="row q-col-gutter-md">
-                    <div class="col-6">
-                        <q-input v-model="formData.noPembelian" label="No Pembelian *" outlined dense
-                            readonly placeholder="Auto Generated" />
+            <template v-slot:after>
+                <div class="q-pa-md scroll" style="height: 100%">
+                    <div class="row items-center q-mb-lg">
+                        <div class="text-h6">Detail Pembelian</div>
+                        <q-space />
                     </div>
-                    <div class="col-6">
-                        <q-input v-model="formData.tanggalPembelian" label="Tanggal Pembelian" outlined dense
-                            type="datetime-local" stack-label />
-                    </div>
-                </div>
 
-                <!-- Operational Expense Fields -->
-                <div v-if="formData.jenisPembelian === 'OPERASIONAL'" class="row q-col-gutter-md q-mt-sm">
-                    <div class="col-6">
-                        <q-input v-model="formData.jenisOperasional" label="Jenis Operasional *" outlined dense
-                            placeholder="e.g., Electricity, Rent, Maintenance"
-                            :rules="[val => !!val || 'Jenis Operasional harus diisi for operational expenses']" />
-                    </div>
-                    <div class="col-6">
-                        <q-select v-model="formData.kategoriOperasional" label="Kategori Operasional *" outlined dense
-                            :options="kategoriOperasionalOptions"
-                            :rules="[val => !!val || 'Kategori harus diisi for operational expenses']" />
-                    </div>
-                </div>
+                    <q-form class="q-gutter-md" @submit="handleSave">
+                        <!-- Purchase Information Section -->
+                        <div class="q-mb-lg">
+                            <div class="text-subtitle text-weight-bold text-grey-8 q-mb-sm">Purchase Information</div>
+                            <div class="row q-col-gutter-sm">
+                                <div class="col-12">
+                                    <q-input v-model="formData.noPembelian" label="No Pembelian" outlined dense
+                                        readonly />
+                                </div>
+                                <div class="col-12">
+                                    <q-input v-model="formData.tanggalPembelian" label="Tanggal Pembelian" outlined
+                                        dense type="datetime-local" stack-label :readonly="!isEditable" />
+                                </div>
+                                <div class="col-12">
+                                    <q-input v-model="formData.jenisPembelian" label="Jenis Pembelian" outlined dense readonly />
+                                </div>
+                            </div>
+                        </div>
 
-                <!-- Supplier Field -->
-                <div class="row q-col-gutter-md q-mt-sm">
-                    <div v-if="formData.jenisPembelian === 'SPAREPART'" class="col-6">
-                        <q-select v-model="formData.supplierId" label="Supplier" outlined dense use-input
-                            input-debounce="300" :options="supplierOptions" option-value="id"
-                            option-label="namaSupplier" @filter="filterSuppliers" clearable
-                            :rules="formData.jenisPembelian === 'SPAREPART' ? [val => !!val || 'Supplier harus diisi for sparepart purchases'] : []">
-                            <template v-slot:no-option>
-                                <q-item>
-                                    <q-item-section class="text-grey">
-                                        No results
+                        <!-- Operational Expense Fields -->
+                        <div v-if="formData.jenisPembelian === 'OPERASIONAL'" class="q-mb-lg">
+                            <div class="text-subtitle text-weight-bold text-grey-8 q-mb-sm">Operational Information</div>
+                            <div class="row q-col-gutter-sm">
+                                <div class="col-6">
+                                    <q-input v-model="formData.jenisOperasional" label="Jenis Operasional" outlined dense
+                                        readonly />
+                                </div>
+                                <div class="col-6">
+                                    <q-input v-model="formData.kategoriOperasional" label="Kategori Operasional" outlined dense readonly />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Supplier Field -->
+                        <div v-if="formData.jenisPembelian === 'SPAREPART'" class="q-mb-lg">
+                            <div class="text-subtitle text-weight-bold text-grey-8 q-mb-sm">Supplier Information</div>
+                            <div class="row q-col-gutter-sm">
+                                <div class="col-12">
+                                    <q-input v-model="supplierName" label="Supplier" outlined dense readonly />
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Details Display -->
+                        <div class="q-mb-lg">
+                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Purchase Details</div>
+                            <q-list bordered separator>
+                                <q-item v-for="detail in formData.details" :key="detail.id || detail.namaItem">
+                                    <q-item-section>
+                                        <q-item-label>{{ detail.namaItem }}</q-item-label>
+                                        <q-item-label caption>{{ detail.keterangan || '' }}</q-item-label>
+                                    </q-item-section>
+                                    <q-item-section side>
+                                        <q-item-label>{{ detail.kuantiti }} x {{ formatCurrency(detail.harga) }}</q-item-label>
+                                        <q-item-label caption>{{ formatCurrency(detail.total) }}</q-item-label>
                                     </q-item-section>
                                 </q-item>
-                            </template>
-                        </q-select>
-                    </div>
-                    <div class="col-6">
-                        <q-select v-model="formData.statusPembayaran" label="Status Pembayaran" outlined dense
-                            :options="statusOptions" />
-                    </div>
+                            </q-list>
+                        </div>
+
+                        <!-- Payment Details Section -->
+                        <div class="bg-grey-2 q-pa-md rounded-borders q-mb-lg">
+                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Payment Details</div>
+                            <div class="row q-col-gutter-sm">
+                              <div class="col-12">
+                                <q-input v-model="formData.statusPembayaran" label="Total" outlined
+                                         dense readonly :model-value="formatCurrency(grandTotal)" />
+                              </div>
+                              <div class="col-12">
+                                    <q-input v-model="formData.statusPembayaran" label="Status Pembayaran" outlined
+                                        dense readonly />
+                                </div>
+                                <div class="col-12">
+                                    <q-input v-model="formData.jenisPembayaran" label="Metode Pembayaran" outlined
+                                        dense readonly />    
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Additional Notes -->
+                        <div>
+                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Additional Information</div>
+                            <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea"
+                                rows="3" readonly />
+                        </div>
+
+                        <div class="row justify-end q-mt-md q-gutter-sm">
+                            <q-btn label="Print" icon="print" color="secondary" @click="printPembelian(formData)"
+                                v-if="formData.noPembelian" />
+                            <q-btn label="Simpan" type="submit" color="primary" :loading="saving" v-if="isEditable" />
+                        </div>
+                    </q-form>
                 </div>
-
-                <div class="row q-col-gutter-md q-mt-sm">
-                    <div class="col-4">
-                        <q-select v-model="formData.jenisPembayaran" label="Jenis Pembayaran" outlined dense
-                            :options="['CASH', 'CREDIT', 'TRANSFER']" />
-                    </div>
-                    <div class="col-4">
-                        <q-input v-model.number="formData.diskon" label="Diskon" outlined dense type="number"
-                            prefix="Rp" />
-                    </div>
-                    <div class="col-4">
-                        <q-input v-model.number="formData.ppn" label="PPN" outlined dense type="number" prefix="Rp" />
-                    </div>
-                </div>
-
-                <div class="q-my-md">
-                    <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea" rows="2" />
-                </div>
-
-                <!-- Detail Items Section -->
-                <q-separator class="q-my-md" />
-                <div class="text-subtitle1 q-mb-md">Detail Items</div>
-
-                <div v-for="(detail, index) in formData.details" :key="index" class="row q-col-gutter-md q-mb-md">
-                    <!-- Sparepart Purchase Detail -->
-                    <template v-if="formData.jenisPembelian === 'SPAREPART'">
-                        <div class="col-4">
-                            <q-select v-model="detail.sparepartId" label="Sparepart *" outlined dense use-input
-                                input-debounce="300" :options="sparepartOptions" option-value="kodeBarang"
-                                option-label="namaSparepart" @filter="filterSpareparts"
-                                @update:model-value="onSparepartSelected(detail)"
-                                :rules="[val => !!val || 'Sparepart harus diisi']">
-                                <template v-slot:no-option>
-                                    <q-item>
-                                        <q-item-section class="text-grey">
-                                            No results
-                                        </q-item-section>
-                                    </q-item>
-                                </template>
-                            </q-select>
-                        </div>
-                        <div class="col-2">
-                            <q-input v-model.number="detail.harga" label="Harga *" outlined dense type="number"
-                                prefix="Rp" :rules="[val => !!val || 'Harga harus diisi']" readonly />
-                        </div>
-                        <div class="col-2">
-                            <q-input v-model.number="detail.kuantiti" label="Qty *" outlined dense type="number"
-                                :rules="[val => !!val || 'Quantity harus diisi']"
-                                @update:model-value="calculateDetailTotal(detail)" />
-                        </div>
-                        <div class="col-2">
-                            <q-input v-model.number="detail.total" label="Total" outlined dense type="number"
-                                prefix="Rp" readonly />
-                        </div>
-                    </template>
-
-                    <!-- Barang Purchase Detail -->
-                    <template v-else-if="formData.jenisPembelian === 'BARANG'">
-                        <div class="col-4">
-                            <q-select v-model="detail.barangId" label="Barang *" outlined dense use-input
-                                input-debounce="300" :options="barangOptions"
-                                :option-label="opt => opt.kodeBarang + ' - ' + opt.namaBarang" @filter="filterBarang"
-                                @update:model-value="onBarangSelected(detail)"
-                                :rules="[val => !!val || 'Barang harus diisi']">
-                                <template v-slot:no-option>
-                                    <q-item>
-                                        <q-item-section class="text-grey">
-                                            No results
-                                        </q-item-section>
-                                    </q-item>
-                                </template>
-                            </q-select>
-                        </div>
-                        <div class="col-2">
-                            <q-input v-model.number="detail.harga" label="Harga *" outlined dense type="number"
-                                prefix="Rp" :rules="[val => !!val || 'Harga harus diisi']"
-                                @update:model-value="calculateDetailTotal(detail)" />
-                        </div>
-                        <div class="col-2">
-                            <q-input v-model.number="detail.kuantiti" label="Qty *" outlined dense type="number"
-                                :rules="[val => !!val || 'Quantity harus diisi']"
-                                @update:model-value="calculateDetailTotal(detail)" />
-                        </div>
-                        <div class="col-2">
-                            <q-input v-model.number="detail.total" label="Total" outlined dense type="number"
-                                prefix="Rp" readonly />
-                        </div>
-                    </template>
-
-                    <!-- Operational Expense Detail -->
-                    <template v-else>
-                        <div class="col-4">
-                            <q-input v-model="detail.namaItem" label="Item Name *" outlined dense
-                                :rules="[val => !!val || 'Item name harus diisi']" />
-                        </div>
-                        <div class="col-2">
-                            <q-input v-model.number="detail.harga" label="Harga *" outlined dense type="number"
-                                prefix="Rp" :rules="[val => !!val || 'Harga harus diisi']"
-                                @update:model-value="calculateDetailTotal(detail)" />
-                        </div>
-                        <div class="col-2">
-                            <q-input v-model.number="detail.kuantiti" label="Qty *" outlined dense type="number"
-                                :rules="[val => !!val || 'Quantity harus diisi']"
-                                @update:model-value="calculateDetailTotal(detail)" />
-                        </div>
-                        <div class="col-2">
-                            <q-input v-model.number="detail.total" label="Total" outlined dense type="number"
-                                prefix="Rp" readonly />
-                        </div>
-                    </template>
-
-                    <div class="col-2 flex items-center">
-                        <q-btn flat dense round icon="delete" color="negative" @click="removeDetail(index)" />
-                    </div>
-                </div>
-
-                <q-btn flat label="Add Item" icon="add" color="primary" @click="addDetail" class="q-mb-md" />
-
-                <q-separator class="q-my-md" />
-
-                <!-- Grand Total -->
-                <div class="row justify-end">
-                    <div class="col-4">
-                        <q-input v-model.number="formData.grandTotal" label="Grand Total" outlined dense type="number"
-                            prefix="Rp" readonly />
-                    </div>
-                </div>
-            </q-form>
-            <template #actions>
-                <q-btn flat label="Batalkan" color="primary" @click="showDialog = false" />
-                <q-btn v-if="isEditMode" label="Hapus" color="negative" flat @click="confirmDelete(formData)" :loading="deleting" />
-                <q-btn label="Simpan" type="submit" form="pembelian-form" color="primary" :loading="saving" />
             </template>
-        </GenericDialog>
+        </q-splitter>
 
         <!-- Delete Confirmation Dialog -->
         <GenericDialog v-model="showDeleteDialog" title="Konfirmasi hapus data" min-width="400px" position="standard">
@@ -259,53 +177,93 @@
             </template>
         </GenericDialog>
 
-        <!-- View Details Dialog -->
-        <GenericDialog v-model="showDetailsDialog" :title="`Pembelian Details - ${selectedItem?.noPembelian}`"
-            min-width="600px">
-            <q-list bordered separator>
-                <q-item v-for="detail in itemDetails" :key="detail.id">
-                    <q-item-section>
-                        <q-item-label>{{ detail.namaItem }}</q-item-label>
-                        <q-item-label caption>{{ detail.keterangan }}</q-item-label>
-                    </q-item-section>
-                    <q-item-section side>
-                        <q-item-label>{{ detail.kuantiti }} x {{ formatCurrency(detail.harga) }}</q-item-label>
-                        <q-item-label caption>{{ formatCurrency(detail.total) }}</q-item-label>
-                    </q-item-section>
-                </q-item>
-            </q-list>
-
+        <!-- Print Preview Dialog -->
+        <GenericDialog v-model="showPrintDialog" title="Print Preview" min-width="800px" max-width="90vw">
+            <div class="q-pa-sm" style="height: 70vh; width: 100%;">
+                <iframe :srcdoc="printPreviewContent"
+                    style="width: 100%; height: 100%; border: 1px solid #ccc;"></iframe>
+            </div>
             <template #actions>
-                <q-btn flat label="Close" color="primary" v-close-popup />
+                <q-btn flat label="Batalkan" color="primary" @click="showPrintDialog = false" />
+                <q-btn label="Print" icon="print" color="secondary" @click="confirmPrint" />
             </template>
         </GenericDialog>
     </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, nextTick, computed } from 'vue'
 import { api } from 'boot/axios'
-import { useQuasar } from 'quasar'
+import { useQuasar, date } from 'quasar'
+import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
-import { useKeyboardShortcuts } from 'src/composables/useKeyboardShortcuts'
+import fakturTemplate from 'assets/template/faktur.template?raw'
 
 const $q = useQuasar()
 
+// LocalStorage key for filter persistence
+const FILTER_STORAGE_KEY = 'pembelian_status_filter'
+
+// Load filter from localStorage
+const loadFilterFromStorage = () => {
+    try {
+        const stored = localStorage.getItem(FILTER_STORAGE_KEY)
+        return stored ? JSON.parse(stored) : []
+    } catch (error) {
+        console.error('Failed to load filter from storage:', error)
+        return []
+    }
+}
+
+// Save filter to localStorage
+const saveFilterToStorage = (filter) => {
+    try {
+        localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filter))
+    } catch (error) {
+        console.error('Failed to save filter to storage:', error)
+    }
+}
+
 // State
 const loading = ref(false)
-const saving = ref(false)
 const deleting = ref(false)
 const searchText = ref('')
 const filterJenisPembelian = ref(null)
 const filterKategoriOperasional = ref(null)
+const filterStatus = ref(loadFilterFromStorage())
+const todayVal = new Date()
+const yesterdayVal = date.subtractFromDate(todayVal, { days: 1 })
+const dateRange = ref({ 
+    from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'), 
+    to: date.formatDate(todayVal, 'YYYY/MM/DD') 
+})
+
+// Computed property for date range display text
+const dateRangeText = computed(() => {
+    if (!dateRange.value || (!dateRange.value.from && !dateRange.value.to)) {
+        return ''
+    }
+    if (dateRange.value.from && dateRange.value.to) {
+        return `${dateRange.value.from} - ${dateRange.value.to}`
+    }
+    if (dateRange.value.from) {
+        return `From: ${dateRange.value.from}`
+    }
+    if (dateRange.value.to) {
+        return `To: ${dateRange.value.to}`
+    }
+    return ''
+})
+
 const rows = ref([])
-const showDialog = ref(false)
 const showDeleteDialog = ref(false)
-const showDetailsDialog = ref(false)
 const isEditMode = ref(false)
 const itemToDelete = ref(null)
-const selectedItem = ref(null)
-const itemDetails = ref([])
+const showPrintDialog = ref(false)
+const printPreviewContent = ref('')
+const splitterModel = ref(70)
+const tableRef = ref(null)
+const supplierName = ref('')
 
 // Options
 const jenisPembelianOptions = ['SPAREPART', 'OPERASIONAL', 'BARANG']
@@ -315,11 +273,21 @@ const jenisPembelianRadioOptions = [
     { label: 'Operational Expense', value: 'OPERASIONAL' }
 ]
 const kategoriOperasionalOptions = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY', 'ON_DEMAND']
-const statusOptions = ['LUNAS', 'BELUM_LUNAS', 'DP']
+const statusOptions = ref(['LUNAS', 'BELUM_LUNAS', 'DP'])
 
 const supplierOptions = ref([])
 const sparepartOptions = ref([])
 const barangOptions = ref([])
+
+// Computed values
+const grandTotal = computed(() => {
+    if (!formData.value.details) return 0
+    return formData.value.details.reduce((sum, detail) => sum + (detail.total || 0), 0)
+})
+
+const isEditable = computed(() => {
+    return !isEditMode.value
+})
 
 const pagination = ref({
     sortBy: 'tanggalPembelian',
@@ -350,6 +318,13 @@ const formData = ref({
 // Table columns
 const columns = [
     {
+        name: 'jenisPembelian',
+        label: 'Jenis',
+        align: 'center',
+        field: 'jenisPembelian',
+        sortable: true
+    },
+    {
         name: 'noPembelian',
         required: true,
         label: 'No Pembelian',
@@ -362,14 +337,6 @@ const columns = [
         label: 'Tanggal',
         align: 'left',
         field: 'tanggalPembelian',
-        sortable: true,
-        format: val => val ? new Date(val).toLocaleString() : '-'
-    },
-    {
-        name: 'jenisPembelian',
-        label: 'Jenis',
-        align: 'center',
-        field: 'jenisPembelian',
         sortable: true
     },
     {
@@ -379,18 +346,18 @@ const columns = [
         field: 'jenisOperasional',
         sortable: true
     },
+  {
+    name: 'statusPembayaran',
+    label: 'Status',
+    align: 'center',
+    field: 'statusPembayaran',
+    sortable: true
+  },
     {
         name: 'grandTotal',
         label: 'Grand Total',
         align: 'right',
         field: 'grandTotal',
-        sortable: true
-    },
-    {
-        name: 'statusPembayaran',
-        label: 'Status',
-        align: 'center',
-        field: 'statusPembayaran',
         sortable: true
     },
     {
@@ -427,6 +394,19 @@ const fetchPembelian = async (paginationData = pagination.value) => {
             params.kategoriOperasional = filterKategoriOperasional.value
         }
 
+        if (filterStatus.value && filterStatus.value.length > 0) {
+            params.statusFilter = filterStatus.value.join(',')
+        }
+
+        // Add date range filter
+        if (dateRange.value?.from) {
+            // Quasar returns YYYY/MM/DD format by default. Backend needs YYYY-MM-DD.
+            params.startDate = dateRange.value.from.replace(/\//g, '-')
+        }
+        if (dateRange.value?.to) {
+            params.endDate = dateRange.value.to.replace(/\//g, '-')
+        }
+
         const response = await api.get('/api/pazaauto/pembelian/paginated', { params })
         if (response.data.success) {
             const pageData = response.data.data
@@ -455,280 +435,126 @@ const onRequest = (props) => {
     fetchPembelian(pagination.value)
 }
 
-const openCreateDialog = () => {
-    isEditMode.value = false
-    resetForm()
-    showDialog.value = true
-    generateNoPembelian() // Generate number on create
+const onSearch = (val) => {
+    searchText.value = val
+    pagination.value.page = 1
+    fetchPembelian()
+}
+
+const clearDateRange = () => {
+    dateRange.value = { from: '', to: '' }
+}
+
+const formatDateTime = (value) => {
+    if (!value) return ''
+    return date.formatDate(value, 'YYYY-MM-DD HH:mm')
+}
+
+const formatNumber = (value) => {
+    if (!value) return '0'
+    return new Intl.NumberFormat('id-ID', {
+        minimumFractionDigits: 0
+    }).format(value)
+}
+
+const printPembelian = async (row) => {
+    try {
+        const response = await api.get(`/api/pazaauto/pembelian/${row.noPembelian}/print`)
+        if (response.data.success) {
+            const data = response.data.data
+
+            // Render template
+            const renderedContent = renderTemplate(fakturTemplate, {
+                data,
+                formatCurrency,
+                formatNumber
+            })
+
+            printPreviewContent.value = renderedContent
+            showPrintDialog.value = true
+        }
+    } catch (error) {
+        $q.notify({
+            type: 'negative',
+            message: 'Failed to print pembelian',
+            caption: error.response?.data?.message || error.message
+        })
+    }
+}
+
+const confirmPrint = () => {
+    let iframe = document.getElementById('print-iframe')
+    if (iframe) {
+        document.body.removeChild(iframe)
+    }
+
+    iframe = document.createElement('iframe')
+    iframe.id = 'print-iframe'
+    iframe.style.position = 'absolute'
+    iframe.style.width = '0px'
+    iframe.style.height = '0px'
+    iframe.style.border = 'none'
+    document.body.appendChild(iframe)
+
+    const doc = iframe.contentWindow.document
+    doc.open()
+    doc.write(printPreviewContent.value)
+    doc.close()
+
+    setTimeout(() => {
+        iframe.contentWindow.focus()
+        iframe.contentWindow.print()
+    }, 250)
+}
+
+// Template rendering helper
+const renderTemplate = (template, context) => {
+    const keys = Object.keys(context)
+    const values = Object.values(context)
+    try {
+        return new Function(...keys, `return \`${template}\`;`)(...values)
+    } catch (e) {
+        console.error('Template rendering error:', e)
+        return 'Error rendering template'
+    }
 }
 
 const openEditDialog = async (row) => {
     isEditMode.value = true
-    formData.value = { ...row }
-
-    // Fetch details
+    
+    // Fetch full pembelian details
     try {
-        const response = await api.get(`/api/pazaauto/pembelian-detail/by-pembelian/${row.id}`)
+        const response = await api.get(`/api/pazaauto/pembelian/${row.noPembelian}`)
         if (response.data.success) {
-            formData.value.details = (response.data.data || []).map(d => ({
-                ...d,
-                barangId: d.barang || d.barangId // Use object if available
-            }))
+            formData.value = { ...response.data.data }
+            if (!formData.value.details) formData.value.details = []
+            // Format datetime to YYYY-MM-DDThh:mm for datetime-local input
+            if (formData.value.tanggalPembelian) {
+                formData.value.tanggalPembelian = formData.value.tanggalPembelian.substring(0, 16)
+            }
+            
+            // Set supplier name for display
+            if (formData.value.supplierId && typeof formData.value.supplierId === 'object') {
+                supplierName.value = formData.value.supplierId.namaSupplier
+            }
+        } else {
+            formData.value = { ...row, details: row.details || [] }
+            if (formData.value.tanggalPembelian) {
+                formData.value.tanggalPembelian = formData.value.tanggalPembelian.substring(0, 16)
+            }
         }
     } catch (error) {
-        $q.notify({
-            type: 'negative',
-            message: 'Failed to fetch details',
-            caption: error.response?.data?.message || error.message
-        })
+        console.error('Failed to fetch pembelian details:', error)
+        formData.value = { ...row, details: row.details || [] }
+        if (formData.value.tanggalPembelian) {
+            formData.value.tanggalPembelian = formData.value.tanggalPembelian.substring(0, 16)
+        }
     }
 
-    showDialog.value = true
-}
-
-const closeDialog = () => {
-    showDialog.value = false
-    resetForm()
-}
-
-const resetForm = () => {
-    formData.value = {
-        id: null,
-        noPembelian: '',
-        tanggalPembelian: new Date().toISOString().slice(0, 16),
-        jenisPembelian: 'SPAREPART',
-        jenisOperasional: '',
-        kategoriOperasional: null,
-        supplierId: null,
-        grandTotal: 0,
-        statusPembayaran: 'BELUM_LUNAS',
-        jenisPembayaran: 'CASH',
-        diskon: 0,
-        ppn: 0,
-        keterangan: '',
-        details: []
-    }
-    addDetail()
-}
-
-const onJenisPembelianChange = () => {
-    formData.value.details = []
-    addDetail()
-    if (!isEditMode.value) {
-        generateNoPembelian() // Regenerate number when type changes
-    }
-}
-
-const addDetail = () => {
-    formData.value.details.push({
-        namaItem: '',
-        kategoriItem: formData.value.jenisPembelian,
-        harga: 0,
-        kuantiti: 1,
-        total: 0,
-        keterangan: '',
-        barangId: null,
-        sparepartId: null
+    nextTick(() => {
+        tableRef.value?.selectRowByItem(row)
     })
 }
-
-const removeDetail = (index) => {
-    formData.value.details.splice(index, 1)
-    calculateGrandTotal()
-}
-
-const generateNoPembelian = async () => {
-    try {
-        const response = await api.get('/api/pazaauto/pembelian/generate-no', {
-            params: { jenisPembelian: formData.value.jenisPembelian }
-        })
-        if (response.data.success) {
-            formData.value.noPembelian = response.data.data
-        }
-    } catch (error) {
-        console.error('Failed to generate no pembelian', error)
-        $q.notify({
-            type: 'warning',
-            message: 'Failed to auto-generate No Pembelian'
-        })
-    }
-}
-
-const calculateDetailTotal = (detail) => {
-    detail.total = (detail.harga || 0) * (detail.kuantiti || 0)
-    calculateGrandTotal()
-}
-
-const calculateGrandTotal = () => {
-    const subtotal = formData.value.details.reduce((sum, detail) => sum + (detail.total || 0), 0)
-    const diskon = formData.value.diskon || 0
-    const ppn = formData.value.ppn || 0
-    formData.value.grandTotal = subtotal - diskon + ppn
-}
-
-const onSparepartSelected = (detail) => {
-    if (detail.sparepartId) {
-        detail.namaItem = detail.sparepartId.namaSparepart
-        detail.harga = detail.sparepartId.hargaBeli || 0
-        calculateDetailTotal(detail)
-    }
-}
-
-const filterSuppliers = async (val, update) => {
-    if (val === '') {
-        update(() => {
-            supplierOptions.value = []
-        })
-        return
-    }
-
-    try {
-        const response = await api.get('/api/pazaauto/supplier', {
-            params: { search: val }
-        })
-        update(() => {
-            if (response.data.success) {
-                supplierOptions.value = response.data.data || []
-            }
-        })
-    } catch (error) {
-        update(() => {
-            console.error('Error fetching suppliers:', error)
-            supplierOptions.value = []
-        })
-    }
-}
-
-const filterSpareparts = async (val, update) => {
-    if (val === '') {
-        update(() => {
-            sparepartOptions.value = []
-        })
-        return
-    }
-
-    try {
-        const params = { search: val }
-        const supplierId = formData.value.supplierId?.id || formData.value.supplierId
-        if (supplierId) {
-            params.supplierId = supplierId
-        }
-
-        const response = await api.get('/api/pazaauto/sparepart', { params })
-        update(() => {
-            if (response.data.success) {
-                sparepartOptions.value = response.data.data || []
-            }
-        })
-    } catch (error) {
-        update(() => {
-            console.error('Error fetching spareparts:', error)
-            sparepartOptions.value = []
-        })
-    }
-}
-
-
-
-const filterBarang = async (val, update) => {
-    if (val === '') {
-        update(() => {
-            barangOptions.value = []
-        })
-        return
-    }
-
-    try {
-        const response = await api.get('/api/pazaauto/barang', {
-            params: { search: val }
-        })
-        update(() => {
-            if (response.data.success) {
-                barangOptions.value = response.data.data || []
-            }
-        })
-    } catch (error) {
-        update(() => {
-            console.error('Error fetching barang:', error)
-            barangOptions.value = []
-        })
-    }
-}
-
-const onBarangSelected = (detail) => {
-    if (detail.barangId) {
-        detail.namaItem = detail.barangId.namaBarang
-        detail.harga = detail.barangId.hargaBeli || 0
-        calculateDetailTotal(detail)
-    }
-}
-
-const savePembelian = async () => {
-    saving.value = true
-    try {
-        // Prepare data
-        const payload = {
-            ...formData.value,
-            tanggalPembelian: formData.value.tanggalPembelian ? new Date(formData.value.tanggalPembelian).toISOString() : null,
-            supplierId: formData.value.supplierId?.id || formData.value.supplierId
-        }
-
-        // Prepare details
-        const details = formData.value.details.map(detail => ({
-            ...detail,
-            sparepartId: detail.sparepartId?.kodeBarang || detail.sparepartId,
-            barangId: detail.barangId?.id || detail.barangId?.kodeBarang || (typeof detail.barangId === 'object' ? detail.barangId.id : detail.barangId), // Handle ID extraction safely
-            kategoriItem: formData.value.jenisPembelian,
-            supplierId: formData.value.supplierId?.id || formData.value.supplierId
-        }))
-
-        const requestBody = {
-            pembelian: payload,
-            details: details
-        }
-
-        let response
-        if (isEditMode.value) {
-            response = await api.put(`/api/pazaauto/pembelian/${formData.value.id}/with-details`, requestBody)
-        } else {
-            response = await api.post('/api/pazaauto/pembelian/with-details', requestBody)
-        }
-
-        if (response.data.success) {
-            $q.notify({
-                type: 'positive',
-                message: isEditMode.value ? 'Pembelian updated successfully' : 'Pembelian created successfully'
-            })
-            closeDialog()
-            await fetchPembelian()
-        }
-    } catch (error) {
-        $q.notify({
-            type: 'negative',
-            message: 'Failed to save pembelian',
-            caption: error.response?.data?.message || error.message
-        })
-    } finally {
-        saving.value = false
-    }
-}
-
-// Keyboard Shortcuts
-useKeyboardShortcuts({
-    onSave: () => {
-        if (showDialog.value && !saving.value) {
-            savePembelian()
-        }
-    },
-    onDelete: () => {
-        if (showDialog.value && isEditMode.value && !deleting.value) {
-            confirmDelete(formData.value)
-        }
-    },
-    onNew: () => {
-        openCreateDialog()
-    }
-})
 
 const confirmDelete = (row) => {
     itemToDelete.value = row
@@ -759,23 +585,6 @@ const deletePembelian = async () => {
     }
 }
 
-const viewDetails = async (row) => {
-    selectedItem.value = row
-    try {
-        const response = await api.get(`/api/pazaauto/pembelian-detail/by-pembelian/${row.id}`)
-        if (response.data.success) {
-            itemDetails.value = response.data.data || []
-            showDetailsDialog.value = true
-        }
-    } catch (error) {
-        $q.notify({
-            type: 'negative',
-            message: 'Failed to fetch details',
-            caption: error.response?.data?.message || error.message
-        })
-    }
-}
-
 const formatCurrency = (value) => {
     if (!value) return 'Rp 0'
     return new Intl.NumberFormat('id-ID', {
@@ -792,6 +601,14 @@ const getStatusColor = (status) => {
         case 'DP': return 'orange'
         default: return 'grey'
     }
+}
+
+const handleSave = async () => {
+    // Pembelian doesn't support editing in this view, only viewing
+    $q.notify({
+        type: 'info',
+        message: 'Pembelian details are read-only. Please use the main Pembelian page for edits.'
+    })
 }
 
 // Watchers
@@ -811,13 +628,16 @@ watch([filterJenisPembelian, filterKategoriOperasional], () => {
     fetchPembelian()
 }, { deep: true })
 
-watch(() => formData.value.details, () => {
-    calculateGrandTotal()
+watch(filterStatus, (newVal) => {
+    saveFilterToStorage(newVal)
+    pagination.value.page = 1
+    fetchPembelian()
 }, { deep: true })
 
-watch([() => formData.value.diskon, () => formData.value.ppn], () => {
-    calculateGrandTotal()
-})
+watch(dateRange, () => {
+    pagination.value.page = 1
+    fetchPembelian()
+}, { deep: true })
 
 // Lifecycle
 onMounted(() => {

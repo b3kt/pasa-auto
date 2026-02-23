@@ -146,6 +146,10 @@
             />
 
             <div class="row justify-end q-gutter-sm">
+              <div v-if="formData.statusSpk === 'SELESAI'">
+                <q-btn label="Print" type="button" @click="printSpk" style="width: 100px;"
+                       :loading="saving" class="q-mr-sm"/>
+              </div>
               <div v-if="formData.statusSpk === 'PROSES'">
                 <q-btn label="Print" type="button" @click="printSpk" style="width: 100px;"
                        :loading="saving" class="q-mr-sm"/>
@@ -228,7 +232,7 @@
 <script setup>
 import { ref, onMounted, watch, computed, nextTick } from 'vue'
 import { api } from 'boot/axios'
-import { useQuasar } from 'quasar'
+import { useQuasar, date } from 'quasar'
 import GenericDialog from 'components/GenericDialog.vue'
 import { useKeyboardShortcuts } from 'src/composables/useKeyboardShortcuts'
 import GenericTable from "components/GenericTable.vue";
@@ -272,7 +276,12 @@ const isNewCustomer = ref(false)
 const searchText = ref('')
 const filterStatus = ref(loadFilterFromStorage())
 const filterToday = ref(false)
-const dateRange = ref({ from: '', to: '' })
+const todayVal = new Date()
+const yesterdayVal = date.subtractFromDate(todayVal, { days: 1 })
+const dateRange = ref({ 
+    from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'), 
+    to: date.formatDate(todayVal, 'YYYY/MM/DD') 
+})
 
 // Computed property for date range display text
 const dateRangeText = computed(() => {
@@ -510,10 +519,11 @@ const fetchSpk = async (paginationData = pagination.value) => {
 
     // Add date range filter
     if (dateRange.value?.from) {
-      params.startDate = dateRange.value.from
+      // Quasar returns YYYY/MM/DD format by default. Backend needs YYYY-MM-DD.
+      params.startDate = dateRange.value.from.replace(/\//g, '-')
     }
     if (dateRange.value?.to) {
-      params.endDate = dateRange.value.to
+      params.endDate = dateRange.value.to.replace(/\//g, '-')
     }
 
     const response = await api.get('/api/pazaauto/spk/paginated', {params})
