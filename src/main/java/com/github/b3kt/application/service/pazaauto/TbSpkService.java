@@ -162,6 +162,25 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
             paramIndex++;
         }
 
+        // Apply date range filter if specified
+        if (pageRequest.getStartDate() != null && !pageRequest.getStartDate().isEmpty()) {
+            queryString += " and tanggalJamSpk >= ?" + paramIndex;
+            Object[] newParams = new Object[params.length + 1];
+            System.arraycopy(params, 0, newParams, 0, params.length);
+            newParams[params.length] = pageRequest.getStartDate();
+            params = newParams;
+            paramIndex++;
+        }
+        if (pageRequest.getEndDate() != null && !pageRequest.getEndDate().isEmpty()) {
+            // Append end-of-day suffix so that the entire end date is included
+            queryString += " and tanggalJamSpk <= ?" + paramIndex;
+            Object[] newParams = new Object[params.length + 1];
+            System.arraycopy(params, 0, newParams, 0, params.length);
+            newParams[params.length] = pageRequest.getEndDate() + " 23:59:59";
+            params = newParams;
+            paramIndex++;
+        }
+
         // Create query
         if (params.length > 0) {
             query = repository.find(queryString, params);

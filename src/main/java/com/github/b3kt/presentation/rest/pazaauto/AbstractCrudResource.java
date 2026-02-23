@@ -38,7 +38,9 @@ public abstract class AbstractCrudResource<T, ID> {
             @QueryParam("descending") @DefaultValue("false") boolean descending,
             @QueryParam("search") String search,
             @QueryParam("statusFilter") String statusFilter,
-            @QueryParam("filterToday") @DefaultValue("false") boolean filterToday) {
+            @QueryParam("filterToday") @DefaultValue("false") boolean filterToday,
+            @QueryParam("startDate") String startDate,
+            @QueryParam("endDate") String endDate) {
 
         PageRequest pageRequest = new PageRequest(page, rowsPerPage);
         pageRequest.setSortBy(sortBy);
@@ -46,6 +48,8 @@ public abstract class AbstractCrudResource<T, ID> {
         pageRequest.setSearch(search);
         pageRequest.setStatusFilter(statusFilter);
         pageRequest.setFilterToday(filterToday);
+        pageRequest.setStartDate(startDate);
+        pageRequest.setEndDate(endDate);
 
         PageResponse<T> pageResponse = getService().findPaginated(pageRequest);
         return Response.ok(ApiResponse.success(pageResponse)).build();

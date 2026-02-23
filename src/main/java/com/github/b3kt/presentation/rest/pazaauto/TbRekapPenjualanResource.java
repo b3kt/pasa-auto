@@ -16,9 +16,9 @@ import java.util.Objects;
 import java.util.Optional;
 
 @RequestScoped
-@Path("/api/pazaauto/penjualan")
+@Path("/api/pazaauto/rekap-penjualan")
 @RequiredArgsConstructor
-public class TbPenjualanResource extends AbstractCrudResource<TbPenjualanEntity, String> {
+public class TbRekapPenjualanResource extends AbstractCrudResource<TbPenjualanEntity, String> {
 
     private final TbPenjualanService service;
     private final TbSpkService spkService;

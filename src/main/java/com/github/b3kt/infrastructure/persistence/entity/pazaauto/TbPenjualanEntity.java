@@ -6,6 +6,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 import com.github.b3kt.infrastructure.persistence.entity.BaseEntity;
 
@@ -51,6 +52,8 @@ public class TbPenjualanEntity extends BaseEntity {
     @Column(name = "metode_pembayaran", length = 20)
     private String metodePembayaran;
 
+
+
     @Transient
     private String namaPelanggan;
 
@@ -62,5 +65,12 @@ public class TbPenjualanEntity extends BaseEntity {
 
     @Transient
     private String jenisKendaraan;
+
+    @Transient
+    private String noPolisi;
+
+    @Transient
+    private List<TbSpkDetailEntity> details;
+
 
 }

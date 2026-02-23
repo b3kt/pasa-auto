@@ -185,9 +185,11 @@
 
         <div class="info-section">
             <div class="info-left">
+                <!--
                 <div class="info-row">
                     <div class="label">Kepada YTH,</div>
                 </div>
+                -->
                 <div class="info-row">
                     <div class="label">NAMA PEMILIK</div>
                     <div class="separator">:</div>

@@ -11,7 +11,7 @@
             <div class="row items-center q-gutter-sm">
               <q-select v-model="filterStatus" multiple :options="statusOptions" label="Status" dense options-dense flat
                         outlined/>
-              <q-input v-model="dateRangeText" label="Date Range" outlined dense readonly>
+              <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly>
                                <template v-slot:append>
                                    <q-icon name="event" class="cursor-pointer">
                                        <q-popup-proxy cover transition-show="scale" transition-hide="scale">
@@ -53,8 +53,8 @@
                   </div>
                   <q-input v-model="formData.tanggalJamSpk" label="Tanggal" outlined dense
                            placeholder="YYYY-MM-DD HH:mm:ss"
-                           disable/>
-                  <q-input v-model="formData.noSpk" label="No SPK" outlined dense disable/>
+                           readonly/>
+                  <q-input v-model="formData.noSpk" label="No SPK" outlined dense readonly/>
                   <q-input v-model.number="formData.noAntrian" label="No Antrian" outlined dense type="number"
                            :disable="(formData.statusSpk === 'SELESAI' || formData.statusSpk === 'BATAL')"/>
 
@@ -226,7 +226,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, nextTick } from 'vue'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
 import GenericDialog from 'components/GenericDialog.vue'
@@ -272,6 +272,24 @@ const isNewCustomer = ref(false)
 const searchText = ref('')
 const filterStatus = ref(loadFilterFromStorage())
 const filterToday = ref(false)
+const dateRange = ref({ from: '', to: '' })
+
+// Computed property for date range display text
+const dateRangeText = computed(() => {
+    if (!dateRange.value || (!dateRange.value.from && !dateRange.value.to)) {
+        return ''
+    }
+    if (dateRange.value.from && dateRange.value.to) {
+        return `${dateRange.value.from} - ${dateRange.value.to}`
+    }
+    if (dateRange.value.from) {
+        return `From: ${dateRange.value.from}`
+    }
+    if (dateRange.value.to) {
+        return `To: ${dateRange.value.to}`
+    }
+    return ''
+})
 const rows = ref([])
 const pelangganOptions = ref([])
 const filteredPelangganOptions = ref([])
@@ -284,6 +302,7 @@ const isEditMode = ref(false)
 const itemToDelete = ref(null)
 const isEditable = ref(false)
 const initialData = ref(null)
+const tableRef = ref(null)
 const showPrintDialog = ref(false)
 const printPreviewContent = ref('')
 const isDirty = (current) => {
@@ -489,6 +508,14 @@ const fetchSpk = async (paginationData = pagination.value) => {
       params.filterToday = true
     }
 
+    // Add date range filter
+    if (dateRange.value?.from) {
+      params.startDate = dateRange.value.from
+    }
+    if (dateRange.value?.to) {
+      params.endDate = dateRange.value.to
+    }
+
     const response = await api.get('/api/pazaauto/spk/paginated', {params})
     if (response.data.success) {
       const pageData = response.data.data
@@ -668,6 +695,16 @@ const onRequest = (props) => {
   pagination.value.sortBy = sortBy
   pagination.value.descending = descending
   fetchSpk(pagination.value)
+}
+
+const onSearch = (val) => {
+  searchText.value = val
+  pagination.value.page = 1
+  fetchSpk()
+}
+
+const clearDateRange = () => {
+  dateRange.value = { from: '', to: '' }
 }
 
 const openCreateDialog = async () => {
@@ -871,9 +908,15 @@ const finishProcess = async () => {
   showPaymentDialog.value = true
 }
 
-const handleSave = () => {
-  saveSpk()
-  openEditDialog(initialData.value)
+const handleSave = async () => {
+  await saveSpk()
+  // Re-fetch the full SPK (with details) and update the selected row in the table
+  if (formData.value.id) {
+    await openEditDialog(formData.value)
+    nextTick(() => {
+      tableRef.value?.selectRowByItem(formData.value)
+    })
+  }
 }
 
 const saveSpk = async () => {
@@ -969,7 +1012,7 @@ const saveSpk = async () => {
 
 // Payment dialog functions
 const generatePenjualanNumber = async (spkNo) => {
-  paymentData.value.noPenjualan = `F-${spkNo}`
+  paymentData.value.noPenjualan = `F${spkNo}`
 }
 
 const calculateKembalian = () => {
@@ -1012,7 +1055,10 @@ const confirmPayment = async () => {
       kembalian: paymentData.value.kembalian,
       metodePembayaran: paymentData.value.metodePembayaran,
       statusPembayaran: determinePaymentStatus(),
-      keterangan: `Payment for SPK ${formData.value.noSpk}`
+      keterangan: `Payment for SPK ${formData.value.noSpk}`,
+      kendaraanId: formData.value.idKendaraan,
+      pelangganId: formData.value.idPelanggan,
+      karyawanId: formData.value.idKaryawan
     }
 
     // Tambah data penjualan
@@ -1263,6 +1309,12 @@ watch(filterStatus, (newVal) => {
 })
 
 // Watch today filter changes
+// Watch date range changes
+watch(dateRange, () => {
+  pagination.value.page = 1
+  fetchSpk()
+}, { deep: true })
+
 watch(filterToday, (newVal) => {
   console.log('filterToday changed to:', newVal)
   // Reset to page 1 when filtering

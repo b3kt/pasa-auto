@@ -13,7 +13,7 @@
                             <!-- <q-checkbox class="col" v-model="filterToday" label="Penjualan hari ini" dense /> -->
                             <q-select v-model="filterStatus" multiple :options="statusOptions" label="Status Pembayaran"
                                 dense options-dense flat outlined style="min-width: 150px" />
-                           <q-input v-model="dateRangeText" label="Date Range" outlined dense readonly>
+                           <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly>
                                <template v-slot:append>
                                    <q-icon name="event" class="cursor-pointer">
                                        <q-popup-proxy cover transition-show="scale" transition-hide="scale">
@@ -33,6 +33,12 @@
                     <template v-slot:body-cell-grandTotal="props">
                         <q-td class="right" >
                             {{ formatCurrency(props.row.grandTotal) }}
+                        </q-td>
+                    </template>
+
+                    <template v-slot:body-cell-tanggalJamPenjualan="props">
+                        <q-td class="right" >
+                            {{ formatDateTime(props.row.tanggalJamPenjualan) }}
                         </q-td>
                     </template>
 
@@ -62,9 +68,6 @@
                     <div class="row items-center q-mb-lg">
                         <div class="text-h6">Detail Penjualan</div>
                         <q-space />
-                        <q-btn v-if="isEditMode" flat round dense icon="add" @click="openCreateDialog">
-                            <q-tooltip>New</q-tooltip>
-                        </q-btn>
                     </div>
 
                     <q-form class="q-gutter-md" @submit="handleSave">
@@ -85,14 +88,9 @@
                             </q-select>
                         </div> -->
 
-                      <!-- Customer Info -->
-                        <SPKCustomerInfo v-model:namaPelanggan="formData.namaPelanggan" v-model:alamat="formData.alamat"
-                            v-model:merk="formData.merk" v-model:jenis="formData.jenis" :nopol="formData.nopol"
-                            :isNewCustomer="false" />
-
                         <!-- Invoice Information Section -->
                         <div class="q-mb-lg">
-                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Invoice Information</div>
+                            <div class="text-subtitle text-weight-bold text-grey-8 q-mb-sm">Invoice Information</div>
                             <div class="row q-col-gutter-sm">
                                 <div class="col-12">
                                     <q-input v-model="formData.noPenjualan" label="No Penjualan" outlined dense
@@ -108,6 +106,17 @@
                             </div>
                         </div>
 
+
+                        <!-- Customer Info -->
+                        <SPKCustomerInfo 
+                            v-model:namaPelanggan="formData.namaPelanggan" 
+                            v-model:alamat="formData.alamatPelanggan"
+                            v-model:merk="formData.merkKendaraan" 
+                            v-model:jenis="formData.jenisKendaraan" 
+                            v-model:nopol="formData.noPolisi"
+                            :isNewCustomer="false" />
+
+                        
                         <!-- Details Editor -->
                         <SPKDetailsEditor v-model:details="formData.details"
                             :allJasaOptions="allJasaOptions"
@@ -130,13 +139,16 @@
                                     />
                                 </div>
                                 <div class="col-12">
-                                    <q-select v-model="formData.metodePembayaran"
+                                    <!-- <q-select v-model="formData.metodePembayaran"
                                         :options="['CASH', 'TRANSFER', 'DEBIT', 'KREDIT']" label="Metode Pembayaran"
-                                        outlined dense :readonly="!isEditable" />
+                                        outlined dense :readonly="!isEditable" /> -->
+
+                                    <q-input v-model="formData.metodePembayaran" label="Metode Pembayaran" outlined
+                                        dense readonly />    
                                 </div>
                                 <div class="col-12">
                                     <q-input v-model.number="formData.uangDibayar" label="Uang Dibayar" outlined dense
-                                        type="number" prefix="Rp" :readonly="!isEditable"
+                                        type="number" prefix="Rp" readonly
                                         @update:model-value="calculateKembalian" />
                                 </div>
                                 <div class="col-12">
@@ -190,7 +202,7 @@
 <script setup>
 import { ref, onMounted, watch, nextTick, computed } from 'vue'
 import { api } from 'boot/axios'
-import { useQuasar } from 'quasar'
+import { useQuasar, date } from 'quasar'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
 import SPKDetailsEditor from 'components/SPKDetailsEditor.vue'
@@ -227,12 +239,16 @@ const loading = ref(false)
 const deleting = ref(false)
 const searchText = ref('')
 const filterStatus = ref(loadFilterFromStorage())
-const filterToday = ref(false)
-const dateRange = ref({ from: '', to: '' })
+const todayVal = new Date()
+const yesterdayVal = date.subtractFromDate(todayVal, { days: 1 })
+const dateRange = ref({ 
+    from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'), 
+    to: date.formatDate(todayVal, 'YYYY/MM/DD') 
+})
 
 // Computed property for date range display text
 const dateRangeText = computed(() => {
-    if (!dateRange.value.from && !dateRange.value.to) {
+    if (!dateRange.value || (!dateRange.value.from && !dateRange.value.to)) {
         return ''
     }
     if (dateRange.value.from && dateRange.value.to) {
@@ -252,7 +268,7 @@ const isEditMode = ref(false)
 const itemToDelete = ref(null)
 const showPrintDialog = ref(false)
 const printPreviewContent = ref('')
-const splitterModel = ref(50)
+const splitterModel = ref(70)
 const tableRef = ref(null)
 
 const selectedSpk = ref(null)
@@ -342,7 +358,10 @@ const formData = ref({
     nopol: '',
     uangDibayar: 0,
     kembalian: 0,
-    diskon: 0
+    diskon: 0,
+    alamatPelanggan: '',
+    merkKendaraan: '',
+    jenisKendaraan: '',
 })
 
 // Table columns
@@ -409,27 +428,13 @@ const fetchPenjualan = async (paginationData = pagination.value) => {
             params.statusFilter = filterStatus.value.join(',')
         }
 
-        // Add today filter if checked
-        if (filterToday.value) {
-            params.filterToday = true
-        }
-
         // Add date range filter
-        if (dateRange.value.from) {
-            // Format date to yyyy/MM/dd format
-            const fromDate = new Date(dateRange.value.from)
-            const formattedFrom = fromDate.getFullYear() + '/' +
-                String(fromDate.getMonth() + 1).padStart(2, '0') + '/' +
-                String(fromDate.getDate()).padStart(2, '0')
-            params.startDate = formattedFrom
+        if (dateRange.value?.from) {
+            // Quasar returns YYYY/MM/DD format by default. Backend needs YYYY-MM-DD.
+            params.startDate = dateRange.value.from.replace(/\//g, '-')
         }
-        if (dateRange.value.to) {
-            // Format date to yyyy/MM/dd format
-            const toDate = new Date(dateRange.value.to)
-            const formattedTo = toDate.getFullYear() + '/' +
-                String(toDate.getMonth() + 1).padStart(2, '0') + '/' +
-                String(toDate.getDate()).padStart(2, '0')
-            params.endDate = formattedTo
+        if (dateRange.value?.to) {
+            params.endDate = dateRange.value.to.replace(/\//g, '-')
         }
 
         const response = await api.get('/api/pazaauto/penjualan/paginated', { params })
@@ -473,43 +478,33 @@ const openEditDialog = async (row) => {
         const response = await api.get(`/api/pazaauto/penjualan/${row.noPenjualan}`)
         if (response.data.success) {
             formData.value = { ...response.data.data }
-            // If linked to SPK, fetch SPK details to populate customer info and items
-            if (formData.value.noSpk) {
-                await fetchSpkDetails(formData.value.noSpk)
+            if (!formData.value.details) formData.value.details = [] // Fix undefined prop details
+            // Format datetime to YYYY-MM-DDThh:mm for datetime-local input
+            if (formData.value.tanggalJamPenjualan) {
+                formData.value.tanggalJamPenjualan = formData.value.tanggalJamPenjualan.substring(0, 16)
             }
+            // If linked to SPK, fetch SPK details to populate customer info and items
+            // if (formData.value.noSpk) {
+            //     await fetchSpkDetails(formData.value.noSpk)
+            // }
         } else {
-            formData.value = { ...row }
+            formData.value = { ...row, details: row.details || [] }
+            if (formData.value.tanggalJamPenjualan) {
+                formData.value.tanggalJamPenjualan = formData.value.tanggalJamPenjualan.substring(0, 16)
+            }
         }
         formData.value.grandTotal = grandTotal
     } catch (error) {
         console.error('Failed to fetch penjualan details:', error)
-        formData.value = { ...row }
+        formData.value = { ...row, details: row.details || [] }
+        if (formData.value.tanggalJamPenjualan) {
+            formData.value.tanggalJamPenjualan = formData.value.tanggalJamPenjualan.substring(0, 16)
+        }
     }
 
     nextTick(() => {
         tableRef.value?.selectRowByItem(row)
     })
-}
-
-const fetchSpkDetails = async (noSpk) => {
-    try {
-        const response = await api.get(`/api/pazaauto/spk/by-no-spk/${noSpk}`)
-        if (response.data.success) {
-            const spk = response.data.data
-            formData.value = {
-                ...formData.value,
-                statusSpk: spk.statusSpk,
-                namaPelanggan: spk.namaPelanggan,
-                alamat: spk.alamat,
-                merk: spk.merk,
-                jenis: spk.jenis,
-                nopol: spk.nopol,
-                details: spk.details || []
-            }
-        }
-    } catch (error) {
-        console.error('Failed to fetch SPK details:', error)
-    }
 }
 
 const openCreateDialog = async () => {
@@ -531,59 +526,6 @@ const fetchUnprocessedSpk = async () => {
     } finally {
         loadingSpk.value = false
     }
-}
-
-const filterSpk = (val, update) => {
-    update(() => {
-        if (val === '') {
-            filteredSpkOptions.value = unprocessedSpkOptions.value
-        } else {
-            const needle = val.toLowerCase()
-            filteredSpkOptions.value = unprocessedSpkOptions.value.filter(
-                v => v.noSpk.toLowerCase().indexOf(needle) > -1 || (v.namaPelanggan && v.namaPelanggan.toLowerCase().indexOf(needle) > -1)
-            )
-        }
-    })
-}
-
-const onSpkChange = async (spk) => {
-    if (!spk) {
-        resetForm()
-        return
-    }
-    try {
-        // Fetch full SPK details including its line items
-        const response = await api.get(`/api/pazaauto/spk/${spk.id}`)
-        if (response.data.success) {
-            const spkData = response.data.data
-            formData.value = {
-                ...formData.value,
-                noSpk: spkData.noSpk,
-                noPenjualan: `F-${spkData.noSpk}`,
-                statusSpk: spkData.statusSpk,
-                namaPelanggan: spkData.namaPelanggan,
-                alamat: spkData.alamatPelanggan,
-                merk: spkData.merkKendaraan,
-                jenis: spkData.jenisKendaraan,
-                nopol: spkData.nopol,
-                details: spkData.details || [],
-                grandTotal: calculateGrandTotal(spkData.details),
-                uangDibayar: 0,
-                kembalian: 0,
-                diskon: spkData.diskon || 0
-            }
-        }
-    } catch (error) {
-        console.error('Failed to fetch selected SPK details:', error)
-    }
-}
-
-const calculateGrandTotal = (details) => {
-    if (!details) return 0
-    return details.reduce((sum, item) => {
-        const harga = item.harga || 0
-        return sum + (harga * (item.jumlah || 0))
-    }, 0)
 }
 
 const fetchJasa = async () => {
@@ -747,6 +689,11 @@ const formatCurrency = (value) => {
     }).format(value)
 }
 
+const formatDateTime = (value) => {
+    if (!value) return ''
+    return date.formatDate(value, 'YYYY-MM-DD HH:mm')
+}
+
 const formatNumber = (value) => {
     if (!value) return '0'
     return new Intl.NumberFormat('id-ID', {
@@ -862,11 +809,6 @@ watch(filterStatus, (newVal) => {
     pagination.value.page = 1
     fetchPenjualan()
 }, { deep: true })
-
-watch(filterToday, () => {
-    pagination.value.page = 1
-    fetchPenjualan()
-})
 
 watch(dateRange, () => {
     pagination.value.page = 1

@@ -20,7 +20,7 @@
                 <q-th class="text-center" colspan="4">
                   <q-select v-model="newJasa.item" :options="jasaOptions" option-label="namaJasa" dense outlined
                             label="Pilih Jasa" use-input input-debounce="300" @filter="filterJasa" emit-value
-                            map-options @update:model-value="addJasa">
+                            map-options @update:model-value="addJasa" :option-disable="isJasaDisabled">
                     <template v-slot:option="scope">
                       <q-item v-bind="scope.itemProps">
                         <q-item-section>
@@ -86,7 +86,7 @@
                 <q-th class="text-center" colspan="6">
                   <q-select v-model="newBarang.item" :options="barangOptions" option-label="namaBarang" dense outlined
                             label="Pilih Barang" use-input input-debounce="300" @filter="filterBarang" emit-value
-                            map-options @update:model-value="addBarang">
+                            map-options @update:model-value="addBarang" :option-disable="isBarangDisabled">
                     <template v-slot:option="scope">
                       <q-item v-bind="scope.itemProps">
                         <q-item-section>
@@ -113,9 +113,9 @@
                 </q-td>
                 <q-td key="jumlah" :props="props">
                   {{ props.row.jumlah }}
-                  <q-popup-edit v-if="canEdit" v-model.number="props.row.jumlah" v-slot="scope">
+                  <q-popup-edit v-if="canEdit" :model-value="props.row.jumlah" auto-save v-slot="scope" @save="val => onJumlahSave(props.row, val)">
                     <q-input v-model.number="scope.value" type="number" dense outlined autofocus counter
-                             :rules="[(val) => val > 0 || 'Harga harus lebih dari 0']"
+                             :rules="[(val) => val > 0 || 'Jumlah harus lebih dari 0']"
                              @keyup.enter="scope.set" label="Jumlah barang"/>
                   </q-popup-edit>
                 </q-td>
@@ -166,10 +166,6 @@ import {ref, computed} from 'vue'
 // import {useQuasar} from 'quasar'
 // const $q = useQuasar();
 const props = defineProps({
-  id: {
-    type: Number,
-    required: true
-  },
   details: {
     type: Array,
     required: true
@@ -232,8 +228,9 @@ const jasaRows = computed(() => {
     .map(d => {
       const jasa = props.allJasaOptions.find(j => j.id === d.jasaId)
       const harga = d.harga !== undefined && d.harga !== null ? d.harga : (jasa ? jasa.hargaJasa : 0)
+      const hargaMaster = jasa ? jasa.hargaJasa : 0
       const namaItem = jasa ? jasa.namaJasa : d.namaItem || 'Unknown Service'
-      return {...d, harga, namaItem}
+      return {...d, harga, hargaMaster, namaItem}
     })
 })
 
@@ -243,8 +240,9 @@ const barangRows = computed(() => {
     .map(d => {
       const barang = props.allBarangOptions.find(b => b.id === d.sparepartId)
       const harga = d.harga !== undefined && d.harga !== null ? d.harga : (barang ? barang.hargaJual : 0)
+      const hargaMaster = barang ? barang.hargaJual : 0
       const namaItem = barang ? barang.namaBarang : d.namaItem || 'Unknown Part'
-      return {...d, harga, namaItem}
+      return {...d, harga, hargaMaster, namaItem}
     })
 })
 
@@ -278,6 +276,14 @@ const filterBarang = (val, update) => {
   })
 }
 
+const isJasaDisabled = (opt) => {
+  return props.details.some(d => d.jasaId === opt.id)
+}
+
+const isBarangDisabled = (opt) => {
+  return props.details.some(d => d.sparepartId === opt.id)
+}
+
 const addJasa = () => {
   if (!newJasa.value.item) return
   const item = {
@@ -285,6 +291,7 @@ const addJasa = () => {
     namaItem: newJasa.value.item.namaJasa,
     jasaId: newJasa.value.item.id,
     harga: newJasa.value.item.hargaJasa,
+    hargaMaster: newJasa.value.item.hargaJasa,
     jumlah: newJasa.value.jumlah,
     keterangan: '',
     tempId: Date.now()
@@ -327,6 +334,19 @@ const updateLocalHarga = (row, newValue) => {
   }
 }
 
+const onJumlahSave = (row, newValue) => {
+  const newDetails = [...props.details]
+  const index = newDetails.findIndex(d =>
+    (d.tempId && d.tempId === row.tempId) ||
+    (d.id && row.id && d.id.namaJasa === row.id.namaJasa && d.id.noSpk === row.id.noSpk)
+  )
+
+  if (index > -1) {
+    newDetails[index] = { ...newDetails[index], jumlah: newValue }
+    emit('update:details', newDetails)
+  }
+}
+
 const confirmUpdateBoth = () => {
   if (pendingUpdateData.value) {
     const { row, newValue, master, type } = pendingUpdateData.value
@@ -363,6 +383,7 @@ const addBarang = () => {
     namaItem: newBarang.value.item.namaBarang,
     sparepartId: newBarang.value.item.id,
     harga: newBarang.value.item.hargaJual,
+    hargaMaster: newBarang.value.item.hargaJual,
     jumlah: newBarang.value.jumlah,
     keterangan: '',
     tempId: Date.now()

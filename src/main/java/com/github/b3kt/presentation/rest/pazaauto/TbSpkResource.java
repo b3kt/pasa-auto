@@ -149,7 +149,16 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
 
     private void fillKaryawanDetail(TbSpkEntity entity) {
         if (Objects.isNull(entity.getMekanikId())) {
-            long mekanikId = entity.getMekanikList().stream().findFirst().get().getId();
+            if (entity.getMekanikList() == null || entity.getMekanikList().isEmpty()) {
+                return;
+            }
+            Long mekanikId = entity.getMekanikList().stream()
+                    .findFirst()
+                    .map(m -> m.getId())
+                    .orElse(null);
+            if (mekanikId == null) {
+                return;
+            }
             TbKaryawanEntity karyawan = karyawanService.findById(mekanikId);
             if (Objects.nonNull(karyawan)) {
                 entity.setNamaKaryawan(karyawan.getNamaKaryawan());

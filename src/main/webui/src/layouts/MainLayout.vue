@@ -181,7 +181,7 @@ const linksList = computed(() => [
         caption: t('app.menu.sales.sell.caption'),
         icon: 'warehouse',
         visible: hasRole('Admin') || hasRole('Owner'),
-        link: '/pazaauto/penjualan-barang'
+        link: '/pazaauto/penjualan'
       },
     ]
   },
@@ -203,7 +203,7 @@ const linksList = computed(() => [
         caption: t('app.menu.recap.sell.caption'),
         icon: 'warehouse',
         visible: hasRole('Admin') || hasRole('Owner'),
-        link: '/pazaauto/penjualan-barang'
+        link: '/pazaauto/rekap-penjualan'
       },
     ]
   },
