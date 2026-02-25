@@ -37,23 +37,17 @@
                     </template>
 
                     <template v-slot:body-cell-grandTotal="props">
-                        <q-td class="right" >
                             {{ formatCurrency(props.row.grandTotal) }}
-                        </q-td>
                     </template>
 
                     <template v-slot:body-cell-tanggalJamPenjualan="props">
-                        <q-td class="right" >
                             {{ formatDateTime(props.row.tanggalJamPenjualan) }}
-                        </q-td>
                     </template>
 
                     <template v-slot:body-cell-statusPembayaran="props">
-                        <q-td>
                             <q-badge :color="getStatusColor(props.row.statusPembayaran)" style="width: 100px">
                                 {{ props.row.statusPembayaran }}
                             </q-badge>
-                        </q-td>
                     </template>
 
                     <template v-slot:body-cell-actions="props">

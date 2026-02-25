@@ -4,6 +4,7 @@ import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.service.pazaauto.AbstractCrudService;
+import com.github.b3kt.application.service.pazaauto.TbPembelianDetailService;
 import com.github.b3kt.application.service.pazaauto.TbPembelianService;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPembelianEntity;
 import jakarta.enterprise.context.RequestScoped;
@@ -20,6 +21,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
 
+import java.util.Optional;
+
 @RequestScoped
 @Path("/api/pazaauto/pembelian")
 @Produces(MediaType.APPLICATION_JSON)
@@ -28,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 public class TbPembelianResource extends AbstractCrudResource<TbPembelianEntity, Long> {
 
     private final TbPembelianService service;
+    private final TbPembelianDetailService tbPembelianDetailService;
 
     @Override
     protected AbstractCrudService<TbPembelianEntity, Long> getService() {
@@ -84,6 +88,10 @@ public class TbPembelianResource extends AbstractCrudResource<TbPembelianEntity,
                         .entity(ApiResponse.error("Pembelian not found"))
                         .build();
             }
+
+            Optional.ofNullable(tbPembelianDetailService.findByPembelianId(entity.getId()))
+                            .ifPresent(entity::setDetails);
+
             return Response.ok(ApiResponse.success(entity)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)

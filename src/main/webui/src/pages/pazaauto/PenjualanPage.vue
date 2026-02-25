@@ -10,10 +10,9 @@
 
                     <template v-slot:toolbar-filters>
                         <div class="row items-center q-gutter-sm">
-                            <!-- <q-checkbox class="col" v-model="filterToday" label="Penjualan hari ini" dense /> -->
                             <q-select v-model="filterStatus" multiple :options="statusOptions" label="Status Pembayaran"
                                 dense options-dense flat outlined style="min-width: 150px" />
-                           <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly>
+                           <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly >
                                <template v-slot:append>
                                    <q-icon name="event" class="cursor-pointer">
                                        <q-popup-proxy cover transition-show="scale" transition-hide="scale">
@@ -31,23 +30,17 @@
                     </template>
 
                     <template v-slot:body-cell-grandTotal="props">
-                        <q-td class="right" >
                             {{ formatCurrency(props.row.grandTotal) }}
-                        </q-td>
                     </template>
 
                     <template v-slot:body-cell-tanggalJamPenjualan="props">
-                        <q-td class="right" >
                             {{ formatDateTime(props.row.tanggalJamPenjualan) }}
-                        </q-td>
                     </template>
 
                     <template v-slot:body-cell-statusPembayaran="props">
-                        <q-td>
                             <q-badge :color="getStatusColor(props.row.statusPembayaran)" style="width: 100px">
                                 {{ props.row.statusPembayaran }}
                             </q-badge>
-                        </q-td>
                     </template>
 
                     <template v-slot:body-cell-actions="props">
@@ -108,15 +101,15 @@
 
 
                         <!-- Customer Info -->
-                        <SPKCustomerInfo 
-                            v-model:namaPelanggan="formData.namaPelanggan" 
+                        <SPKCustomerInfo
+                            v-model:namaPelanggan="formData.namaPelanggan"
                             v-model:alamat="formData.alamatPelanggan"
-                            v-model:merk="formData.merkKendaraan" 
-                            v-model:jenis="formData.jenisKendaraan" 
+                            v-model:merk="formData.merkKendaraan"
+                            v-model:jenis="formData.jenisKendaraan"
                             v-model:nopol="formData.noPolisi"
                             :isNewCustomer="false" />
 
-                        
+
                         <!-- Details Editor -->
                         <SPKDetailsEditor v-model:details="formData.details"
                             :allJasaOptions="allJasaOptions"
@@ -144,7 +137,7 @@
                                         outlined dense :readonly="!isEditable" /> -->
 
                                     <q-input v-model="formData.metodePembayaran" label="Metode Pembayaran" outlined
-                                        dense readonly />    
+                                        dense readonly />
                                 </div>
                                 <div class="col-12">
                                     <q-input v-model.number="formData.uangDibayar" label="Uang Dibayar" outlined dense
@@ -241,9 +234,9 @@ const searchText = ref('')
 const filterStatus = ref(loadFilterFromStorage())
 const todayVal = new Date()
 const yesterdayVal = date.subtractFromDate(todayVal, { days: 1 })
-const dateRange = ref({ 
-    from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'), 
-    to: date.formatDate(todayVal, 'YYYY/MM/DD') 
+const dateRange = ref({
+    from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'),
+    to: date.formatDate(todayVal, 'YYYY/MM/DD')
 })
 
 // Computed property for date range display text

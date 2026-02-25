@@ -73,6 +73,7 @@ main() {
     fi
     
     local release_version=$1
+    local next_snapshot_version=$2
     
     validate_version "$release_version"
     check_git_status
@@ -83,7 +84,12 @@ main() {
     run_tests
     build_native_image
     create_git_tag "$release_version"
-    
+
+    git push origin "main"
+    git push origin "v$release_version"
+
+    update_pom_version "$next_snapshot_version"
+
     echo ""
     echo "Release completed successfully!"
     echo "Version: $release_version"
@@ -92,6 +98,8 @@ main() {
     echo "To push the release:"
     echo "  git push origin main"
     echo "  git push origin v$release_version"
+
+
 }
 
 main "$@"

@@ -3,6 +3,7 @@ package com.github.b3kt.presentation.exception;
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.domain.exception.AuthenticationException;
 import com.github.b3kt.domain.exception.UserNotFoundException;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.ws.rs.core.Response;
@@ -56,6 +57,17 @@ public class GlobalExceptionHandler {
     public static class IllegalArgumentExceptionMapper implements ExceptionMapper<IllegalArgumentException> {
         @Override
         public Response toResponse(IllegalArgumentException exception) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(exception.getMessage()))
+                    .build();
+        }
+    }
+
+
+    @Provider
+    public static class OptimisticLockingExceptionMapper implements ExceptionMapper<OptimisticLockException> {
+        @Override
+        public Response toResponse(OptimisticLockException exception) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error(exception.getMessage()))
                     .build();

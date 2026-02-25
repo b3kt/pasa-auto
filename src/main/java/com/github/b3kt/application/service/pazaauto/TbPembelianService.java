@@ -10,15 +10,17 @@ import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 @ApplicationScoped
 @RequiredArgsConstructor
@@ -90,10 +92,27 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
             }
         }
 
-        // Update main record
-        TbPembelianEntity updated = super.update(id, entity);
+        // Update the details
+        updateItemDetails(entity);
 
-        return updated;
+        // Update main record
+        return super.update(id, entity);
+    }
+
+    private void updateItemDetails(TbPembelianEntity entity){
+        if(Objects.nonNull(entity.getDetails()) && !entity.getDetails().isEmpty()){
+            BigDecimal grandTotal = new BigDecimal(0);
+            for(TbPembelianDetailEntity detail: entity.getDetails()){
+                if(Objects.nonNull(detail.getId())){
+                    detailService.update(detail.getId(), detail);
+                }else {
+                    detailService.create(detail);
+                }
+                grandTotal = grandTotal.add(detail.getTotal());
+            }
+            entity.setGrandTotal(grandTotal);
+        }
+
     }
 
     @Transactional
@@ -150,7 +169,11 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
     @Override
     public PageResponse<TbPembelianEntity> findPaginated(PageRequest pageRequest) {
         // Build query with filters
-        StringBuilder queryStr = new StringBuilder("1=1");
+        StringBuilder queryStr = new StringBuilder("" +
+                " SELECT new com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPembelianEntity(b, s.namaSupplier)  " +
+                " FROM TbPembelianEntity b " +
+                " LEFT JOIN TbSupplierEntity s ON b.supplierId = s.id " +
+                " WHERE 1=1 ");
         io.quarkus.panache.common.Parameters params = new io.quarkus.panache.common.Parameters();
 
         // Search filter
@@ -203,11 +226,13 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
         }
 
         long totalCount = query.count();
+
         List<TbPembelianEntity> rows = query.page(Page.of(pageRequest.getPage() - 1, pageRequest.getRowsPerPage()))
                 .list();
 
         return new PageResponse<>(rows, pageRequest.getPage(), pageRequest.getRowsPerPage(), totalCount);
     }
+
     public String generateNoPembelian(String jenisPembelian) {
         String code;
         if ("SPAREPART".equalsIgnoreCase(jenisPembelian)) {
