@@ -12,6 +12,7 @@ import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.LocalDate;
@@ -20,19 +21,15 @@ import java.time.LocalTime;
 import java.util.List;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, Long> {
 
-    @Inject
-    TbPembelianRepository repository;
-
-    @Inject
-    TbPembelianDetailService detailService;
-
-    @Inject
-    TbSparepartService sparepartService;
+    private final TbPembelianRepository repository;
+    private final TbPembelianDetailService detailService;
+    private final TbSparepartService sparepartService;
 
     @ConfigProperty(name = "app.features.stock-integration.enabled", defaultValue = "false")
-    Boolean stockIntegrationEnabled;
+    boolean stockIntegrationEnabled;
 
     @Override
     protected PanacheRepositoryBase<TbPembelianEntity, Long> getRepository() {
@@ -49,8 +46,7 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
     public TbPembelianEntity create(TbPembelianEntity entity) {
         setNoUrutFromNoPembelian(entity);
         // Save main pembelian record
-        TbPembelianEntity saved = super.create(entity);
-        return saved;
+        return super.create(entity);
     }
 
     @Transactional
@@ -230,7 +226,7 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
         Integer maxNoUrut = repository.findMaxNoUrut(startOfDay, endOfDay, jenisPembelian);
         int nextNoUrut = (maxNoUrut == null ? 0 : maxNoUrut) + 1;
         
-        String noPembelian = String.format("%s-%s-%d", code, datePart, nextNoUrut);
+        String noPembelian = String.format("%s%s%d", code, datePart, nextNoUrut);
         
         // Ensure uniqueness (collision check)
         while (repository.find("noPembelian", noPembelian).count() > 0) {
@@ -252,5 +248,10 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
                 // Ignore if format is invalid, noUrut will be null
             }
         }
+    }
+
+    public TbPembelianEntity findByNoPembelian(String noPembelian) {
+        return repository.find("noPembelian", noPembelian)
+                .firstResult();
     }
 }

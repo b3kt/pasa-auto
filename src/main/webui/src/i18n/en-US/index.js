@@ -98,14 +98,14 @@ export default {
         }
       },
       recap: {
-        title: 'Rekap Penjualan',
+        title: 'Rekap Penjualan & Pemasukan',
         caption: 'Penjualan & Pemasukan',
         buy: {
-          title: 'Rekap Pembelian',
+          title: 'Rekap Pembelian & Pengeluaran',
           caption: 'Pembelian & Pengeluaran'
         },
         sell: {
-          title: 'Rekap Penjualan',
+          title: 'Rekap Penjualan & Pemasukan',
           caption: 'Penjualan & Pemasukan'
         }
       },

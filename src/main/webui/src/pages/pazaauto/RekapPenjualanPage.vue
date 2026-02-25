@@ -28,6 +28,11 @@
                                    </q-icon>
                                </template>
                            </q-input>
+                          <q-btn :icon="showDetail ? 'chevron_right' : 'chevron_left'" @click="showDetailForm()">
+                            <q-tooltip>
+                              Tampilkan lebih rinci
+                            </q-tooltip>
+                          </q-btn>
                         </div>
                     </template>
 
@@ -63,9 +68,7 @@
                     </template>
                 </GenericTable>
             </template>
-
-
-            <template v-slot:after >
+            <template v-slot:after>
                 <div class="q-pa-md scroll" style="height: calc(100vh - 100px)">
                     <div class="row items-center q-mb-lg">
                         <div class="text-h6">Detail Penjualan</div>
@@ -225,6 +228,7 @@ const dateRange = ref({
     from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'),
     to: date.formatDate(todayVal, 'YYYY/MM/DD')
 })
+const showDetail = ref(false)
 
 // Computed property for date range display text
 const dateRangeText = computed(() => {
@@ -248,7 +252,7 @@ const isEditMode = ref(false)
 const itemToDelete = ref(null)
 const showPrintDialog = ref(false)
 const printPreviewContent = ref('')
-const splitterModel = ref(70)
+const splitterModel = ref(100)
 const tableRef = ref(null)
 
 const selectedSpk = ref(null)
@@ -556,6 +560,11 @@ const resetForm = () => {
         kembalian: 0,
         diskon: 0
     }
+}
+
+const showDetailForm = () => {
+  showDetail.value = !showDetail.value
+  splitterModel.value = showDetail.value ? 70 : 100
 }
 
 const saving = ref(false)

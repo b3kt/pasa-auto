@@ -4,7 +4,7 @@
             <template v-slot:before>
                 <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
                     @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
-                    :on-edit="openEditDialog" row-key="noPembelian" ref="tableRef"
+                    :on-create="openCreateDialog" :on-edit="openEditDialog" create-label="Tambah Pembelian" row-key="noPembelian" ref="tableRef"
                     search-placeholder="Search by No Pembelian..."
                     dense>
 
@@ -55,11 +55,11 @@
 
                     <template v-slot:body-cell-actions="props">
                         <q-td :props="props" class="text-center">
-                            <q-btn flat dense round icon="print" color="secondary" @click.stop="printPembelian(props.row)">
-                                <q-tooltip>Print</q-tooltip>
-                            </q-btn>
                             <q-btn flat dense round icon="edit" color="primary" @click.stop="openEditDialog(props.row)">
                                 <q-tooltip>Edit</q-tooltip>
+                            </q-btn>
+                            <q-btn flat dense round icon="delete" color="negative" @click.stop="confirmDelete(props.row)">
+                                <q-tooltip>Delete</q-tooltip>
                             </q-btn>
                         </q-td>
                     </template>
@@ -69,14 +69,17 @@
             <template v-slot:after>
                 <div class="q-pa-md scroll" style="height: 100%">
                     <div class="row items-center q-mb-lg">
-                        <div class="text-h6">Detail Pembelian</div>
+                        <div class="text-h6">{{ isEditMode ? 'Edit Pembelian' : 'Tambah Pembelian' }}</div>
                         <q-space />
+                        <q-btn flat round dense icon="add" @click="openCreateDialog" v-if="!isEditMode">
+                            <q-tooltip>New</q-tooltip>
+                        </q-btn>
                     </div>
 
                     <q-form class="q-gutter-md" @submit="handleSave">
                         <!-- Purchase Information Section -->
                         <div class="q-mb-lg">
-                            <div class="text-subtitle text-weight-bold text-grey-8 q-mb-sm">Purchase Information</div>
+                            <div class="text-subtitle text-weight-bold text-grey-8 q-mb-sm">Informasi Pembelian</div>
                             <div class="row q-col-gutter-sm">
                                 <div class="col-12">
                                     <q-input v-model="formData.noPembelian" label="No Pembelian" outlined dense
@@ -84,10 +87,17 @@
                                 </div>
                                 <div class="col-12">
                                     <q-input v-model="formData.tanggalPembelian" label="Tanggal Pembelian" outlined
-                                        dense type="datetime-local" stack-label :readonly="!isEditable" />
+                                        dense type="datetime-local" stack-label :readonly="!isEditable"
+                                        :rules="[val => !!val || 'Tanggal pembelian harus diisi']"
+                                        hide-bottom-space
+                                    />
                                 </div>
                                 <div class="col-12">
-                                    <q-input v-model="formData.jenisPembelian" label="Jenis Pembelian" outlined dense readonly />
+                                    <q-select v-model="formData.jenisPembelian" :options="jenisPembelianRadioOptions"
+                                        label="Jenis Pembelian" outlined dense :disable="!isEditable"
+                                        option-label="label" option-value="value" emit-value map-options
+                                        :rules="[val => !!val || 'Jenis pembelian harus diisi']"
+                                              hide-bottom-space/>
                                 </div>
                             </div>
                         </div>
@@ -98,26 +108,62 @@
                             <div class="row q-col-gutter-sm">
                                 <div class="col-6">
                                     <q-input v-model="formData.jenisOperasional" label="Jenis Operasional" outlined dense
-                                        readonly />
+                                        :readonly="!isEditable"
+                                        :rules="[val => formData.jenisPembelian === 'OPERASIONAL' ? !!val || 'Jenis operasional harus diisi' : true]" />
                                 </div>
                                 <div class="col-6">
-                                    <q-input v-model="formData.kategoriOperasional" label="Kategori Operasional" outlined dense readonly />
+                                    <q-select v-model="formData.kategoriOperasional" :options="kategoriOperasionalOptions"
+                                        label="Kategori Operasional" outlined dense :disable="!isEditable"
+                                        :rules="[val => formData.jenisPembelian === 'OPERASIONAL' ? !!val || 'Kategori operasional harus diisi' : true]" />
                                 </div>
                             </div>
                         </div>
 
                         <!-- Supplier Field -->
                         <div v-if="formData.jenisPembelian === 'SPAREPART'" class="q-mb-lg">
-                            <div class="text-subtitle text-weight-bold text-grey-8 q-mb-sm">Supplier Information</div>
+                            <div class="text-subtitle text-weight-bold text-grey-8 q-mb-sm">Informasi Supplier</div>
                             <div class="row q-col-gutter-sm">
                                 <div class="col-12">
-                                    <q-input v-model="supplierName" label="Supplier" outlined dense readonly />
+                                    <q-select
+                                        v-model="formData.supplierId"
+                                        :options="filteredSupplierOptions"
+                                        label="Supplier"
+                                        outlined
+                                        dense
+                                        :disable="!isEditable"
+                                        option-label="namaSupplier"
+                                        option-value="id"
+                                        emit-value
+                                        map-options
+                                        use-input
+                                        input-debounce="300"
+                                        @filter="filterSuppliers"
+                                        @input-value="onSupplierInput"
+                                        :rules="[val => formData.jenisPembelian === 'SPAREPART' ? !!val || 'Supplier harus diisi' : true]"
+                                        hide-bottom-space
+                                    >
+                                        <template v-slot:no-option>
+                                            <q-item>
+                                                <q-item-section class="text-grey-6">
+                                                    No results
+                                                </q-item-section>
+                                            </q-item>
+                                            <q-item clickable @click="openSupplierDialog" v-if="supplierSearchText">
+                                                <q-item-section>
+                                                    <div class="text-primary">
+                                                        <q-icon name="add" class="q-mr-sm" />
+                                                        Create new supplier: "{{ supplierSearchText }}"
+                                                    </div>
+                                                </q-item-section>
+                                            </q-item>
+                                        </template>
+                                    </q-select>
                                 </div>
                             </div>
                         </div>
                         <!-- Details Display -->
                         <div class="q-mb-lg">
-                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Purchase Details</div>
+                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Rincian Pembelian</div>
                             <q-list bordered separator>
                                 <q-item v-for="detail in formData.details" :key="detail.id || detail.namaItem">
                                     <q-item-section>
@@ -137,30 +183,34 @@
                             <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Payment Details</div>
                             <div class="row q-col-gutter-sm">
                               <div class="col-12">
-                                <q-input v-model="formData.statusPembayaran" label="Total" outlined
-                                         dense readonly :model-value="formatCurrency(grandTotal)" />
+                                <q-field label="Total" outlined dense stack-label>
+                                  <template v-slot:control>
+                                    <div class="self-center full-width no-outline" tabindex="0">{{ formatCurrency(grandTotal) }}</div>
+                                  </template>
+                                </q-field>
                               </div>
                               <div class="col-12">
-                                    <q-input v-model="formData.statusPembayaran" label="Status Pembayaran" outlined
-                                        dense readonly />
+                                    <q-select v-model="formData.statusPembayaran" :options="statusOptions"
+                                        label="Status Pembayaran" outlined dense :disable="!isEditable"
+                                        :rules="[val => !!val || 'Status pembayaran harus diisi']" />
                                 </div>
                                 <div class="col-12">
-                                    <q-input v-model="formData.jenisPembayaran" label="Metode Pembayaran" outlined
-                                        dense readonly />    
+                                    <q-select v-model="formData.jenisPembayaran" :options="['CASH', 'TRANSFER', 'DEBIT', 'KREDIT']"
+                                        label="Metode Pembayaran" outlined dense :disable="!isEditable"
+                                        :rules="[val => !!val || 'Metode pembayaran harus diisi']" />
                                 </div>
                             </div>
                         </div>
 
                         <!-- Additional Notes -->
                         <div>
-                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Additional Information</div>
+                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Informasi Tambahan</div>
                             <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea"
-                                rows="3" readonly />
+                                rows="3" :readonly="!isEditable" />
                         </div>
 
                         <div class="row justify-end q-mt-md q-gutter-sm">
-                            <q-btn label="Print" icon="print" color="secondary" @click="printPembelian(formData)"
-                                v-if="formData.noPembelian" />
+                            <q-btn v-if="isEditMode && isEditable" label="Hapus" color="negative" flat @click="confirmDelete(formData)" :loading="deleting"/>
                             <q-btn label="Simpan" type="submit" color="primary" :loading="saving" v-if="isEditable" />
                         </div>
                     </q-form>
@@ -170,24 +220,116 @@
 
         <!-- Delete Confirmation Dialog -->
         <GenericDialog v-model="showDeleteDialog" title="Konfirmasi hapus data" min-width="400px" position="standard">
-            Are you sure you want to delete Pembelian <strong>{{ itemToDelete?.noPembelian }}</strong>?
+            Apakah Anda yakin ingin menghapus data Pembelian <strong>{{ itemToDelete?.noPembelian }} ?</strong>?
             <template #actions>
                 <q-btn flat label="Batalkan" color="primary" @click="showDeleteDialog = false" />
                 <q-btn flat label="Hapus saja" color="negative" @click="deletePembelian" :loading="deleting" />
             </template>
         </GenericDialog>
 
-        <!-- Print Preview Dialog -->
-        <GenericDialog v-model="showPrintDialog" title="Print Preview" min-width="800px" max-width="90vw">
-            <div class="q-pa-sm" style="height: 70vh; width: 100%;">
-                <iframe :srcdoc="printPreviewContent"
-                    style="width: 100%; height: 100%; border: 1px solid #ccc;"></iframe>
-            </div>
-            <template #actions>
-                <q-btn flat label="Batalkan" color="primary" @click="showPrintDialog = false" />
-                <q-btn label="Print" icon="print" color="secondary" @click="confirmPrint" />
-            </template>
-        </GenericDialog>
+        <!-- New Supplier Dialog -->
+        <q-dialog v-model="showSupplierDialog" persistent>
+            <q-card style="min-width: 500px">
+                <q-card-section>
+                    <div class="text-h6">Add New Supplier</div>
+                </q-card-section>
+
+                <q-separator />
+
+                <q-card-section class="q-pt-none">
+                    <q-form @submit="createNewSupplier" class="q-gutter-md">
+                        <div class="row q-col-gutter-sm">
+                            <div class="col-12">
+                                <q-input 
+                                    v-model="newSupplierForm.namaSupplier" 
+                                    label="Supplier Name*" 
+                                    outlined 
+                                    dense
+                                    :rules="[val => !!val || 'Supplier name is required']"
+                                    hide-bottom-space
+                                />
+                            </div>
+                            <div class="col-12">
+                                <q-input 
+                                    v-model="newSupplierForm.alamat" 
+                                    label="Address" 
+                                    outlined 
+                                    dense
+                                    type="textarea"
+                                    rows="2"
+                                />
+                            </div>
+                            <div class="col-6">
+                                <q-input 
+                                    v-model="newSupplierForm.telepon" 
+                                    label="Phone" 
+                                    outlined 
+                                    dense
+                                />
+                            </div>
+                            <div class="col-6">
+                                <q-input 
+                                    v-model="newSupplierForm.email" 
+                                    label="Email" 
+                                    outlined 
+                                    dense
+                                    type="email"
+                                />
+                            </div>
+                            <div class="col-6">
+                                <q-input 
+                                    v-model="newSupplierForm.kontakPerson" 
+                                    label="Contact Person" 
+                                    outlined 
+                                    dense
+                                />
+                            </div>
+                            <div class="col-6">
+                                <q-input 
+                                    v-model="newSupplierForm.noHpKontak" 
+                                    label="Contact Phone" 
+                                    outlined 
+                                    dense
+                                />
+                            </div>
+                            <div class="col-6">
+                                <q-input 
+                                    v-model="newSupplierForm.kota" 
+                                    label="City" 
+                                    outlined 
+                                    dense
+                                />
+                            </div>
+                            <div class="col-6">
+                                <q-input 
+                                    v-model="newSupplierForm.kodePos" 
+                                    label="Postal Code" 
+                                    outlined 
+                                    dense
+                                />
+                            </div>
+                            <div class="col-12">
+                                <q-input 
+                                    v-model="newSupplierForm.keterangan" 
+                                    label="Notes" 
+                                    outlined 
+                                    dense
+                                    type="textarea"
+                                    rows="2"
+                                />
+                            </div>
+                        </div>
+                    </q-form>
+                </q-card-section>
+
+                <q-separator />
+
+                <q-card-actions align="right">
+                    <q-btn flat label="Cancel" color="primary" @click="closeSupplierDialog" />
+                    <q-btn flat label="Save" color="primary" @click="createNewSupplier" :loading="savingSupplier" />
+                </q-card-actions>
+            </q-card>
+        </q-dialog>
     </q-page>
 </template>
 
@@ -197,7 +339,6 @@ import { api } from 'boot/axios'
 import { useQuasar, date } from 'quasar'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
-import fakturTemplate from 'assets/template/faktur.template?raw'
 
 const $q = useQuasar()
 
@@ -226,6 +367,7 @@ const saveFilterToStorage = (filter) => {
 
 // State
 const loading = ref(false)
+const saving = ref(false)
 const deleting = ref(false)
 const searchText = ref('')
 const filterJenisPembelian = ref(null)
@@ -233,9 +375,9 @@ const filterKategoriOperasional = ref(null)
 const filterStatus = ref(loadFilterFromStorage())
 const todayVal = new Date()
 const yesterdayVal = date.subtractFromDate(todayVal, { days: 1 })
-const dateRange = ref({ 
-    from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'), 
-    to: date.formatDate(todayVal, 'YYYY/MM/DD') 
+const dateRange = ref({
+    from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'),
+    to: date.formatDate(todayVal, 'YYYY/MM/DD')
 })
 
 // Computed property for date range display text
@@ -259,8 +401,6 @@ const rows = ref([])
 const showDeleteDialog = ref(false)
 const isEditMode = ref(false)
 const itemToDelete = ref(null)
-const showPrintDialog = ref(false)
-const printPreviewContent = ref('')
 const splitterModel = ref(70)
 const tableRef = ref(null)
 const supplierName = ref('')
@@ -276,8 +416,21 @@ const kategoriOperasionalOptions = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY', 'ON_
 const statusOptions = ref(['LUNAS', 'BELUM_LUNAS', 'DP'])
 
 const supplierOptions = ref([])
-const sparepartOptions = ref([])
-const barangOptions = ref([])
+const filteredSupplierOptions = ref([])
+const supplierSearchText = ref('')
+const showSupplierDialog = ref(false)
+const newSupplierForm = ref({
+    namaSupplier: '',
+    alamat: '',
+    telepon: '',
+    email: '',
+    kontakPerson: '',
+    noHpKontak: '',
+    kota: '',
+    kodePos: '',
+    keterangan: ''
+})
+const savingSupplier = ref(false)
 
 // Computed values
 const grandTotal = computed(() => {
@@ -286,7 +439,7 @@ const grandTotal = computed(() => {
 })
 
 const isEditable = computed(() => {
-    return !isEditMode.value
+    return true // Allow editing in both create and edit modes
 })
 
 const pagination = ref({
@@ -450,78 +603,17 @@ const formatDateTime = (value) => {
     return date.formatDate(value, 'YYYY-MM-DD HH:mm')
 }
 
-const formatNumber = (value) => {
-    if (!value) return '0'
-    return new Intl.NumberFormat('id-ID', {
-        minimumFractionDigits: 0
-    }).format(value)
-}
-
-const printPembelian = async (row) => {
-    try {
-        const response = await api.get(`/api/pazaauto/pembelian/${row.noPembelian}/print`)
-        if (response.data.success) {
-            const data = response.data.data
-
-            // Render template
-            const renderedContent = renderTemplate(fakturTemplate, {
-                data,
-                formatCurrency,
-                formatNumber
-            })
-
-            printPreviewContent.value = renderedContent
-            showPrintDialog.value = true
-        }
-    } catch (error) {
-        $q.notify({
-            type: 'negative',
-            message: 'Failed to print pembelian',
-            caption: error.response?.data?.message || error.message
-        })
-    }
-}
-
-const confirmPrint = () => {
-    let iframe = document.getElementById('print-iframe')
-    if (iframe) {
-        document.body.removeChild(iframe)
-    }
-
-    iframe = document.createElement('iframe')
-    iframe.id = 'print-iframe'
-    iframe.style.position = 'absolute'
-    iframe.style.width = '0px'
-    iframe.style.height = '0px'
-    iframe.style.border = 'none'
-    document.body.appendChild(iframe)
-
-    const doc = iframe.contentWindow.document
-    doc.open()
-    doc.write(printPreviewContent.value)
-    doc.close()
-
-    setTimeout(() => {
-        iframe.contentWindow.focus()
-        iframe.contentWindow.print()
-    }, 250)
-}
-
-// Template rendering helper
-const renderTemplate = (template, context) => {
-    const keys = Object.keys(context)
-    const values = Object.values(context)
-    try {
-        return new Function(...keys, `return \`${template}\`;`)(...values)
-    } catch (e) {
-        console.error('Template rendering error:', e)
-        return 'Error rendering template'
-    }
+const openCreateDialog = async () => {
+    isEditMode.value = false
+    resetForm()
+    await fetchNextPembelianNumber()
+    await fetchSuppliers()
+    filteredSupplierOptions.value = supplierOptions.value
 }
 
 const openEditDialog = async (row) => {
     isEditMode.value = true
-    
+
     // Fetch full pembelian details
     try {
         const response = await api.get(`/api/pazaauto/pembelian/${row.noPembelian}`)
@@ -532,7 +624,7 @@ const openEditDialog = async (row) => {
             if (formData.value.tanggalPembelian) {
                 formData.value.tanggalPembelian = formData.value.tanggalPembelian.substring(0, 16)
             }
-            
+
             // Set supplier name for display
             if (formData.value.supplierId && typeof formData.value.supplierId === 'object') {
                 supplierName.value = formData.value.supplierId.namaSupplier
@@ -603,12 +695,157 @@ const getStatusColor = (status) => {
     }
 }
 
-const handleSave = async () => {
-    // Pembelian doesn't support editing in this view, only viewing
-    $q.notify({
-        type: 'info',
-        message: 'Pembelian details are read-only. Please use the main Pembelian page for edits.'
+const resetForm = () => {
+    formData.value = {
+        id: null,
+        noPembelian: '',
+        tanggalPembelian: new Date().toISOString().slice(0, 16),
+        jenisPembelian: 'SPAREPART',
+        jenisOperasional: '',
+        kategoriOperasional: null,
+        supplierId: null,
+        grandTotal: 0,
+        statusPembayaran: 'BELUM_LUNAS',
+        jenisPembayaran: 'CASH',
+        diskon: 0,
+        ppn: 0,
+        keterangan: '',
+        details: []
+    }
+}
+
+const fetchNextPembelianNumber = async () => {
+    try {
+        const response = await api.get('/api/pazaauto/pembelian/get-next-number')
+        if (response.data.success) {
+            formData.value.noPembelian = response.data.data
+        }
+    } catch (error) {
+        $q.notify({
+            type: 'negative',
+            message: 'Failed to fetch pembelian number',
+            caption: error.response?.data?.message || error.message
+        })
+    }
+}
+
+const fetchSuppliers = async () => {
+    try {
+        const response = await api.get('/api/pazaauto/supplier')
+        if (response.data.success) {
+            supplierOptions.value = response.data.data || []
+            filteredSupplierOptions.value = supplierOptions.value
+        }
+    } catch (error) {
+        $q.notify({
+            type: 'negative',
+            message: 'Failed to fetch suppliers',
+            caption: error.response?.data?.message || error.message
+        })
+    }
+}
+
+const filterSuppliers = (val, update) => {
+    supplierSearchText.value = val
+    update(() => {
+        if (!val) {
+            filteredSupplierOptions.value = supplierOptions.value
+        } else {
+            const needle = val.toLowerCase()
+            filteredSupplierOptions.value = supplierOptions.value.filter(
+                supplier => supplier.namaSupplier.toLowerCase().includes(needle)
+            )
+        }
     })
+}
+
+const onSupplierInput = (val) => {
+    supplierSearchText.value = val
+}
+
+const openSupplierDialog = () => {
+    newSupplierForm.value.namaSupplier = supplierSearchText.value
+    showSupplierDialog.value = true
+}
+
+const closeSupplierDialog = () => {
+    showSupplierDialog.value = false
+    resetSupplierForm()
+}
+
+const resetSupplierForm = () => {
+    newSupplierForm.value = {
+        namaSupplier: '',
+        alamat: '',
+        telepon: '',
+        email: '',
+        kontakPerson: '',
+        noHpKontak: '',
+        kota: '',
+        kodePos: '',
+        keterangan: ''
+    }
+}
+
+const createNewSupplier = async () => {
+    savingSupplier.value = true
+    try {
+        const response = await api.post('/api/pazaauto/supplier', newSupplierForm.value)
+        if (response.data.success) {
+            $q.notify({
+                type: 'positive',
+                message: 'Supplier created successfully'
+            })
+            
+            // Add new supplier to options
+            const newSupplier = response.data.data
+            supplierOptions.value.push(newSupplier)
+            
+            // Select the new supplier
+            formData.value.supplierId = newSupplier.id
+            
+            closeSupplierDialog()
+        }
+    } catch (error) {
+        $q.notify({
+            type: 'negative',
+            message: 'Failed to create supplier',
+            caption: error.response?.data?.message || error.message
+        })
+    } finally {
+        savingSupplier.value = false
+    }
+}
+
+const handleSave = async () => {
+    saving.value = true
+    try {
+        let response
+        if (isEditMode.value) {
+            response = await api.put(`/api/pazaauto/pembelian/${formData.value.id}`, formData.value)
+        } else {
+            response = await api.post('/api/pazaauto/pembelian', formData.value)
+        }
+
+        if (response.data.success) {
+            $q.notify({
+                type: 'positive',
+                message: isEditMode.value ? 'Pembelian updated successfully' : 'Pembelian created successfully'
+            })
+            await fetchPembelian()
+            if (!isEditMode.value) {
+                await openEditDialog(response.data.data)
+            }
+        }
+    } catch (error) {
+        $q.notify({
+            type: 'negative',
+            message: 'Failed to save pembelian',
+            caption: error.response?.data?.message || error.message
+        })
+    } finally {
+        saving.value = false
+    }
 }
 
 // Watchers
@@ -642,21 +879,6 @@ watch(dateRange, () => {
 // Lifecycle
 onMounted(() => {
     fetchPembelian()
+    fetchSuppliers()
 })
 </script>
-
-<style lang="sass" scoped>
-.dialog-pembelian
-  min-width: calc(90vw - 48px)
-
-.my-sticky-header-table
-  max-height: 70vh
-
-  thead tr th
-    position: sticky
-    z-index: 1
-    background-color: #ffffff
-
-  thead tr:first-child th
-    top: 0
-</style>
