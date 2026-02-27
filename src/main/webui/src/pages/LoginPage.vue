@@ -31,7 +31,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from 'stores/auth-store'
 import { useQuasar } from 'quasar'
@@ -44,6 +44,55 @@ const username = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
+
+// Clear all authentication data and cookies on mount
+const clearAuthData = () => {
+  // Clear localStorage
+  localStorage.removeItem('auth_token')
+  localStorage.removeItem('refresh_token')
+  localStorage.removeItem('auth_user')
+  
+  // Clear all cookies
+  document.cookie.split(';').forEach(cookie => {
+    const eqPos = cookie.indexOf('=')
+    const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim()
+    if (name) {
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`
+    }
+  })
+  
+  // Reset auth store
+  authStore.$reset()
+  
+  // Clear axios default headers
+  delete authStore.api.defaults.headers.common['Authorization']
+}
+
+// Check for expired token on mount
+onMounted(() => {
+  const urlParams = new URLSearchParams(window.location.search)
+  const expired = urlParams.get('expired')
+  const logoutMessage = urlParams.get('message')
+  
+  if (expired === 'true') {
+    clearAuthData()
+    
+    if (logoutMessage) {
+      error.value = decodeURIComponent(logoutMessage)
+    } else {
+      error.value = 'Session has expired. Please login again.'
+    }
+    
+    $q.notify({
+      type: 'warning',
+      message: 'Session expired, please login again',
+      position: 'top'
+    })
+    
+    // Clean URL
+    window.history.replaceState({}, document.title, window.location.pathname)
+  }
+})
 
 const onSubmit = async () => {
   error.value = ''
