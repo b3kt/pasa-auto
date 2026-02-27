@@ -13,6 +13,15 @@
         </q-input>
       </div>
       <slot name="toolbar-filters"></slot>
+      <div class="row justify-end q-ml-sm" v-if="footerButtonLabel && footerButtonAction">
+      <q-btn 
+        :label="footerButtonLabel" 
+        icon="print" 
+        color="primary" 
+        @click="footerButtonAction"
+        class="q-mr-sm"
+      />
+    </div>
     </q-toolbar>
 
     <!-- Table -->
@@ -51,6 +60,7 @@
           </q-td>
         </q-tr>
       </template>
+
     </q-table>
   </div>
 </template>
@@ -108,6 +118,14 @@ const props = defineProps({
   onDelete: {
     type: Function,
     default: null
+  },
+  footerButtonLabel: {
+    type: String,
+    default: ''
+  },
+  footerButtonAction: {
+    type: Function,
+    default: () => {}
   }
 })
 

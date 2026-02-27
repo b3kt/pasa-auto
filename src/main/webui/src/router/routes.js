@@ -28,6 +28,7 @@ const routes = [
       { path: 'pazaauto/spk', component: () => import('pages/pazaauto/SPKPage.vue') },
       { path: 'pazaauto/pembelian', component: () => import('pages/pazaauto/PembelianPage.vue') },
       { path: 'pazaauto/penjualan', component: () => import('pages/pazaauto/PenjualanPage.vue') },
+      { path: 'pazaauto/rekap-pembelian', component: () => import('pages/pazaauto/RekapPembelianPage.vue') },
       { path: 'pazaauto/rekap-penjualan', component: () => import('pages/pazaauto/RekapPenjualanPage.vue') },
       { path: 'pazaauto/absensi', component: () => import('pages/pazaauto/AbsensiPage.vue') }
 

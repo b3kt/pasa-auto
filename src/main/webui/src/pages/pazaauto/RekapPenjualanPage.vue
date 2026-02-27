@@ -8,7 +8,9 @@
                     @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
                     :on-edit="openEditDialog" row-key="noPenjualan" ref="tableRef"
                     search-placeholder="Search by No Penjualan or SPK..."
-                    dense>
+                    dense
+                    footerButtonLabel="Print"
+                    :footerButtonAction="printTable">
 
                     <template v-slot:toolbar-filters>
                         <div class="row items-center q-gutter-sm">
@@ -183,7 +185,7 @@ import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
 import SPKDetailsEditor from 'components/SPKDetailsEditor.vue'
 import SPKCustomerInfo from 'components/SPKCustomerInfo.vue'
-import fakturTemplate from 'assets/template/faktur.template?raw'
+import fakturTemplate from 'assets/template/rekap-penjualan.template?raw'
 
 const $q = useQuasar()
 
@@ -748,6 +750,95 @@ const confirmPrint = () => {
         iframe.contentWindow.focus()
         iframe.contentWindow.print()
     }, 250)
+}
+
+const printTable = async () => {
+  try {
+    // Fetch all penjualan data without pagination
+    const response = await api.get('/api/pazaauto/rekap-penjualan/paginated', {
+      params: {
+        page: 1,
+        rowsPerPage: 10000, // Get all records
+        search: searchText.value,
+        statusFilter: filterStatus.value ? filterStatus.value.join(',') : '',
+        startDate: dateRange.value?.from ? dateRange.value.from.replace(/\//g, '-') : '',
+        endDate: dateRange.value?.to ? dateRange.value.to.replace(/\//g, '-') : ''
+      }
+    })
+    
+    if (response.data.success) {
+      // Extract rows from paginated response
+      const records = response.data.data.rows || response.data.data || []
+      
+      // Fetch SPK data for records that have noSpk
+      const spkMap = new Map()
+      const recordsWithSpk = await Promise.all(
+        records.map(async (record) => {
+          if (record.noSpk) {
+            try {
+              const spkResponse = await api.get(`/api/pazaauto/spk/${record.noSpk}`)
+              if (spkResponse.data.success) {
+                const spkData = spkResponse.data.data
+                spkMap.set(record.noSpk, spkData)
+                return {
+                  ...record,
+                  namaPelanggan: spkData.namaPelanggan || record.namaPelanggan,
+                  nopol: spkData.nopol || record.nopol,
+                  namaMekanik: spkData.namaMekanik || record.namaMekanik,
+                  jenis: spkData.jenis || record.jenisPenjualan
+                }
+              }
+            } catch (error) {
+              console.error('Failed to fetch SPK:', record.noSpk, error)
+            }
+          }
+          return record
+        })
+      )
+      
+      const data = {
+        noPenjualan: 'LAPORAN PENJUALAN',
+        namaPelanggan: 'LAPORAN PENJUALAN', 
+        tanggal: new Date().toLocaleDateString('id-ID'),
+        grandTotal: recordsWithSpk.reduce((sum, item) => sum + (item.grandTotal || 0), 0),
+        filters: {
+          search: searchText.value || '-',
+          dateRange: dateRangeText.value || '-',
+          status: filterStatus.value?.join(', ') || '-'
+        },
+        items: recordsWithSpk.map(item => ({
+          nama: item.noPenjualan,
+          tanggal: formatDateTime(item.tanggalJamPenjualan),
+          spk: item.noSpk || '-',
+          pelanggan: item.namaPelanggan || '-',
+          nopol: item.nopol || '-',
+          mekanik: item.namaMekanik || '-',
+          type: item.jenisPenjualan,
+          kategori: '-',
+          supplier: item.namaPelanggan || '-',
+          harga: item.grandTotal,
+          status: item.statusPembayaran,
+          metode: item.jenisPembayaran
+        }))
+      }
+
+      // Render template
+      const renderedContent = renderTemplate(fakturTemplate, {
+        data,
+        formatCurrency,
+        formatNumber
+      })
+
+      printPreviewContent.value = renderedContent
+      showPrintDialog.value = true
+    }
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to fetch penjualan data for printing',
+      caption: error.response?.data?.message || error.message
+    })
+  }
 }
 
 // Template rendering helper

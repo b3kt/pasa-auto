@@ -256,7 +256,7 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
         // Ensure uniqueness (collision check)
         while (repository.find("noPembelian", noPembelian).count() > 0) {
             nextNoUrut++;
-            noPembelian = String.format("%s-%s-%d", code, datePart, nextNoUrut);
+            noPembelian = String.format("%s%s%d", code, datePart, nextNoUrut);
         }
         
         return noPembelian;
