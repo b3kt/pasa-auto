@@ -197,22 +197,22 @@
                     <div class="value uppercase">${data.namaPelanggan || 'TUNAI'}</div>
                 </div>
                 <div class="info-row">
-                    <div class="label">ALAMAT</div>
+                    <div class="label">NO POLISI</div>
                     <div class="separator">:</div>
-                    <div class="value uppercase">${data.alamatPelanggan || '-'}</div>
+                    <div class="value uppercase">${data.nopol || '-'}</div>
                 </div>
                 <div class="info-row">
                     <div class="label">MERK - JENIS</div>
                     <div class="separator">:</div>
                     <div class="value uppercase">${data.merk || '-'} ${data.model || ''}</div>
                 </div>
+                <div class="info-row">
+                    <div class="label">ALAMAT</div>
+                    <div class="separator">:</div>
+                    <div class="value uppercase">${data.alamatPelanggan || '-'}</div>
+                </div>
             </div>
             <div class="info-right">
-                <div class="info-row">
-                    <div class="label">NO POLISI</div>
-                    <div class="separator">:</div>
-                    <div class="value uppercase">${data.nopol || '-'}</div>
-                </div>
                 <div class="info-row">
                     <div class="label">KM</div>
                     <div class="separator">:</div>
