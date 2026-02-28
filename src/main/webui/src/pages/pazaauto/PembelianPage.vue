@@ -499,7 +499,6 @@ import {api} from 'boot/axios'
 import {useQuasar, date} from 'quasar'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
-import fakturTemplate from 'assets/template/faktur.template?raw'
 
 const $q = useQuasar()
 
@@ -1221,70 +1220,6 @@ const deleteDetail = async (detail) => {
   })
 }
 
-const printTable = async () => {
-  try {
-    // Fetch all pembelian data without pagination
-    const response = await api.get('/api/pazaauto/pembelian/paginated', {
-      params: {
-        page: 1,
-        rowsPerPage: 10000, // Get all records
-        search: searchText.value,
-        jenisPembelian: filterJenisPembelian.value,
-        kategoriOperasional: filterKategoriOperasional.value,
-        statusFilter: filterStatus.value ? filterStatus.value.join(',') : '',
-        startDate: dateRange.value?.from ? dateRange.value.from.replace(/\//g, '-') : '',
-        endDate: dateRange.value?.to ? dateRange.value.to.replace(/\//g, '-') : ''
-      }
-    })
-    
-    if (response.data.success) {
-      // Extract rows from paginated response
-      const records = response.data.data.rows || response.data.data || []
-      
-      const data = {
-        type: 'PEMBELIAN_REPORT',
-        title: 'Laporan Pembelian',
-        date: new Date().toLocaleDateString('id-ID'),
-        records: records.map(item => ({
-          noPembelian: item.noPembelian,
-          tanggalPembelian: formatDateTime(item.tanggalPembelian),
-          jenisPembelian: item.jenisPembelian,
-          jenisOperasional: item.jenisOperasional,
-          kategoriOperasional: item.kategoriOperasional,
-          supplierName: item.supplierId?.namaSupplier || '-',
-          grandTotal: item.grandTotal,
-          statusPembayaran: item.statusPembayaran,
-          jenisPembayaran: item.jenisPembayaran,
-          keterangan: item.keterangan || '-'
-        })),
-        filters: {
-          search: searchText.value || '-',
-          jenisPembelian: filterJenisPembelian.value || '-',
-          kategoriOperasional: filterKategoriOperasional.value || '-',
-          status: filterStatus.value?.join(', ') || '-',
-          dateRange: dateRangeText.value || '-'
-        }
-      }
-
-      // Render template
-      const renderedContent = renderTemplate(fakturTemplate, {
-        data,
-        formatCurrency,
-        formatNumber
-      })
-
-      printPreviewContent.value = renderedContent
-      showPrintDialog.value = true
-    }
-  } catch (error) {
-    $q.notify({
-      type: 'negative',
-      message: 'Failed to fetch pembelian data for printing',
-      caption: error.response?.data?.message || error.message
-    })
-  }
-}
-
 const confirmPrint = () => {
   let iframe = document.getElementById('print-iframe')
   if (iframe) {
@@ -1308,18 +1243,6 @@ const confirmPrint = () => {
     iframe.contentWindow.focus()
     iframe.contentWindow.print()
   }, 250)
-}
-
-// Template rendering helper
-const renderTemplate = (template, context) => {
-  const keys = Object.keys(context)
-  const values = Object.values(context)
-  try {
-    return new Function(...keys, `return \`${template}\`;`)(...values)
-  } catch (e) {
-    console.error('Template rendering error:', e)
-    return 'Error rendering template'
-  }
 }
 
 const handleSave = async () => {
