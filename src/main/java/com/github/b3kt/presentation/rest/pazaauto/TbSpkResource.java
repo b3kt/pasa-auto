@@ -11,8 +11,8 @@ import com.github.b3kt.application.service.pazaauto.TbSpkService;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKaryawanEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
+import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
 import jakarta.enterprise.context.RequestScoped;
-import jakarta.inject.Inject;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -20,19 +20,16 @@ import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
 
 @RequestScoped
 @Path("/api/pazaauto/spk")
+@RequiredArgsConstructor
 public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
 
-    @Inject
-    TbSpkService service;
-
-    @Inject
-    TbPelangganService pelangganService;
-
-    @Inject
-    TbKaryawanService karyawanService;
+    final TbSpkService service;
+    final TbPelangganService pelangganService;
+    final TbKaryawanService karyawanService;
 
     @Override
     protected AbstractCrudService<TbSpkEntity, Long> getService() {
@@ -61,6 +58,7 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
         return Response.ok(ApiResponse.success(service.findUnprocessedSpk())).build();
     }
 
+    @Override
     @GET
     @Path("/{id}")
     public Response getById(@PathParam("id") String id) {
@@ -118,7 +116,6 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
     @DELETE
     @Path("/{id}")
     public Response delete(@PathParam("id") String id) {
-        // getService().delete(parseId(id));
         TbSpkEntity entity = getService().findById(parseId(id));
         entity.setKeterangan("SPK Dibatalkan. lastStatus: " + entity.getStatusSpk());
         entity.setStatusSpk("BATAL");
@@ -129,18 +126,18 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
 
     private void fillPelangganDetail(TbSpkEntity entity) {
 
-        TbPelangganEntity pelanggan = null;
+        TbPelangganEntity pelanggan;
         if (Objects.isNull(entity.getPelangganId())) {
             pelanggan = pelangganService.findByNopol(entity.getNopol());
             if (Objects.nonNull(pelanggan)) {
                 entity.setPelangganId(pelanggan.getId());
+                entity.setNamaPelanggan(pelanggan.getNamaPelanggan());
             }
         }else{
             pelanggan = pelangganService.findById(entity.getPelangganId());
         }
 
         if(Objects.nonNull(pelanggan)){
-            entity.setNamaPelanggan(pelanggan.getNamaPelanggan());
             entity.setAlamatPelanggan(pelanggan.getAlamat());
             entity.setMerkKendaraan(pelanggan.getMerk());
             entity.setJenisKendaraan(pelanggan.getJenis());
@@ -154,7 +151,7 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
             }
             Long mekanikId = entity.getMekanikList().stream()
                     .findFirst()
-                    .map(m -> m.getId())
+                    .map(SpkMekanik::getId)
                     .orElse(null);
             if (mekanikId == null) {
                 return;

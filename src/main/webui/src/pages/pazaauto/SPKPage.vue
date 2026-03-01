@@ -1,6 +1,6 @@
 <template>
   <q-page padding>
-    <q-splitter v-model="splitterModel" :limits="[50, 50]" style="height: calc(100vh - 100px)">
+    <q-splitter v-model="splitterModel" :limits="$q.screen.xs ? [100, 100] : [50, 50]" style="height: calc(100vh - 100px)">
       <template v-slot:before>
         <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
                       @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
@@ -9,8 +9,6 @@
                       search-placeholder="Search by name or email...">
           <template v-slot:toolbar-filters>
             <div class="row items-center q-gutter-sm">
-              <q-select v-model="filterStatus" multiple :options="statusOptions" label="Status" dense options-dense flat
-                        outlined/>
               <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly>
                                <template v-slot:append>
                                    <q-icon name="event" class="cursor-pointer">
@@ -35,7 +33,8 @@
         </GenericTable>
       </template>
 
-      <template v-slot:after>
+      <template v-slot:after v-if="!$q.screen.xs">
+
         <div class="q-pa-md scroll" style="height: 100%">
           <div class="row items-center q-mb-md">
             <div class="text-h6 q-mb-md">{{ isEditMode ? 'Edit SPK' : 'Tambah data SPK' }}</div>
@@ -266,7 +265,7 @@ const saveFilterToStorage = (filter) => {
 }
 
 // State
-const splitterModel = ref(50)
+const splitterModel = $q.screen.xs ? ref(100) : ref(50)
 const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
@@ -278,9 +277,9 @@ const filterStatus = ref(loadFilterFromStorage())
 const filterToday = ref(false)
 const todayVal = new Date()
 const yesterdayVal = date.subtractFromDate(todayVal, { days: 1 })
-const dateRange = ref({ 
-    from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'), 
-    to: date.formatDate(todayVal, 'YYYY/MM/DD') 
+const dateRange = ref({
+    from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'),
+    to: date.formatDate(todayVal, 'YYYY/MM/DD')
 })
 
 // Computed property for date range display text
@@ -364,15 +363,6 @@ const subtotalBarang = computed(() => {
 })
 
 const grandTotal = computed(() => subtotalJasa.value + subtotalBarang.value)
-
-
-// Status options for filter
-const statusOptions = ref([
-  'OPEN',
-  'PROSES',
-  'SELESAI',
-  'BATAL'
-])
 
 const pagination = ref({
   sortBy: "noSpk",
@@ -507,10 +497,8 @@ const fetchSpk = async (paginationData = pagination.value) => {
       params.search = searchText.value
     }
 
-    // Add status filter if specified
-    if (filterStatus.value && filterStatus.value.length > 0) {
-      params.statusFilter = filterStatus.value.join(',')
-    }
+    // Add status filter - always filter for OPEN status
+    params.statusFilter = 'OPEN'
 
     // Add today filter if checked
     if (filterToday.value) {

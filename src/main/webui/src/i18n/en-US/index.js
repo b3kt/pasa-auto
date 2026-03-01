@@ -78,7 +78,7 @@ export default {
         }
       },
       process: {
-        title: 'Proses',
+        title: 'Proses SPK',
         caption: 'Proses',
         order: {
           title: 'Surat Perintah Kerja (SPK)',
@@ -101,12 +101,12 @@ export default {
         title: 'Rekap Penjualan & Pemasukan',
         caption: 'Penjualan & Pemasukan',
         buy: {
-          title: 'Rekap Pembelian & Pengeluaran',
-          caption: 'Pembelian & Pengeluaran'
+          title: 'Riwayat Pengeluaran',
+          caption: 'Riwayat Pengeluaran'
         },
         sell: {
-          title: 'Rekap Penjualan & Pemasukan',
-          caption: 'Penjualan & Pemasukan'
+          title: 'Riwayat Penjualan',
+          caption: 'Riwayat Penjualan'
         }
       },
 

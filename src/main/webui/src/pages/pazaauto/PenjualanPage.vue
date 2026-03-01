@@ -1,18 +1,15 @@
 <template>
-    <q-page padding>
-        <q-splitter v-model="splitterModel" :limits="[50, 100]" style="height: calc(100vh - 100px)">
-            <template v-slot:before>
-                <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
-                    @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
-                    :on-edit="openEditDialog" row-key="noPenjualan" ref="tableRef"
-                    search-placeholder="Search by No Penjualan or SPK..."
-                    dense>
-
-                    <template v-slot:toolbar-filters>
-                        <div class="row items-center q-gutter-sm">
-                            <q-select v-model="filterStatus" multiple :options="statusOptions" label="Status Pembayaran"
-                                dense options-dense flat outlined style="min-width: 150px" />
-                           <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly >
+  <q-page padding>
+    <q-splitter v-model="splitterModel" :limits="$q.screen.xs ? [100, 100] : [50, 50]" style="height: calc(100vh - 100px)">
+      <template v-slot:before>
+        <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
+                      @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
+                      :on-create="openCreateDialog"
+                      :on-edit="openEditDialog" create-label="Tambah data Karyawan" ref="tableRef"
+                      search-placeholder="Search by name or email...">
+          <template v-slot:toolbar-filters>
+            <div class="row items-center q-gutter-sm">
+              <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly>
                                <template v-slot:append>
                                    <q-icon name="event" class="cursor-pointer">
                                        <q-popup-proxy cover transition-show="scale" transition-hide="scale">
@@ -26,178 +23,214 @@
                                    </q-icon>
                                </template>
                            </q-input>
-                        </div>
-                    </template>
-
-                    <template v-slot:body-cell-grandTotal="props">
-                            {{ formatCurrency(props.row.grandTotal) }}
-                    </template>
-
-                    <template v-slot:body-cell-tanggalJamPenjualan="props">
-                            {{ formatDateTime(props.row.tanggalJamPenjualan) }}
-                    </template>
-
-                    <template v-slot:body-cell-statusPembayaran="props">
-                            <q-badge :color="getStatusColor(props.row.statusPembayaran)" style="width: 100px">
-                                {{ props.row.statusPembayaran }}
-                            </q-badge>
-                    </template>
-
-                    <template v-slot:body-cell-actions="props">
-                        <q-td :props="props" class="text-center">
-                            <q-btn flat dense round icon="print" color="secondary" @click.stop="printPenjualan(props.row)">
-                                <q-tooltip>Print</q-tooltip>
-                            </q-btn>
-                            <q-btn flat dense round icon="edit" color="primary" @click.stop="openEditDialog(props.row)">
-                                <q-tooltip>Edit</q-tooltip>
-                            </q-btn>
-                        </q-td>
-                    </template>
-                </GenericTable>
-            </template>
-
-            <template v-slot:after>
-                <div class="q-pa-md scroll" style="height: 100%">
-                    <div class="row items-center q-mb-lg">
-                        <div class="text-h6">Detail Penjualan</div>
-                        <q-space />
-                    </div>
-
-                    <q-form class="q-gutter-md" @submit="handleSave">
-                        <!-- SPK Selection -->
-                        <!-- <div v-if="!isEditMode">
-                            <q-select v-model="selectedSpk" label="Pilih SPK *" outlined dense
-                                :options="filteredSpkOptions" :option-label="opt => `${opt.noSpk} - ${opt.namaPelanggan}`"
-                                option-value="id" use-input input-debounce="300" @filter="filterSpk"
-                                @update:model-value="onSpkChange" :loading="loadingSpk"
-                                :rules="[val => !!val || 'SPK harus dipilih']" clearable>
-                                <template v-slot:no-option>
-                                    <q-item>
-                                        <q-item-section class="text-grey">
-                                            No unprocessed SPK found
-                                        </q-item-section>
-                                    </q-item>
-                                </template>
-                            </q-select>
-                        </div> -->
-
-                        <!-- Invoice Information Section -->
-                        <div class="q-mb-lg">
-                            <div class="text-subtitle text-weight-bold text-grey-8 q-mb-sm">Invoice Information</div>
-                            <div class="row q-col-gutter-sm">
-                                <div class="col-12">
-                                    <q-input v-model="formData.noPenjualan" label="No Penjualan" outlined dense
-                                        readonly />
-                                </div>
-                                <div class="col-12">
-                                    <q-input v-model="formData.tanggalJamPenjualan" label="Tanggal Penjualan" outlined
-                                        dense type="datetime-local" stack-label :readonly="!isEditable" />
-                                </div>
-                                <div class="col-12">
-                                    <q-input v-model="formData.noSpk" label="No SPK" outlined dense readonly />
-                                </div>
-                            </div>
-                        </div>
-
-
-                        <!-- Customer Info -->
-                        <SPKCustomerInfo
-                            v-model:namaPelanggan="formData.namaPelanggan"
-                            v-model:alamat="formData.alamatPelanggan"
-                            v-model:merk="formData.merkKendaraan"
-                            v-model:jenis="formData.jenisKendaraan"
-                            v-model:nopol="formData.noPolisi"
-                            :isNewCustomer="false" />
-
-
-                        <!-- Details Editor -->
-                        <SPKDetailsEditor v-model:details="formData.details"
-                            :allJasaOptions="allJasaOptions"
-                            :allBarangOptions="allBarangOptions"
-                            :canEdit="formData.statusSpk === 'PROSES' && formData.statusPembayaran !== 'LUNAS'"
-                            :noSpk="formData.noSpk" />
-
-                        <!-- Payment Details Section -->
-                        <div class="bg-grey-2 q-pa-md rounded-borders q-mb-lg">
-                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Payment Details</div>
-                            <div class="row q-col-gutter-sm">
-                              <div class="col-12">
-                                <q-input v-model="formData.statusPembayaran" label="Total" outlined
-                                         dense readonly :model-value="formatCurrency(grandTotal)" />
-                              </div>
-                              <div class="col-12">
-                                    <q-input v-model="formData.statusPembayaran" label="Status Pembayaran" outlined
-                                        dense readonly :model-value="determinePaymentStatus()"
-                                        :class="determinePaymentStatusStyle()"
-                                    />
-                                </div>
-                                <div class="col-12">
-                                    <!-- <q-select v-model="formData.metodePembayaran"
-                                        :options="['CASH', 'TRANSFER', 'DEBIT', 'KREDIT']" label="Metode Pembayaran"
-                                        outlined dense :readonly="!isEditable" /> -->
-
-                                    <q-input v-model="formData.metodePembayaran" label="Metode Pembayaran" outlined
-                                        dense readonly />
-                                </div>
-                                <div class="col-12">
-                                    <q-input v-model.number="formData.uangDibayar" label="Uang Dibayar" outlined dense
-                                        type="number" prefix="Rp" readonly
-                                        @update:model-value="calculateKembalian" />
-                                </div>
-                                <div class="col-12">
-                                    <q-input v-model.number="formData.kembalian" label="Kembalian" outlined dense
-                                        type="number" prefix="Rp" readonly />
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Additional Notes -->
-                        <div>
-                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Additional Information</div>
-                            <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea"
-                                rows="3" :readonly="!isEditable" />
-                        </div>
-
-                        <div class="row justify-end q-mt-md q-gutter-sm">
-                            <q-btn label="Print" icon="print" color="secondary" @click="printPenjualan(formData)"
-                                v-if="formData.noPenjualan" />
-                            <q-btn label="Simpan" type="submit" color="primary" :loading="saving" v-if="isEditable" />
-                        </div>
-                    </q-form>
-                </div>
-            </template>
-        </q-splitter>
-
-        <!-- Keep Delete and Print Dialogs as they are global or large -->
-        <!-- Delete Confirmation Dialog -->
-        <GenericDialog v-model="showDeleteDialog" title="Konfirmasi hapus data" min-width="400px" position="standard">
-            Are you sure you want to delete Penjualan <strong>{{ itemToDelete?.noPenjualan }}</strong>?
-            <template #actions>
-                <q-btn flat label="Batalkan" color="primary" @click="showDeleteDialog = false" />
-                <q-btn flat label="Hapus saja" color="negative" @click="deletePenjualan" :loading="deleting" />
-            </template>
-        </GenericDialog>
-
-        <!-- Print Preview Dialog -->
-        <GenericDialog v-model="showPrintDialog" title="Print Preview" min-width="800px" max-width="90vw">
-            <div class="q-pa-sm" style="height: 70vh; width: 100%;">
-                <iframe :srcdoc="printPreviewContent"
-                    style="width: 100%; height: 100%; border: 1px solid #ccc;"></iframe>
             </div>
-            <template #actions>
-                <q-btn flat label="Batalkan" color="primary" @click="showPrintDialog = false" />
-                <q-btn label="Print" icon="print" color="secondary" @click="confirmPrint" />
-            </template>
-        </GenericDialog>
-    </q-page>
+          </template>
+          <template v-slot:body-cell-statusSpk="props">
+            <q-badge :color="getStatusColor(props.row.statusSpk)">
+              {{ props.row.statusSpk || 'N/A' }}
+            </q-badge>
+          </template>
+        </GenericTable>
+      </template>
+
+      <template v-slot:after>
+        <div class="q-pa-md scroll" style="height: 100%">
+          <div class="row items-center q-mb-md">
+            <div class="text-h6 q-mb-md">Detail SPK dan Penjualan</div>
+            <q-space/>
+          </div>
+          <q-form @submit="handleSave" id="karyawan-form" class="q-gutter-md">
+            <q-card flat bordered>
+              <q-card-section class="row" horizontal>
+                <q-card-section class="col-6 q-col-gutter-md">
+                  <div>
+                    <span class="text-caption text-bold">Informasi SPK</span>
+                  </div>
+                  <q-input v-model="formData.tanggalJamSpk" label="Tanggal" outlined dense
+                           placeholder="YYYY-MM-DD HH:mm:ss"
+                           readonly/>
+                  <q-input v-model="formData.noSpk" label="No SPK" outlined dense readonly/>
+                  <q-input v-model.number="formData.noAntrian" label="No Antrian" outlined dense type="number"
+                           :disable="(formData.statusSpk === 'SELESAI' || formData.statusSpk === 'BATAL')"/>
+
+                  <q-select v-model="formData.nopol" label="No Polisi *" outlined dense
+                            :options="filteredPelangganOptions"
+                            :option-label="constructNopolOptions" option-value="nopol" emit-value map-options use-input
+                            input-debounce="300" @filter="filterPelanggan" @update:model-value="onNopolChange"
+                            :loading="loadingPelanggan" :disable="(formData.statusSpk !== 'OPEN')"
+                            new-value-mode="add-unique"
+                            :rules="[val => !!val || 'No Polisi harus diisi']"
+                            hide-bottom-space>
+                    <template v-slot:option="scope">
+                      <q-item v-bind="scope.itemProps" class="row">
+                        <q-item-section class="col">
+                          <q-item-label>{{ scope.opt.nopol }}</q-item-label>
+                        </q-item-section>
+                        <q-item-section class="col">
+                          <q-item-label>
+                            {{ scope.opt.namaPelanggan }}
+                          </q-item-label>
+                        </q-item-section>
+
+                        <q-item-section class="col">
+                          {{ scope.opt.merk }} {{ scope.opt.jenis }}
+                        </q-item-section>
+                      </q-item>
+                    </template>
+                    <template v-slot:no-option>
+                      <q-item>
+                        <q-item-section class="text-grey">
+                          No results
+                        </q-item-section>
+                      </q-item>
+                    </template>
+                  </q-select>
+
+                  <q-select v-model="selectedMekaniks" label="Select Mechanics" outlined dense multiple
+                            :options="karyawanOptions" option-label="namaKaryawan" option-value="id" use-chips use-input
+                            input-debounce="300" @filter="filterKaryawan" :loading="loadingKaryawan"
+                            :disable="!isEditable"
+                            emit-value map-options>
+                    <template v-slot:option="{ itemProps, opt }">
+                      <q-item v-bind="itemProps">
+                        <q-item-section side>
+                          <q-checkbox :model-value="isSelected(opt.id)" @update:model-value="toggleMechanic(opt)"/>
+                        </q-item-section>
+                        <q-item-section @click.stop>
+                          <q-item-label>{{ opt.namaKaryawan }}</q-item-label>
+                        </q-item-section>
+                        <q-item-section @click.stop side v-if="isSelected(opt.id)">
+                          <q-select :model-value="getMekanikTugas(opt.id)"
+                                    @update:model-value="setMekanikTugas(opt.id, $event)"
+                                    :options="['Utama', 'Pembantu']"
+                                    dense
+                                    outlined style="min-width: 120px"/>
+                        </q-item-section>
+                      </q-item>
+                    </template>
+                  </q-select>
+                  <q-input v-model.number="formData.km" label="KM" outlined dense type="number"
+                           :rules="[val => !!val || 'KM harus diisi number']" :disable="!isEditable"
+                           hide-bottom-space/>
+                  <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea" rows="2"
+                           :disable="!isEditable" autogrow/>
+                </q-card-section>
+                <q-card-section>
+                  <SPKCustomerInfo
+                    v-model:namaPelanggan="formData.namaPelanggan"
+                    v-model:alamat="formData.alamat"
+                    v-model:merk="formData.merk"
+                    v-model:jenis="formData.jenis"
+                    :nopol="formData.nopol"
+                    :isNewCustomer="isNewCustomer"
+                  />
+                </q-card-section>
+              </q-card-section>
+            </q-card>
+
+
+            <!-- Split Layout for Jasa and Barang -->
+            <SPKDetailsEditor
+              v-model:details="formData.details"
+              :allJasaOptions="allJasaOptions"
+              :allBarangOptions="allBarangOptions"
+              :canEdit="isEditable || (formData.statusSpk !== 'SELESAI' && formData.statusSpk !== 'BATAL')"
+              :noSpk="formData.noSpk"
+              @update-master-jasa="handleUpdateMasterJasa"
+              @update-master-barang="handleUpdateMasterBarang"
+            />
+
+            <div class="row justify-end q-gutter-sm">
+              <div v-if="formData.statusSpk === 'SELESAI'">
+                <q-btn label="Print" type="button" @click="printSpk" style="width: 100px;"
+                       :loading="saving" class="q-mr-sm"/>
+              </div>
+              <div v-if="formData.statusSpk === 'PROSES'">
+                <q-btn label="Print" type="button" @click="printSpk" style="width: 100px;"
+                       :loading="saving" class="q-mr-sm"/>
+                <q-btn label="Selesai" type="button" color="green" @click="finishProcess" style="width: 100px;"
+                       :loading="saving"/>
+              </div>
+              <div v-if="isEditMode && formData.statusSpk === 'OPEN'">
+                <q-btn label="Mulai Proses" type="button" color="green" @click="startProcess" :loading="saving"/>
+              </div>
+              <q-space/>
+              <q-btn v-if="isEditMode && formData.statusSpk === 'OPEN'"
+                     label="Hapus" color="negative" flat @click="confirmDelete(formData)" :loading="deleting"/>
+              <q-btn label="Simpan" type="submit" color="primary" :loading="saving"
+                     v-if="formData.statusSpk != 'SELESAI' && formData.statusSpk != 'BATAL'"
+                     :disable="isEditMode && !isDirty(formData)"/>
+
+            </div>
+          </q-form>
+        </div>
+      </template>
+    </q-splitter>
+
+    <!-- Delete Confirmation Dialog -->
+    <GenericDialog v-model="showDeleteDialog" title="Konfirmasi hapus data" min-width="400px" position="standard">
+      Are you sure you want to delete SPK <strong>{{ itemToDelete?.noSpk }}</strong>?
+      <template #actions>
+        <q-btn flat label="Batalkan" color="primary" @click="showDeleteDialog = false"/>
+        <q-btn flat label="Hapus saja" color="negative" @click="deleteSpk" :loading="deleting"/>
+      </template>
+    </GenericDialog>
+
+    <!-- Print Preview Dialog -->
+    <GenericDialog v-model="showPrintDialog" title="Print Preview" min-width="800px" max-width="90vw">
+      <div class="q-pa-sm" style="height: 70vh; width: 100%;">
+        <iframe :srcdoc="printPreviewContent" style="width: 100%; height: 100%; border: 1px solid #ccc;"></iframe>
+      </div>
+      <template #actions>
+        <q-btn flat label="Tutup" color="primary" @click="showPrintDialog = false" />
+        <q-btn label="Print" icon="print" color="secondary" @click="confirmPrint" />
+      </template>
+    </GenericDialog>
+
+    <!-- Payment Dialog -->
+    <GenericDialog v-model="showPaymentDialog" title="Konfirmasi Pembayaran" min-width="500px">
+      <div class="q-pa-md">
+        <div class="row q-col-gutter-md">
+          <div class="col-12">
+            <q-input v-model="paymentData.noPenjualan" label="No Penjualan" outlined dense readonly />
+          </div>
+          <div class="col-12">
+            <q-field label="Total Tagihan" outlined dense stack-label>
+              <template v-slot:control>
+                <div class="self-center full-width no-outline" tabindex="0">{{ formatCurrency(grandTotal) }}</div>
+              </template>
+            </q-field>
+          </div>
+          <div class="col-12">
+            <q-select v-model="paymentData.metodePembayaran" :options="['CASH', 'TRANSFER', 'DEBIT', 'KREDIT']"
+                      label="Metode Pembayaran" outlined dense />
+          </div>
+          <div class="col-12">
+            <q-input v-model.number="paymentData.uangDibayar" label="Uang Dibayar" outlined dense type="number"
+                     prefix="Rp" @update:model-value="calculateKembalian" autofocus
+                     :rules="[val => val >= grandTotal || 'Uang dibayar kurang dari total tagihan']" />
+          </div>
+          <div class="col-12">
+            <q-input v-model="paymentData.kembalian" label="Kembalian" outlined dense readonly
+                     :model-value="formatCurrency(paymentData.kembalian)" stack-label />
+          </div>
+        </div>
+      </div>
+      <template #actions>
+        <q-btn flat label="Batal" color="primary" @click="showPaymentDialog = false" />
+        <q-btn label="Konfirmasi & Selesai" color="green" @click="confirmPayment" :loading="saving" />
+      </template>
+    </GenericDialog>
+  </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick, computed } from 'vue'
+import { ref, onMounted, watch, computed, nextTick } from 'vue'
 import { api } from 'boot/axios'
 import { useQuasar, date } from 'quasar'
-import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
+import { useKeyboardShortcuts } from 'src/composables/useKeyboardShortcuts'
+import GenericTable from "components/GenericTable.vue";
 import SPKDetailsEditor from 'components/SPKDetailsEditor.vue'
 import SPKCustomerInfo from 'components/SPKCustomerInfo.vue'
 import fakturTemplate from 'assets/template/faktur.template?raw'
@@ -205,33 +238,39 @@ import fakturTemplate from 'assets/template/faktur.template?raw'
 const $q = useQuasar()
 
 // LocalStorage key for filter persistence
-const FILTER_STORAGE_KEY = 'penjualan_status_filter'
+const FILTER_STORAGE_KEY = 'spk_status_filter'
 
 // Load filter from localStorage
 const loadFilterFromStorage = () => {
-    try {
-        const stored = localStorage.getItem(FILTER_STORAGE_KEY)
-        return stored ? JSON.parse(stored) : []
-    } catch (error) {
-        console.error('Failed to load filter from storage:', error)
-        return []
-    }
+  try {
+    const stored = localStorage.getItem(FILTER_STORAGE_KEY)
+    return stored ? JSON.parse(stored) : []
+  } catch (error) {
+    console.error('Failed to load filter from storage:', error)
+    return []
+  }
 }
 
 // Save filter to localStorage
 const saveFilterToStorage = (filter) => {
-    try {
-        localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filter))
-    } catch (error) {
-        console.error('Failed to save filter to storage:', error)
-    }
+  try {
+    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filter))
+  } catch (error) {
+    console.error('Failed to save filter to storage:', error)
+  }
 }
 
 // State
+const splitterModel = $q.screen.xs ? ref(100) : ref(50)
 const loading = ref(false)
+const saving = ref(false)
 const deleting = ref(false)
+const loadingPelanggan = ref(false)
+const loadingKaryawan = ref(false)
+const isNewCustomer = ref(false)
 const searchText = ref('')
 const filterStatus = ref(loadFilterFromStorage())
+const filterToday = ref(false)
 const todayVal = new Date()
 const yesterdayVal = date.subtractFromDate(todayVal, { days: 1 })
 const dateRange = ref({
@@ -256,570 +295,1042 @@ const dateRangeText = computed(() => {
     return ''
 })
 const rows = ref([])
+const pelangganOptions = ref([])
+const filteredPelangganOptions = ref([])
+const karyawanOptions = ref([])
+const selectedMekaniks = ref([])  // Array of { id, namaKaryawan, tugas }
+const showDialog = ref(false)
 const showDeleteDialog = ref(false)
+const showPaymentDialog = ref(false)
 const isEditMode = ref(false)
 const itemToDelete = ref(null)
+const isEditable = ref(false)
+const initialData = ref(null)
+const tableRef = ref(null)
 const showPrintDialog = ref(false)
 const printPreviewContent = ref('')
-const splitterModel = ref(70)
-const tableRef = ref(null)
+const isDirty = (current) => {
+  if (!initialData.value) return true
+  return JSON.stringify(current) !== JSON.stringify(initialData.value)
+}
 
-const selectedSpk = ref(null)
+// Payment dialog state
+const paymentData = ref({
+  uangDibayar: 0,
+  kembalian: 0,
+  metodePembayaran: 'CASH'
+})
 
-// SPK Options for new record
-const unprocessedSpkOptions = ref([])
-const filteredSpkOptions = ref([])
-const loadingSpk = ref(false)
-
-// Options for SPKDetailsEditor
+// Detail SPK State
 const allJasaOptions = ref([])
 const allBarangOptions = ref([])
 
-// Computed values for SPKDetailsEditor
+// Computed
 const jasaRows = computed(() => {
-    if (!formData.value.details) return []
-    return formData.value.details
-        .filter(d => d.jasaId)
-        .map(d => {
-            const jasa = allJasaOptions.value.find(j => j.id === d.jasaId)
-            const harga = d.harga !== undefined && d.harga !== null ? d.harga : (jasa ? jasa.hargaJasa : 0)
-            const namaItem = jasa ? jasa.namaJasa : d.namaItem || 'Unknown Service'
-            return { ...d, harga, namaItem }
-        })
+  if (!formData.value.details) return []
+  return formData.value.details
+    .filter(d => d.jasaId)
+    .map(d => {
+      const jasa = allJasaOptions.value.find(j => j.id === d.jasaId)
+      const harga = d.harga !== undefined && d.harga !== null ? d.harga : (jasa ? jasa.hargaJasa : 0)
+      const namaItem = jasa ? jasa.namaJasa : d.namaItem || 'Unknown Service'
+      return {...d, harga, namaItem}
+    })
 })
 
 const barangRows = computed(() => {
-    if (!formData.value.details) return []
-    return formData.value.details
-        .filter(d => d.sparepartId)
-        .map(d => {
-            const barang = allBarangOptions.value.find(b => b.id === d.sparepartId)
-            const harga = d.harga !== undefined && d.harga !== null ? d.harga : (barang ? barang.hargaJual : 0)
-            const namaItem = barang ? barang.namaBarang : d.namaItem || 'Unknown Part'
-            return { ...d, harga, namaItem }
-        })
+  if (!formData.value.details) return []
+  return formData.value.details
+    .filter(d => d.sparepartId)
+    .map(d => {
+      const barang = allBarangOptions.value.find(b => b.id === d.sparepartId)
+      const harga = d.harga !== undefined && d.harga !== null ? d.harga : (barang ? barang.hargaJual : 0)
+      const namaItem = barang ? barang.namaBarang : d.namaItem || 'Unknown Part'
+      return {...d, harga, namaItem}
+    })
 })
 
 const subtotalJasa = computed(() => {
-    return jasaRows.value.reduce((sum, row) => sum + (row.harga * row.jumlah), 0)
+  return jasaRows.value.reduce((sum, row) => sum + (row.harga * row.jumlah), 0)
 })
 
 const subtotalBarang = computed(() => {
-    return barangRows.value.reduce((sum, row) => sum + (row.harga * row.jumlah), 0)
+  return barangRows.value.reduce((sum, row) => sum + (row.harga * row.jumlah), 0)
 })
 
-const grandTotal = computed(() => {
-  return subtotalBarang.value + subtotalJasa.value;
-})
-
-const isEditable = computed(() => {
-    if (!isEditMode.value) return true
-    return formData.value.statusSpk !== 'SELESAI'
-})
-
-// Status options
-const statusOptions = ref([
-    'LUNAS',
-    'BELUM_LUNAS',
-    'DP'
-])
+const grandTotal = computed(() => subtotalJasa.value + subtotalBarang.value)
 
 const pagination = ref({
-    sortBy: 'tanggalJamPenjualan',
-    descending: true,
-    page: 1,
-    rowsPerPage: 10,
-    rowsNumber: 0
+  sortBy: "noSpk",
+  descending: true,
+  page: 1,
+  rowsPerPage: 10,
+  rowsNumber: 0
 })
 
 // Form data
 const formData = ref({
-    noPenjualan: '',
-    tanggalJamPenjualan: '',
-    noSpk: '',
-    grandTotal: 0,
-    statusPembayaran: 'BELUM_LUNAS',
-    metodePembayaran: 'CASH',
-    keterangan: '',
-    // SPK related fields
-    details: [],
-    statusSpk: '',
-    namaPelanggan: '',
-    alamat: '',
-    merk: '',
-    jenis: '',
-    nopol: '',
-    uangDibayar: 0,
-    kembalian: 0,
-    diskon: 0,
-    alamatPelanggan: '',
-    merkKendaraan: '',
-    jenisKendaraan: '',
+  id: null,
+  noSpk: '',
+  noAntrian: null,
+  tanggalJamSpk: '',
+  nopol: '',
+  namaKaryawan: '',
+  km: null,
+  statusSpk: 'PROSES',
+  diskon: null,
+  keluhan: '',
+  keterangan: '',
+  kmSaatIni: null,
+  ppn: null,
+  status: '',
+  csId: null,
+  mekanikId: null,
+  mekanikList: null,
+  // Customer info fields
+  namaPelanggan: '',
+  alamat: '',
+  merk: '',
+  jenis: '',
+  // Details
+  details: [],
+  startProcess: false
 })
 
 // Table columns
 const columns = [
-
-
   {
-        name: 'noPenjualan',
-        required: true,
-        label: 'No Penjualan',
-        align: 'left',
-        field: 'noPenjualan',
-        sortable: true
-    },
-    {
-        name: 'tanggalJamPenjualan',
-        label: 'Tanggal',
-        align: 'left',
-        field: 'tanggalJamPenjualan',
-        sortable: true
-    },
-    {
-        name: 'noSpk',
-        label: 'No SPK',
-        align: 'left',
-        field: 'noSpk',
-        sortable: true
-    },
-  {
-    name: 'statusPembayaran',
+    name: 'statusSpk',
     label: 'Status',
     align: 'center',
-    field: 'statusPembayaran',
+    field: 'statusSpk',
     sortable: true
   },
-    {
-        name: 'grandTotal',
-        label: 'Grand Total',
-        align: 'right',
-        field: 'grandTotal',
-        sortable: true
-    }
+  {
+    name: 'noSpk',
+    required: true,
+    label: 'No SPK',
+    align: 'left',
+    field: 'noSpk',
+    sortable: true
+  },
+  {
+    name: 'noAntrian',
+    label: 'No Antrian',
+    align: 'center',
+    field: 'noAntrian',
+    sortable: true
+  },
+  {
+    name: 'namaPelanggan',
+    label: 'Pelanggan',
+    align: 'left',
+    field: 'namaPelanggan',
+    sortable: true
+  },
+  {
+    name: 'nopol',
+    label: 'Nopol',
+    align: 'left',
+    field: 'nopol',
+    sortable: true
+  },
+  {
+    name: 'km',
+    label: 'KM',
+    align: 'center',
+    field: 'km',
+    sortable: true
+  },
+  {
+    name: 'tanggalJamSpk',
+    label: 'Tanggal/Jam',
+    align: 'left',
+    field: 'tanggalJamSpk',
+    sortable: true
+  },
+  {
+    name: 'startedAt',
+    label: 'Mulai',
+    align: 'left',
+    field: 'startedAt',
+    sortable: true
+  },
+  {
+    name: 'finishedAt',
+    label: 'Selesai',
+    align: 'left',
+    field: 'finishedAt',
+    sortable: true
+  },
+
+  {
+    name: 'namaKaryawan',
+    label: 'Mekanik',
+    align: 'left',
+    field: 'namaKaryawan',
+    sortable: true
+  }
 ]
 
-// Methods
-const fetchPenjualan = async (paginationData = pagination.value) => {
-    loading.value = true
-    try {
-        const params = {
-            page: paginationData.page,
-            rowsPerPage: paginationData.rowsPerPage
-        }
 
-        if (paginationData.sortBy) {
-            params.sortBy = paginationData.sortBy
-            params.descending = paginationData.descending
-        }
-
-        if (searchText.value) {
-            params.search = searchText.value
-        }
-
-        if (filterStatus.value && filterStatus.value.length > 0) {
-            params.statusFilter = filterStatus.value.join(',')
-        }
-
-        // Add date range filter
-        if (dateRange.value?.from) {
-            // Quasar returns YYYY/MM/DD format by default. Backend needs YYYY-MM-DD.
-            params.startDate = dateRange.value.from.replace(/\//g, '-')
-        }
-        if (dateRange.value?.to) {
-            params.endDate = dateRange.value.to.replace(/\//g, '-')
-        }
-
-        const response = await api.get('/api/pazaauto/penjualan/paginated', { params })
-        if (response.data.success) {
-            const pageData = response.data.data
-            rows.value = pageData.rows || []
-            pagination.value.rowsNumber = pageData.rowsNumber
-            pagination.value.page = pageData.page
-            pagination.value.rowsPerPage = pageData.rowsPerPage
-        }
-    } catch (error) {
-        $q.notify({
-            type: 'negative',
-            message: 'Failed to fetch penjualan data',
-            caption: error.response?.data?.message || error.message
-        })
-    } finally {
-        loading.value = false
+const fetchSpk = async (paginationData = pagination.value) => {
+  loading.value = true
+  try {
+    const params = {
+      page: paginationData.page,
+      rowsPerPage: paginationData.rowsPerPage
     }
+
+    // Add sorting if specified
+    if (paginationData.sortBy) {
+      params.sortBy = paginationData.sortBy
+      params.descending = paginationData.descending
+    }
+
+    // Add search if specified
+    if (searchText.value) {
+      params.search = searchText.value
+    }
+
+    // Add status filter - always filter for OPEN status
+    params.statusFilter = 'PROSES'
+
+    // Add today filter if checked
+    if (filterToday.value) {
+      params.filterToday = true
+    }
+
+    // Add date range filter
+    if (dateRange.value?.from) {
+      // Quasar returns YYYY/MM/DD format by default. Backend needs YYYY-MM-DD.
+      params.startDate = dateRange.value.from.replace(/\//g, '-')
+    }
+    if (dateRange.value?.to) {
+      params.endDate = dateRange.value.to.replace(/\//g, '-')
+    }
+
+    const response = await api.get('/api/pazaauto/spk/paginated', {params})
+    if (response.data.success) {
+      const pageData = response.data.data
+      rows.value = pageData.rows || []
+      pagination.value.rowsNumber = pageData.rowsNumber
+      pagination.value.page = pageData.page
+      pagination.value.rowsPerPage = pageData.rowsPerPage
+    }
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to fetch SPK data',
+      caption: error.response?.data?.message || error.message
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+const fetchNextSpkNumber = async () => {
+  try {
+    const response = await api.get('/api/pazaauto/spk/get-next-spk-number')
+    if (response.data.success) {
+      formData.value.noSpk = response.data.data
+    }
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to fetch SPK data',
+      caption: error.response?.data?.message || error.message
+    })
+  }
+}
+
+const fetchPelanggan = async () => {
+  loadingPelanggan.value = true
+  try {
+    const response = await api.get('/api/pazaauto/pelanggan')
+    if (response.data.success) {
+      pelangganOptions.value = response.data.data || []
+      filteredPelangganOptions.value = pelangganOptions.value
+    }
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to fetch pelanggan data',
+      caption: error.response?.data?.message || error.message
+    })
+  } finally {
+    loadingPelanggan.value = false
+  }
+}
+
+const filterPelanggan = (val, update) => {
+  update(() => {
+    if (val === '') {
+      filteredPelangganOptions.value = pelangganOptions.value
+    } else {
+      const needle = val.toLowerCase()
+      filteredPelangganOptions.value = pelangganOptions.value.filter(
+        v => v.nopol.toLowerCase().indexOf(needle) > -1
+      )
+    }
+  })
+}
+
+const onNopolChange = async (nopol) => {
+  if (!nopol) {
+    // Clear customer info fields
+    formData.value.namaPelanggan = ''
+    formData.value.alamat = ''
+    formData.value.merk = ''
+    formData.value.jenis = ''
+    isNewCustomer.value = false
+    return
+  }
+
+  // Check if nopol exists in pelangganOptions
+  const existingPelanggan = pelangganOptions.value.find(p => p.nopol === nopol)
+
+  if (existingPelanggan) {
+    // Existing customer - fetch details and make fields readonly
+    isNewCustomer.value = false
+    try {
+      const response = await api.get(`/api/pazaauto/pelanggan/by-nopol/${nopol}`)
+      if (response.data.success && response.data.data) {
+        const pelanggan = response.data.data
+        formData.value.namaPelanggan = pelanggan.namaPelanggan || ''
+        formData.value.alamat = pelanggan.alamat || ''
+        formData.value.merk = pelanggan.merk || ''
+        formData.value.jenis = pelanggan.jenis || ''
+      }
+    } catch (error) {
+      $q.notify({
+        type: 'negative',
+        message: 'Failed to fetch pelanggan details',
+        caption: error.response?.data?.message || error.message
+      })
+    }
+  } else {
+    // New customer - clear fields and make them editable
+    isNewCustomer.value = true
+    formData.value.namaPelanggan = ''
+    formData.value.alamat = ''
+    formData.value.merk = ''
+    formData.value.jenis = ''
+    $q.notify({
+      type: 'info',
+      message: 'New customer - Please fill in customer details',
+      timeout: 2000
+    })
+  }
+}
+
+const fetchKaryawan = async () => {
+  loadingKaryawan.value = true
+  try {
+    const response = await api.get('/api/pazaauto/karyawan')
+    if (response.data.success) {
+      karyawanOptions.value = response.data.data || []
+    }
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to fetch karyawan data',
+      caption: error.response?.data?.message || error.message
+    })
+  } finally {
+    loadingKaryawan.value = false
+  }
+}
+
+const filterKaryawan = (val, update) => {
+  update(() => {
+    if (!val) {
+      // Don't filter, let q-select handle it
+      return
+    }
+  })
+}
+
+const isSelected = (id) => {
+  return selectedMekaniks.value.some(m => m.id === id)
+}
+
+const toggleMechanic = (mechanic) => {
+  const index = selectedMekaniks.value.findIndex(m => m.id === mechanic.id)
+  if (index > -1) {
+    // Remove
+    selectedMekaniks.value.splice(index, 1)
+  } else {
+    // Add with default tugas
+    selectedMekaniks.value.push({
+      id: mechanic.id,
+      namaKaryawan: mechanic.namaKaryawan,
+      tugas: 'Utama'
+    })
+  }
+}
+
+const getMekanikTugas = (id) => {
+  const mechanic = selectedMekaniks.value.find(m => m.id === id)
+  return mechanic?.tugas || 'Utama'
+}
+
+const setMekanikTugas = (id, tugas) => {
+  const mechanic = selectedMekaniks.value.find(m => m.id === id)
+  if (mechanic) {
+    mechanic.tugas = tugas
+  }
 }
 
 const onRequest = (props) => {
-    const { page, rowsPerPage, sortBy, descending } = props.pagination
-    pagination.value.page = page
-    pagination.value.rowsPerPage = rowsPerPage
-    pagination.value.sortBy = sortBy
-    pagination.value.descending = descending
-    fetchPenjualan(pagination.value)
+  const {page, rowsPerPage, sortBy, descending} = props.pagination
+  pagination.value.page = page
+  pagination.value.rowsPerPage = rowsPerPage
+  pagination.value.sortBy = sortBy
+  pagination.value.descending = descending
+  fetchSpk(pagination.value)
 }
 
 const onSearch = (val) => {
-    searchText.value = val
-    pagination.value.page = 1
-    fetchPenjualan()
-}
-
-const openEditDialog = async (row) => {
-    isEditMode.value = true
-    try {
-        // Fetch full penjualan details
-        const response = await api.get(`/api/pazaauto/penjualan/${row.noPenjualan}`)
-        if (response.data.success) {
-            formData.value = { ...response.data.data }
-            if (!formData.value.details) formData.value.details = [] // Fix undefined prop details
-            // Format datetime to YYYY-MM-DDThh:mm for datetime-local input
-            if (formData.value.tanggalJamPenjualan) {
-                formData.value.tanggalJamPenjualan = formData.value.tanggalJamPenjualan.substring(0, 16)
-            }
-            // If linked to SPK, fetch SPK details to populate customer info and items
-            // if (formData.value.noSpk) {
-            //     await fetchSpkDetails(formData.value.noSpk)
-            // }
-        } else {
-            formData.value = { ...row, details: row.details || [] }
-            if (formData.value.tanggalJamPenjualan) {
-                formData.value.tanggalJamPenjualan = formData.value.tanggalJamPenjualan.substring(0, 16)
-            }
-        }
-        formData.value.grandTotal = grandTotal
-    } catch (error) {
-        console.error('Failed to fetch penjualan details:', error)
-        formData.value = { ...row, details: row.details || [] }
-        if (formData.value.tanggalJamPenjualan) {
-            formData.value.tanggalJamPenjualan = formData.value.tanggalJamPenjualan.substring(0, 16)
-        }
-    }
-
-    nextTick(() => {
-        tableRef.value?.selectRowByItem(row)
-    })
-}
-
-const openCreateDialog = async () => {
-    isEditMode.value = false
-    resetForm()
-    await fetchUnprocessedSpk()
-}
-
-const fetchUnprocessedSpk = async () => {
-    loadingSpk.value = true
-    try {
-        const response = await api.get('/api/pazaauto/spk/unprocessed')
-        if (response.data.success) {
-            unprocessedSpkOptions.value = response.data.data
-            filteredSpkOptions.value = [...unprocessedSpkOptions.value]
-        }
-    } catch (error) {
-        console.error('Failed to fetch unprocessed SPKs:', error)
-    } finally {
-        loadingSpk.value = false
-    }
-}
-
-const fetchJasa = async () => {
-    try {
-        const response = await api.get('/api/pazaauto/jasa')
-        if (response.data.success) {
-            allJasaOptions.value = response.data.data || []
-        }
-    } catch (error) {
-        console.error('Failed to fetch jasa:', error)
-    }
-}
-
-const fetchBarang = async () => {
-    try {
-        const response = await api.get('/api/pazaauto/barang')
-        if (response.data.success) {
-            allBarangOptions.value = response.data.data || []
-        }
-    } catch (error) {
-        console.error('Failed to fetch barang:', error)
-    }
-}
-
-const resetForm = () => {
-    selectedSpk.value = null
-    formData.value = {
-        noPenjualan: '',
-        tanggalJamPenjualan: new Date().toISOString().slice(0, 16),
-        noSpk: '',
-        grandTotal: 0,
-        statusPembayaran: 'BELUM_LUNAS',
-        metodePembayaran: 'CASH',
-        keterangan: '',
-        details: [],
-        statusSpk: '',
-        namaPelanggan: '',
-        alamat: '',
-        merk: '',
-        jenis: '',
-        nopol: '',
-        uangDibayar: 0,
-        kembalian: 0,
-        diskon: 0
-    }
-}
-
-const saving = ref(false)
-
-const handleSave = async () => {
-    saving.value = true
-    try {
-        // Prepare Penjualan data
-        const penjualanData = {
-            noPenjualan: formData.value.noPenjualan,
-            tanggalJamPenjualan: formData.value.tanggalJamPenjualan,
-            noSpk: formData.value.noSpk,
-            grandTotal: formData.value.grandTotal,
-            uangDibayar: formData.value.uangDibayar,
-            kembalian: formData.value.kembalian,
-            metodePembayaran: formData.value.metodePembayaran,
-            statusPembayaran: determinePaymentStatus(),
-            diskon: formData.value.diskon,
-            keterangan: formData.value.keterangan || `Penjualan for SPK ${formData.value.noSpk}`
-        }
-
-        let response
-        if (isEditMode.value) {
-            response = await api.put(`/api/pazaauto/penjualan/${formData.value.noPenjualan}`, penjualanData)
-        } else {
-            response = await api.post('/api/pazaauto/penjualan', penjualanData)
-        }
-
-        if (response.data.success) {
-            $q.notify({
-                type: 'positive',
-                message: isEditMode.value ? 'Penjualan updated successfully' : 'Penjualan created successfully'
-            })
-            await fetchPenjualan()
-            if (!isEditMode.value) {
-                isEditMode.value = true
-            }
-        }
-    } catch (error) {
-        $q.notify({
-            type: 'negative',
-            message: error.response?.data?.message || error.message || 'Failed to save penjualan',
-            caption: error.response?.data?.details || ''
-        })
-    } finally {
-        saving.value = false
-    }
-}
-
-const determinePaymentStatus = () => {
-  if(formData.value.statusPembayaran === null) {
-    if (formData.value.uangDibayar >= grandTotal.value) {
-      return 'LUNAS'
-    } else if (formData.value.uangDibayar > 0) {
-      return 'DP'
-    } else {
-      return 'BELUM_LUNAS'
-    }
-  } else {
-    return formData.value.statusPembayaran
-  }
-}
-
-const determinePaymentStatusStyle = () => {
-  if(formData.value.statusPembayaran === null) {
-    if (formData.value.uangDibayar >= grandTotal.value) {
-      return 'bg-green'
-    } else if (formData.value.uangDibayar > 0) {
-      return 'bg-yellow'
-    } else {
-      return 'bg-red'
-    }
-  } else {
-    if (formData.value.statusPembayaran === 'LUNAS') {
-      return 'bg-green'
-    } else {
-      return 'bg-red'
-    }
-  }
-}
-
-const calculateKembalian = () => {
-    formData.value.kembalian = (formData.value.uangDibayar || 0) - (grandTotal.value || 0)
-}
-
-const deletePenjualan = async () => {
-    deleting.value = true
-    try {
-        const response = await api.delete(`/api/pazaauto/penjualan/${itemToDelete.value.noPenjualan}`)
-        if (response.data.success) {
-            $q.notify({
-                type: 'positive',
-                message: 'Penjualan deleted successfully'
-            })
-            showDeleteDialog.value = false
-            itemToDelete.value = null
-            await fetchPenjualan()
-        }
-    } catch (error) {
-        $q.notify({
-            type: 'negative',
-            message: 'Failed to delete penjualan',
-            caption: error.response?.data?.message || error.message
-        })
-    } finally {
-        deleting.value = false
-    }
-}
-
-const formatCurrency = (value) => {
-    if (!value) return 'Rp 0'
-    return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0
-    }).format(value)
-}
-
-const formatDateTime = (value) => {
-    if (!value) return ''
-    return date.formatDate(value, 'YYYY-MM-DD HH:mm')
-}
-
-const formatNumber = (value) => {
-    if (!value) return '0'
-    return new Intl.NumberFormat('id-ID', {
-        minimumFractionDigits: 0
-    }).format(value)
-}
-
-const getStatusColor = (status) => {
-    switch (status) {
-        case 'LUNAS': return 'green'
-        case 'BELUM_LUNAS': return 'red'
-        case 'DP': return 'orange'
-        default: return 'grey'
-    }
-}
-
-const printPenjualan = async (row) => {
-    try {
-        const response = await api.get(`/api/pazaauto/penjualan/${row.noPenjualan}/print`)
-        if (response.data.success) {
-            const data = response.data.data
-
-            // Render template
-            const renderedContent = renderTemplate(fakturTemplate, {
-                data,
-                formatCurrency,
-                formatNumber
-            })
-
-            printPreviewContent.value = renderedContent
-            showPrintDialog.value = true
-        }
-    } catch (error) {
-        $q.notify({
-            type: 'negative',
-            message: 'Failed to print penjualan',
-            caption: error.response?.data?.message || error.message
-        })
-    }
-}
-
-const confirmPrint = () => {
-    // Tambah data invisible iframe for actual printing
-    let iframe = document.getElementById('print-iframe')
-    if (iframe) {
-        document.body.removeChild(iframe)
-    }
-
-    iframe = document.createElement('iframe')
-    iframe.id = 'print-iframe'
-    iframe.style.position = 'absolute'
-    iframe.style.width = '0px'
-    iframe.style.height = '0px'
-    iframe.style.border = 'none'
-    document.body.appendChild(iframe)
-
-    const doc = iframe.contentWindow.document
-    doc.open()
-    doc.write(printPreviewContent.value)
-    doc.close()
-
-    // Give some time for the content to be parsed and images to load if any
-    setTimeout(() => {
-        iframe.contentWindow.focus()
-        iframe.contentWindow.print()
-    }, 250)
-}
-
-// Template rendering helper
-const renderTemplate = (template, context) => {
-    const keys = Object.keys(context)
-    const values = Object.values(context)
-    try {
-        // Tambah data a function that destructures context and returns the evaluated template literal
-        // We wrap the template in backticks to make it a template literal
-        // Note: The template file itself should NOT contain backticks wrapping the whole content,
-        // but it should contain ${} expressions.
-        // However, if the template is just text with ${}, we can wrap it in backticks here.
-        // But wait, the imported string will be a regular string.
-        // We need to evaluate expressions inside it.
-
-        // Alternative: Use a simple replace for specific variables if it's not too complex,
-        // OR use the new Function approach if we trust the template source (which is local).
-
-        // The template file currently has ${data.xxx} syntax which is valid for template literals.
-        // So we can do: return new Function(...keys, `return \`${template}\`;`)(...values)
-
-        return new Function(...keys, `return \`${template}\`;`)(...values)
-    } catch (e) {
-        console.error('Template rendering error:', e)
-        return 'Error rendering template'
-    }
+  searchText.value = val
+  pagination.value.page = 1
+  fetchSpk()
 }
 
 const clearDateRange = () => {
-    dateRange.value = { from: '', to: '' }
+  dateRange.value = { from: '', to: '' }
+}
+
+const openCreateDialog = async () => {
+  isEditMode.value = false
+  isEditable.value = true
+  resetForm()
+  initNoSpk()
+  initialData.value = null
+  showDialog.value = true
+  // Fetch options for inline add
+  await Promise.all([fetchJasa(), fetchBarang()])
+}
+
+const openEditDialog = async (row) => {
+  isEditMode.value = true
+
+  // Fetch options first so we can map prices
+  await Promise.all([fetchJasa(), fetchBarang()])
+
+  // Fetch full details including details list
+  try {
+    const response = await api.get(`/api/pazaauto/spk/${row.id}`)
+    if (response.data.success) {
+      formData.value = response.data.data
+      // Ensure details is an array
+      if (!formData.value.details) {
+        formData.value.details = []
+      }
+    } else {
+      formData.value = {...row, details: []}
+    }
+  } catch (error) {
+    console.error('Failed to fetch SPK details', error)
+    formData.value = {...row, details: []}
+  }
+
+  onNopolChange(formData.value.nopol)
+
+  // Parse mekanikList (now it's an array from backend)
+  if (formData.value.mekanikList && Array.isArray(formData.value.mekanikList)) {
+    selectedMekaniks.value = formData.value.mekanikList.map(m => {
+      const karyawan = karyawanOptions.value.find(k => k.id === m.id)
+      return {
+        id: m.id,
+        namaKaryawan: karyawan?.namaKaryawan || `ID: ${m.id}`,
+        tugas: m.tugas
+      }
+    })
+  } else {
+    selectedMekaniks.value = []
+  }
+
+  isEditable.value = formData.value.statusSpk === 'OPEN' || formData.value.statusSpk === 'PROSES'
+  initialData.value = JSON.parse(JSON.stringify(formData.value))
+  showDialog.value = true
+}
+
+const closeDialog = () => {
+  showDialog.value = false
+  isNewCustomer.value = false
+  selectedMekaniks.value = []
+  resetForm()
+}
+
+const resetForm = () => {
+  formData.value = {
+    id: null,
+    noSpk: '',
+    noAntrian: null,
+    tanggalJamSpk: '',
+    nopol: '',
+    namaKaryawan: '',
+    km: null,
+    statusSpk: 'PROSES',
+    diskon: null,
+    keluhan: '',
+    keterangan: '',
+    kmSaatIni: null,
+    ppn: null,
+    status: '',
+    csId: null,
+    mekanikId: null,
+    // Customer info fields
+    namaPelanggan: '',
+    alamat: '',
+    merk: '',
+    jenis: '',
+    details: []
+  }
+}
+
+const initNoSpk = () => {
+  const offsetMs = 7 * 60 * 60 * 1000;
+  const gmt7 = new Date(new Date().getTime() + offsetMs);
+  const gmt7Iso = gmt7.toISOString().replace("T", " ").replace("Z", "").substring(0, 16);
+  formData.value.tanggalJamSpk = gmt7Iso;
+  fetchNextSpkNumber()
+}
+
+const startProcess = () => {
+  formData.value.statusSpk = 'PROSES'
+  formData.value.startedAt = new Date().toISOString()
+  saveSpk()
+}
+
+const printSpk = async () => {
+  // Use currently open SPK data to construct the print DTO
+  // Or fetch from backend if preferred, but since we have it here:
+  const data = {
+    noPenjualan: formData.value.noSpk, // For SPK we use noSpk as noPenjualan in template
+    tanggal: formData.value.tanggalJamSpk,
+    noSpk: formData.value.noSpk,
+    namaPelanggan: formData.value.namaPelanggan,
+    alamatPelanggan: formData.value.alamat,
+    nopol: formData.value.nopol,
+    merk: formData.value.merk,
+    model: formData.value.jenis,
+    km: formData.value.km,
+    namaMekanik: selectedMekaniks.value.map(m => m.namaKaryawan).join(', '),
+    subTotal: grandTotal.value,
+    diskon: formData.value.diskon || 0,
+    ppn: formData.value.ppn || 0,
+    grandTotal: grandTotal.value,
+    uangDibayar: 0,
+    kembalian: 0,
+    keterangan: formData.value.keterangan,
+    items: [
+      ...jasaRows.value.map(j => ({
+        nama: j.namaItem,
+        qty: j.jumlah,
+        harga: j.harga,
+        subTotal: j.harga * j.jumlah,
+        type: 'JASA'
+      })),
+      ...barangRows.value.map(b => ({
+        nama: b.namaItem,
+        qty: b.jumlah,
+        harga: b.harga,
+        subTotal: b.harga * b.jumlah,
+        type: 'BARANG'
+      }))
+    ]
+  }
+
+  // Render template
+  const renderedContent = renderTemplate(fakturTemplate, {
+    data,
+    formatCurrency,
+    formatNumber
+  })
+
+  printPreviewContent.value = renderedContent
+  showPrintDialog.value = true
+}
+
+const confirmPrint = () => {
+  let iframe = document.getElementById('print-iframe')
+  if (iframe) {
+    document.body.removeChild(iframe)
+  }
+
+  iframe = document.createElement('iframe')
+  iframe.id = 'print-iframe'
+  iframe.style.position = 'absolute'
+  iframe.style.width = '0px'
+  iframe.style.height = '0px'
+  iframe.style.border = 'none'
+  document.body.appendChild(iframe)
+
+  const doc = iframe.contentWindow.document
+  doc.open()
+  doc.write(printPreviewContent.value)
+  doc.close()
+
+  // Give some time for the content to be parsed and images to load if any
+  setTimeout(() => {
+    iframe.contentWindow.focus()
+    iframe.contentWindow.print()
+  }, 250)
+}
+
+const renderTemplate = (template, context) => {
+  const keys = Object.keys(context)
+  const values = Object.values(context)
+  try {
+    return new Function(...keys, `return \`${template}\`;`)(...values)
+  } catch (e) {
+    console.error('Template rendering error:', e)
+    return 'Error rendering template'
+  }
+}
+
+const finishProcess = async () => {
+  // Save current SPK data first to ensure we have latest totals
+  //await saveSpk()
+
+  // Generate penjualan number
+  await generatePenjualanNumber(formData.value.noSpk)
+
+  // Open payment dialog
+  showPaymentDialog.value = true
+}
+
+const handleSave = async () => {
+  await saveSpk()
+  // Re-fetch the full SPK (with details) and update the selected row in the table
+  if (formData.value.id) {
+    await openEditDialog(formData.value)
+    nextTick(() => {
+      tableRef.value?.selectRowByItem(formData.value)
+    })
+  }
+}
+
+const saveSpk = async () => {
+  saving.value = true
+  try {
+    // If new customer, create pelanggan first
+    if (isNewCustomer.value && !isEditMode.value) {
+      // Validate required customer fields
+      if (!formData.value.namaPelanggan || !formData.value.merk) {
+        $q.notify({
+          type: 'warning',
+          message: 'Please fill in required customer fields (Nama, Merk)'
+        })
+        //saving.value = false
+        return
+      }
+
+      // Tambah data new pelanggan
+      const pelangganData = {
+        nopol: formData.value.nopol,
+        namaPelanggan: formData.value.namaPelanggan,
+        alamat: formData.value.alamat,
+        merk: formData.value.merk,
+        jenis: formData.value.jenis
+      }
+
+      try {
+        const pelangganResponse = await api.post('/api/pazaauto/pelanggan', pelangganData)
+        if (!pelangganResponse.data.success) {
+          throw new Error('Failed to create pelanggan')
+        }
+        $q.notify({
+          type: 'positive',
+          message: 'New customer created successfully'
+        })
+        // Refresh pelanggan list
+        await fetchPelanggan()
+        isNewCustomer.value = false
+      } catch (error) {
+        $q.notify({
+          type: 'negative',
+          message: 'Failed to create new customer',
+          caption: error.response?.data?.message || error.message
+        })
+        saving.value = false
+        return
+      }
+    }
+
+    // Convert selectedMekaniks to List (Array)
+    if (selectedMekaniks.value.length > 0) {
+      formData.value.mekanikList = selectedMekaniks.value.map(m => ({id: m.id, tugas: m.tugas || 'Utama'}))
+    } else {
+      formData.value.mekanikList = []
+    }
+
+    // Proceed with SPK creation/update
+    let response
+    if (isEditMode.value) {
+      response = await api.put(`/api/pazaauto/spk/${formData.value.id}`, formData.value)
+    } else {
+      response = await api.post('/api/pazaauto/spk', formData.value)
+    }
+
+    if (response.data.success) {
+      const result = response.data.data
+      $q.notify({
+        type: 'positive',
+        message: isEditMode.value ? 'SPK updated successfully' : 'SPK created successfully'
+      })
+      await fetchSpk()
+      if (result) {
+        formData.value = {
+          ...result,
+          details: result.details || []
+        }
+        initialData.value = JSON.parse(JSON.stringify(formData.value))
+        if (!isEditMode.value) {
+          isEditMode.value = true
+        }
+      }
+    }
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to save SPK',
+      caption: error.response?.data?.message || error.message
+    })
+  } finally {
+    saving.value = false
+  }
+}
+
+// Payment dialog functions
+const generatePenjualanNumber = async (spkNo) => {
+  paymentData.value.noPenjualan = `F${spkNo}`
+}
+
+const calculateKembalian = () => {
+  paymentData.value.kembalian = paymentData.value.uangDibayar - grandTotal.value
+}
+
+const determinePaymentStatus = () => {
+  if (paymentData.value.uangDibayar >= grandTotal.value) {
+    return 'LUNAS'
+  } else if (paymentData.value.uangDibayar > 0) {
+    return 'DP'
+  } else {
+    return 'BELUM_LUNAS'
+  }
+}
+
+const confirmPayment = async () => {
+  saving.value = true
+  try {
+    // Validate payment amount
+    if (paymentData.value.uangDibayar <= 0) {
+      $q.notify({
+        type: 'warning',
+        message: 'Please enter a valid payment amount'
+      })
+      saving.value = false
+      return
+    }
+
+    // Calculate kembalian
+    calculateKembalian()
+
+    // Prepare penjualan data
+    const penjualanData = {
+      noPenjualan: paymentData.value.noPenjualan,
+      tanggalJamPenjualan: new Date().toISOString(),
+      noSpk: formData.value.noSpk,
+      grandTotal: grandTotal.value,
+      uangDibayar: paymentData.value.uangDibayar,
+      kembalian: paymentData.value.kembalian,
+      metodePembayaran: paymentData.value.metodePembayaran,
+      statusPembayaran: determinePaymentStatus(),
+      keterangan: `Payment for SPK ${formData.value.noSpk}`,
+      kendaraanId: formData.value.idKendaraan,
+      pelangganId: formData.value.idPelanggan,
+      karyawanId: formData.value.idKaryawan
+    }
+
+    // Tambah data penjualan
+    const penjualanResponse = await api.post('/api/pazaauto/penjualan', penjualanData)
+
+    if (!penjualanResponse.data.success) {
+      throw new Error('Failed to create penjualan')
+    }
+
+    // Tambah data penjualan details
+    const detailPromises = []
+
+    // Add jasa details
+    jasaRows.value.forEach((row) => {
+      detailPromises.push(api.post('/api/pazaauto/penjualan-detail', {
+        noPenjualan: paymentData.value.noPenjualan,
+        namaJasaBarang: row.namaItem,
+        kategori: 'JASA',
+        jasaId: row.jasaId,
+        hargaJual: row.harga,
+        kuantiti: row.jumlah,
+        total: row.harga * row.jumlah,
+        keterangan: row.namaItem
+      }))
+    })
+
+    // Add barang details
+    barangRows.value.forEach((row) => {
+      detailPromises.push(api.post('/api/pazaauto/penjualan-detail', {
+        noPenjualan: paymentData.value.noPenjualan,
+        namaJasaBarang: row.namaItem,
+        kategori: 'SPAREPART',
+        sparepartId: row.sparepartId,
+        hargaJual: row.harga,
+        kuantiti: row.jumlah,
+        total: row.harga * row.jumlah,
+        keterangan: row.namaItem
+      }))
+    })
+
+    // Save all details in parallel
+    await Promise.all(detailPromises)
+
+    // Update SPK status to SELESAI
+    formData.value.statusSpk = 'SELESAI'
+    formData.value.finishedAt = new Date().toISOString()
+
+    // Save SPK
+    const spkResponse = await api.put(`/api/pazaauto/spk/${formData.value.id}`, formData.value)
+
+    if (spkResponse.data.success) {
+      $q.notify({
+        type: 'positive',
+        message: 'Payment processed successfully',
+        caption: `Invoice ${paymentData.value.noPenjualan} created`
+      })
+
+      // Close dialogs
+      showPaymentDialog.value = false
+      closeDialog()
+
+      // Refresh SPK list
+      await fetchSpk()
+    }
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to process payment',
+      caption: error.response?.data?.message || error.message
+    })
+  } finally {
+    saving.value = false
+  }
+}
+
+// Keyboard Shortcuts
+useKeyboardShortcuts({
+  onSave: () => {
+    if (!saving.value && formData.value.statusSpk !== 'SELESAI' && formData.value.statusSpk !== 'BATAL') {
+      if (!isEditMode.value || isDirty(formData.value)) {
+        saveSpk()
+      }
+    } else if (showPaymentDialog.value && !saving.value) {
+      confirmPayment()
+    }
+  },
+  onDelete: () => {
+    if (isEditMode.value && !deleting.value && formData.value.statusSpk !== 'SELESAI' && formData.value.statusSpk !== 'BATAL') {
+      confirmDelete(formData.value)
+    }
+  },
+  onNew: () => {
+    openCreateDialog()
+  }
+})
+
+const confirmDelete = (row) => {
+  itemToDelete.value = row
+  showDeleteDialog.value = true
+}
+
+const deleteSpk = async () => {
+  deleting.value = true
+  try {
+    const response = await api.delete(`/api/pazaauto/spk/${itemToDelete.value.id}`)
+    if (response.data.success) {
+      $q.notify({
+        type: 'positive',
+        message: 'SPK deleted successfully'
+      })
+      showDeleteDialog.value = false
+      itemToDelete.value = null
+      await fetchSpk()
+      resetForm()
+      isEditMode.value = false
+    }
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to delete SPK',
+      caption: error.response?.data?.message || error.message
+    })
+  } finally {
+    deleting.value = false
+  }
+}
+
+const formatCurrency = (value) => {
+  if (!value) return 'Rp 0'
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0
+  }).format(value)
+}
+
+const formatNumber = (value) => {
+  if (!value) return '0'
+  return new Intl.NumberFormat('id-ID', {
+    minimumFractionDigits: 0
+  }).format(value)
+}
+
+const getStatusColor = (status) => {
+  if (!status) return 'grey'
+  const statusLower = status.toLowerCase()
+  if (statusLower.includes('selesai') || statusLower.includes('complete')) return 'green'
+  if (statusLower.includes('proses') || statusLower.includes('progress')) return 'orange'
+  if (statusLower.includes('batal') || statusLower.includes('cancel')) return 'red'
+  return 'blue'
+}
+
+const constructNopolOptions = (formData) => {
+  if (!isNewCustomer.value) {
+    if (formData.nopol) {
+      return `${formData.nopol} - ${formData.namaPelanggan}`
+    }
+  }
+  return formData
+}
+
+// Detail SPK Methods
+const fetchJasa = async () => {
+  try {
+    const response = await api.get('/api/pazaauto/jasa')
+    if (response.data.success) {
+      allJasaOptions.value = response.data.data || []
+    }
+  } catch (error) {
+    console.error('Failed to fetch jasa', error)
+  }
+}
+
+const fetchBarang = async () => {
+  try {
+    const response = await api.get('/api/pazaauto/barang')
+    if (response.data.success) {
+      allBarangOptions.value = response.data.data || []
+    }
+  } catch (error) {
+    console.error('Failed to fetch barang', error)
+  }
+}
+
+const handleUpdateMasterJasa = async (payload) => {
+  try {
+    const response = await api.put(`/api/pazaauto/jasa/${payload.id}`, payload)
+    if (response.data.success) {
+      $q.notify({
+        type: 'positive',
+        message: 'Master data Jasa updated successfully'
+      })
+      await fetchJasa()
+    }
+  } catch (error) {
+    console.error('Failed to update master jasa', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to update master data Jasa',
+      caption: error.response?.data?.message || error.message
+    })
+  }
+}
+
+const handleUpdateMasterBarang = async (payload) => {
+  try {
+    const response = await api.put(`/api/pazaauto/barang/${payload.id}`, payload)
+    if (response.data.success) {
+      $q.notify({
+        type: 'positive',
+        message: 'Master data Barang updated successfully'
+      })
+      await fetchBarang()
+    }
+  } catch (error) {
+    console.error('Failed to update master barang', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to update master data Barang',
+      caption: error.response?.data?.message || error.message
+    })
+  }
 }
 
 // Watchers
 let searchTimeout = null
-watch(searchText, () => {
-    if (searchTimeout) {
-        clearTimeout(searchTimeout)
-    }
-    searchTimeout = setTimeout(() => {
-        pagination.value.page = 1
-        fetchPenjualan()
-    }, 500)
+watch(searchText, (newVal) => {
+  console.log('searchText changed to:', newVal)
+  // Debounce search to avoid too many API calls
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+  }
+  searchTimeout = setTimeout(() => {
+    // Reset to page 1 when searching
+    pagination.value.page = 1
+    fetchSpk()
+  }, 500)
 })
 
+// Watch filter status changes
 watch(filterStatus, (newVal) => {
-    saveFilterToStorage(newVal)
-    pagination.value.page = 1
-    fetchPenjualan()
+  console.log('filterStatus changed to:', newVal)
+  // Save to localStorage
+  saveFilterToStorage(newVal)
+  // Reset to page 1 when filtering
+  pagination.value.page = 1
+  fetchSpk()
+})
+
+// Watch today filter changes
+// Watch date range changes
+watch(dateRange, () => {
+  pagination.value.page = 1
+  fetchSpk()
 }, { deep: true })
 
-watch(dateRange, () => {
-    pagination.value.page = 1
-    fetchPenjualan()
-}, { deep: true })
+watch(filterToday, (newVal) => {
+  console.log('filterToday changed to:', newVal)
+  // Reset to page 1 when filtering
+  pagination.value.page = 1
+  fetchSpk()
+})
 
 // Lifecycle
 onMounted(() => {
-    fetchPenjualan()
-    fetchJasa()
-    fetchBarang()
-    openCreateDialog()
+  fetchSpk()
+  fetchPelanggan()
+  fetchKaryawan()
+  openCreateDialog()
 })
 </script>
 
 <style lang="sass" scoped>
+.dialog-spk
+  min-width: calc(80vw - 48px)
+
 .my-sticky-header-table
-  max-height: 100%
+  max-height: 70vh
 
   thead tr th
     position: sticky
@@ -829,9 +1340,7 @@ onMounted(() => {
   thead tr:first-child th
     top: 0
 
-  tr.selected td:after, tr.selected td:before
-    content: none
-    background: none
-  th:hover, td:hover, tr:hover
-    background: none
+.cursor-pointer-rows
+  :deep(tbody tr)
+    cursor: pointer
 </style>

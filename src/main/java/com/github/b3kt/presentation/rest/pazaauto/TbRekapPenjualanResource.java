@@ -1,231 +1,196 @@
 package com.github.b3kt.presentation.rest.pazaauto;
 
 import com.github.b3kt.application.dto.ApiResponse;
-import com.github.b3kt.application.service.pazaauto.*;
-import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity;
-import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity;
+import com.github.b3kt.application.dto.PageRequest;
+import com.github.b3kt.application.dto.PageResponse;
+import com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto;
+import com.github.b3kt.application.service.pazaauto.AbstractCrudService;
+import com.github.b3kt.application.service.pazaauto.TbKaryawanService;
+import com.github.b3kt.application.service.pazaauto.TbPelangganService;
+import com.github.b3kt.application.service.pazaauto.TbSpkService;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKaryawanEntity;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
-import com.github.b3kt.infrastructure.persistence.repository.pazaauto.*;
+import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
 
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.Objects;
-import java.util.Optional;
 
 @RequestScoped
 @Path("/api/pazaauto/rekap-penjualan")
 @RequiredArgsConstructor
-public class TbRekapPenjualanResource extends AbstractCrudResource<TbPenjualanEntity, String> {
+public class TbRekapPenjualanResource extends AbstractCrudResource<TbSpkEntity, Long> {
 
-    private final TbPenjualanService service;
-    private final TbSpkService spkService;
-    private final TbPelangganService pelangganService;
-    private final TbKendaraanRepository kendaraanRepository;
-    private final TbSpkRepository spkRepository;
-    private final TbSpkDetailService spkDetailService;
-    private final TbJasaRepository jasaRepository;
-    private final TbSparepartRepository sparepartRepository;
-    private final TbBarangRepository barangRepository;
-    private final TbPenjualanRepository penjualanRepository;
-    private final TbKaryawanRepository karyawanRepository;
+    final TbSpkService service;
+    final TbPelangganService pelangganService;
+    final TbKaryawanService karyawanService;
 
     @Override
-    protected AbstractCrudService<TbPenjualanEntity, String> getService() {
+    protected AbstractCrudService<TbSpkEntity, Long> getService() {
         return service;
     }
 
     @Override
-    protected String parseId(String id) {
-        return id;
+    protected Long parseId(String id) {
+        return Long.valueOf(id);
     }
 
     @Override
     protected String getEntityName() {
-        return "Penjualan";
+        return "SPK";
     }
 
     @GET
-    @Path("/{noPenjualan}/print")
-    public jakarta.ws.rs.core.Response print(@jakarta.ws.rs.PathParam("noPenjualan") String noPenjualan) {
-        TbPenjualanEntity penjualan = penjualanRepository.find("noPenjualan", noPenjualan).firstResult();
-        if (penjualan == null) {
-            return jakarta.ws.rs.core.Response.status(jakarta.ws.rs.core.Response.Status.NOT_FOUND).build();
-        }
+    @Path("/by-no-spk/{noSpk}")
+    public Response findByNoSpk(@PathParam("noSpk") String noSpk) {
+        return Response.ok(ApiResponse.success(service.findByNoSpk(noSpk))).build();
+    }
 
-        com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity spk = null;
-        if (penjualan.getNoSpk() != null) {
-            spk = spkRepository.find("noSpk", penjualan.getNoSpk()).firstResult();
-        }
-
-        com.github.b3kt.application.dto.pazaauto.PenjualanPrintDto dto = new com.github.b3kt.application.dto.pazaauto.PenjualanPrintDto();
-        dto.setNoPenjualan(penjualan.getNoPenjualan());
-        dto.setTanggal(new java.text.SimpleDateFormat("dd-MM-yyyy HH:mm").format(penjualan.getTanggalJamPenjualan()));
-        dto.setNoSpk(penjualan.getNoSpk());
-        dto.setStatusPembayaran(penjualan.getStatusPembayaran());
-        dto.setMetodePembayaran(penjualan.getMetodePembayaran());
-        dto.setGrandTotal(penjualan.getGrandTotal());
-        dto.setUangDibayar(penjualan.getUangDibayar());
-        dto.setKembalian(penjualan.getKembalian());
-
-        // Customer Lookup
-        Long pelangganId = penjualan.getPelangganId();
-        if (pelangganId == null && spk != null) {
-            pelangganId = spk.getPelangganId();
-        }
-
-        if (pelangganId != null) {
-            com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity pelanggan = pelangganService
-                    .findById(pelangganId);
-            if (pelanggan != null) {
-                dto.setNamaPelanggan(pelanggan.getNamaPelanggan());
-                dto.setAlamatPelanggan(pelanggan.getAlamat());
-                dto.setNoHpPelanggan(pelanggan.getNoHp());
-            }
-        }
-
-        if (spk != null) {
-            dto.setKm(spk.getKmSaatIni());
-
-            // Vehicle Lookup
-            if (penjualan.getKendaraanId() != null) {
-                com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKendaraanEntity kendaraan = kendaraanRepository
-                        .findById(penjualan.getKendaraanId());
-                if (kendaraan != null) {
-                    dto.setNopol(spk.getNopol());
-                    dto.setMerk(kendaraan.getMerk());
-                    dto.setModel(kendaraan.getModel());
-                }
-            } else if (spk.getNopol() != null) {
-                dto.setNopol(spk.getNopol());
-                com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity p = pelangganService
-                        .findByNopol(spk.getNopol());
-                if (p != null) {
-                    dto.setMerk(p.getMerk());
-                    dto.setModel(p.getJenis());
-                }
-            }
-
-            // Mechanic Lookup
-            if (spk.getMekanikList() != null && !spk.getMekanikList().isEmpty()) {
-                java.util.List<Long> ids = spk.getMekanikList().stream()
-                        .map(com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik::getId)
-                        .collect(java.util.stream.Collectors.toList());
-
-                java.util.List<String> names = karyawanRepository.find("id in ?1", ids).stream()
-                        .map(k -> k.getNamaKaryawan())
-                        .collect(java.util.stream.Collectors.toList());
-
-                dto.setNamaMekanik(String.join(", ", names));
-            }
-
-            // Items
-            com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity fullSpk = spkService
-                    .findById(spk.getId());
-
-            java.util.List<com.github.b3kt.application.dto.pazaauto.PenjualanPrintDto.ItemDto> items = new java.util.ArrayList<>();
-            java.math.BigDecimal subTotalCalc = java.math.BigDecimal.ZERO;
-
-            if (fullSpk != null && fullSpk.getDetails() != null) {
-                for (com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity detail : fullSpk
-                        .getDetails()) {
-                    com.github.b3kt.application.dto.pazaauto.PenjualanPrintDto.ItemDto item = new com.github.b3kt.application.dto.pazaauto.PenjualanPrintDto.ItemDto();
-                    item.setQty(detail.getJumlah());
-
-                    java.math.BigDecimal price = java.math.BigDecimal.ZERO;
-                    String type = "UNKNOWN";
-
-                    if (detail.getJasaId() != null) {
-                        com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbJasaEntity jasa = jasaRepository
-                                .findById(detail.getJasaId());
-                        if (jasa != null) {
-                            price = java.math.BigDecimal.valueOf(jasa.getHargaJasa());
-                            type = "JASA";
-                        }
-                    } else if (detail.getSparepartId() != null) {
-                        com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSparepartEntity sparepart = sparepartRepository
-                                .findById(detail.getSparepartId());
-                        if (sparepart != null) {
-                            price = sparepart.getHargaJual();
-                            type = "BARANG";
-                        } else {
-                            com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbBarangEntity barang = barangRepository
-                                    .findById(detail.getSparepartId());
-                            if (barang != null) {
-                                price = barang.getHargaJual();
-                                type = "BARANG";
-                            }
-                        }
-
-                    }
-
-                    item.setHarga(price);
-                    item.setType(type);
-
-                    java.math.BigDecimal lineTotal = price.multiply(java.math.BigDecimal.valueOf(detail.getJumlah()));
-                    item.setSubTotal(lineTotal);
-
-                    items.add(item);
-
-                    subTotalCalc = subTotalCalc.add(lineTotal);
-                }
-            }
-            dto.setItems(items);
-            dto.setSubTotal(subTotalCalc);
-        }
-
-        return jakarta.ws.rs.core.Response.ok(com.github.b3kt.application.dto.ApiResponse.success(dto)).build();
+    @GET
+    @Path("/unprocessed")
+    public Response getUnprocessedSpk() {
+        return Response.ok(ApiResponse.success(service.findUnprocessedSpk())).build();
     }
 
     @Override
     @GET
     @Path("/{id}")
-    public Response getById(@PathParam("id") String noPenjualan) {
-        TbPenjualanEntity entity = service.findByNoPenjualan(noPenjualan);
+    public Response getById(@PathParam("id") String id) {
+        TbSpkEntity entity = getService().findById(parseId(id));
 
-        fillTransientFields(entity);
+        fillKaryawanDetail(entity);
+        fillPelangganDetail(entity);
+        fillKendaraanDetail(entity);
+
         return Response.ok(ApiResponse.success(entity)).build();
     }
 
-    private void fillTransientFields(TbPenjualanEntity entity) {
+    @Override
+    @GET
+    @Path("/paginated")
+    public Response listPaginated(
+            @QueryParam("page") @DefaultValue("1") int page,
+            @QueryParam("rowsPerPage") @DefaultValue("10") int rowsPerPage,
+            @QueryParam("sortBy") String sortBy,
+            @QueryParam("descending") @DefaultValue("false") boolean descending,
+            @QueryParam("search") String search,
+            @QueryParam("statusFilter") String statusFilter,
+            @QueryParam("filterToday") @DefaultValue("false") boolean filterToday,
+            @QueryParam("startDate") String startDate,
+            @QueryParam("endDate") String endDate) {
 
-        Long pelangganId = null;
-        if(Objects.isNull(entity.getPelangganId())){
-            TbSpkEntity spkEntity = spkService.findByNoSpk(entity.getNoSpk());
-            pelangganId = spkEntity.getPelangganId();
+        PageRequest pageRequest = new PageRequest(page, rowsPerPage);
+        pageRequest.setSortBy(sortBy);
+        pageRequest.setDescending(descending);
+        pageRequest.setSearch(search);
+        pageRequest.setStatusFilter(statusFilter);
+        pageRequest.setFilterToday(filterToday);
+        pageRequest.setStartDate(startDate);
+        pageRequest.setEndDate(endDate);
 
-
-            List<TbSpkDetailEntity> details = spkDetailService.findByNoSpk(entity.getNoSpk());
-            Optional.ofNullable(details)
-                    .ifPresent(list -> entity.setDetails(list));
-        }
-
-        if(Objects.nonNull(pelangganId)){
-            Optional.ofNullable(pelangganService.findById(pelangganId))
-                    .ifPresent(pelanggan ->  {
-                        entity.setNamaPelanggan(pelanggan.getNamaPelanggan());
-                        entity.setAlamatPelanggan(pelanggan.getAlamat());
-                        entity.setMerkKendaraan(pelanggan.getMerk());
-                        entity.setJenisKendaraan(pelanggan.getJenis());
-                        entity.setNoPolisi(pelanggan.getNopol());
-                    });
-        }
+        PageResponse<RekapPenjualanDto> pageResponse = service.findPaginatedWithPenjualan(pageRequest);
+        return Response.ok(ApiResponse.success(pageResponse)).build();
     }
 
-    @Override
+    @GET
+    @Path("/get-next-spk-number")
+    public Response getNextSpk() {
+        String lastSpkNumber = service.getNextSpkNumber(spkNoformatter.format(LocalDateTime.now()));
+        String lastQueueNumber = lastSpkNumber.substring(lastSpkNumber.length() - 2);
+        int nextQueueNumber = Integer.parseInt(lastQueueNumber) + 1;
+        String nextSpkNumber = lastSpkNumber.substring(0, lastSpkNumber.length() - 2)
+                + String.format("%02d", nextQueueNumber);
+        return Response.ok(ApiResponse.success(nextSpkNumber)).build();
+    }
+
     @POST
-    public Response create(TbPenjualanEntity entity) {
-        TbPenjualanEntity created = service.createWithNoSpkValidation(entity);
+    @Override
+    public Response create(TbSpkEntity entity) {
+
+        fillKaryawanDetail(entity);
+        fillPelangganDetail(entity);
+        fillKendaraanDetail(entity);
+
+        TbSpkEntity created = getService().create(entity);
         return Response.ok(ApiResponse.success(getEntityName() + " created", created)).build();
     }
 
     @Override
     @PUT
     @Path("/{id}")
-    public Response update(@PathParam("id") String id, TbPenjualanEntity entity) {
-        TbPenjualanEntity updated = service.updateWithNoSpkValidation(entity);
+    public Response update(@PathParam("id") String id, TbSpkEntity entity) {
+
+        fillKaryawanDetail(entity);
+        fillPelangganDetail(entity);
+        fillKendaraanDetail(entity);
+
+        TbSpkEntity updated = getService().update(parseId(id), entity);
+
+        if (updated == null) {
+            return Response.ok(ApiResponse.error(getEntityName() + " not found")).build();
+        }
         return Response.ok(ApiResponse.success(getEntityName() + " updated", updated)).build();
+    }
+
+    @Override
+    @DELETE
+    @Path("/{id}")
+    public Response delete(@PathParam("id") String id) {
+        TbSpkEntity entity = getService().findById(parseId(id));
+        entity.setKeterangan("SPK Dibatalkan. lastStatus: " + entity.getStatusSpk());
+        entity.setStatusSpk("BATAL");
+        TbSpkEntity updated = getService().update(parseId(id), entity);
+
+        return Response.ok(ApiResponse.success(getEntityName() + " cancelled", updated)).build();
+    }
+
+    private void fillPelangganDetail(TbSpkEntity entity) {
+
+        TbPelangganEntity pelanggan;
+        if (Objects.isNull(entity.getPelangganId())) {
+            pelanggan = pelangganService.findByNopol(entity.getNopol());
+            if (Objects.nonNull(pelanggan)) {
+                entity.setPelangganId(pelanggan.getId());
+                entity.setNamaPelanggan(pelanggan.getNamaPelanggan());
+            }
+        }else{
+            pelanggan = pelangganService.findById(entity.getPelangganId());
+        }
+
+        if(Objects.nonNull(pelanggan)){
+            entity.setAlamatPelanggan(pelanggan.getAlamat());
+            entity.setMerkKendaraan(pelanggan.getMerk());
+            entity.setJenisKendaraan(pelanggan.getJenis());
+        }
+    }
+
+    private void fillKaryawanDetail(TbSpkEntity entity) {
+        if (Objects.isNull(entity.getMekanikId())) {
+            if (entity.getMekanikList() == null || entity.getMekanikList().isEmpty()) {
+                return;
+            }
+            Long mekanikId = entity.getMekanikList().stream()
+                    .findFirst()
+                    .map(SpkMekanik::getId)
+                    .orElse(null);
+            if (mekanikId == null) {
+                return;
+            }
+            TbKaryawanEntity karyawan = karyawanService.findById(mekanikId);
+            if (Objects.nonNull(karyawan)) {
+                entity.setNamaKaryawan(karyawan.getNamaKaryawan());
+                entity.setMekanikId(karyawan.getId());
+            }
+        }
+    }
+
+    private void fillKendaraanDetail(TbSpkEntity entity) {
+        if (Objects.nonNull(entity.getKm())) {
+            entity.setKmSaatIni(entity.getKm());
+        }
     }
 }

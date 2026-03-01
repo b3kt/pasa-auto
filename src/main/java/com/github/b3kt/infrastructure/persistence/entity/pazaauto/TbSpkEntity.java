@@ -50,18 +50,6 @@ public class TbSpkEntity extends BaseEntity {
     @Column(name = "finished_at")
     private LocalDateTime finishedAt;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @Column(name = "created_by")
-    private String createdBy;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    @Column(name = "updated_by")
-    private String updatedBy;
-
     @Column(name = "keterangan", length = 1000)
     private String keterangan;
 
@@ -84,7 +72,7 @@ public class TbSpkEntity extends BaseEntity {
     @Transient
     private boolean startProcess;
 
-    @Transient
+    @Column(name = "nama_pelanggan")
     private String namaPelanggan;
 
     @Transient
