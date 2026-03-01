@@ -4,6 +4,7 @@ import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEnt
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +19,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@RegisterForReflection
 public class RekapPenjualanDto {
 
     private String noSpk;
