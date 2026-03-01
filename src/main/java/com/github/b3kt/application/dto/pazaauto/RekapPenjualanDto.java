@@ -22,6 +22,7 @@ import java.util.List;
 @RegisterForReflection
 public class RekapPenjualanDto {
 
+    private Long id;
     private String noSpk;
     private Integer noAntrian;
     private String tanggalJamSpk;
@@ -56,6 +57,7 @@ public class RekapPenjualanDto {
     private String noPolisi;
 
     public RekapPenjualanDto(TbSpkEntity spk, TbPenjualanEntity penjualan){
+        id = spk.getId();
         noSpk = spk.getNoSpk();
         noAntrian = spk.getNoAntrian();
         tanggalJamSpk = spk.getTanggalJamSpk();
