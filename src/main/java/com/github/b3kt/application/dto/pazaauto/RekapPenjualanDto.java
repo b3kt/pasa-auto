@@ -70,18 +70,37 @@ public class RekapPenjualanDto {
         mekanikId = spk.getMekanikId();
 
         namaPelanggan = spk.getNamaPelanggan();
-        alamatPelanggan = penjualan.getAlamatPelanggan();
-        merkKendaraan = penjualan.getMerkKendaraan();
-        jenisKendaraan = penjualan.getJenisKendaraan();
-        grandTotal = penjualan.getGrandTotal();
-        noPenjualan = penjualan.getNoPenjualan();
-        tanggalJamPenjualan = penjualan.getTanggalJamPenjualan();
-        kembalian = penjualan.getKembalian();
-        statusPembayaran = penjualan.getStatusPembayaran();
-        uangDibayar = penjualan.getUangDibayar();
-        karyawanId = penjualan.getKaryawanId();
-        kendaraanId = penjualan.getKendaraanId();
-        metodePembayaran = penjualan.getMetodePembayaran();
-        noPolisi = penjualan.getNoPolisi();
+        
+        // Handle null penjualan case
+        if (penjualan != null) {
+            alamatPelanggan = penjualan.getAlamatPelanggan();
+            merkKendaraan = penjualan.getMerkKendaraan();
+            jenisKendaraan = penjualan.getJenisKendaraan();
+            grandTotal = penjualan.getGrandTotal();
+            noPenjualan = penjualan.getNoPenjualan();
+            tanggalJamPenjualan = penjualan.getTanggalJamPenjualan();
+            kembalian = penjualan.getKembalian();
+            statusPembayaran = penjualan.getStatusPembayaran();
+            uangDibayar = penjualan.getUangDibayar();
+            karyawanId = penjualan.getKaryawanId();
+            kendaraanId = penjualan.getKendaraanId();
+            metodePembayaran = penjualan.getMetodePembayaran();
+            noPolisi = penjualan.getNoPolisi();
+        } else {
+            // Set default values when penjualan is null
+            alamatPelanggan = null;
+            merkKendaraan = null;
+            jenisKendaraan = null;
+            grandTotal = null;
+            noPenjualan = null;
+            tanggalJamPenjualan = null;
+            kembalian = null;
+            statusPembayaran = null;
+            uangDibayar = null;
+            karyawanId = null;
+            kendaraanId = null;
+            metodePembayaran = null;
+            noPolisi = null;
+        }
     }
 }
