@@ -60,7 +60,7 @@ public class TbRekapPenjualanResource extends AbstractCrudResource<TbSpkEntity, 
     @GET
     @Path("/{id}")
     public Response getById(@PathParam("id") String id) {
-        TbSpkEntity entity = getService().findById(parseId(id));
+        RekapPenjualanDto entity = service.findByIdWithPenjualan(parseId(id));
 
         fillKaryawanDetail(entity);
         fillPelangganDetail(entity);
@@ -110,30 +110,14 @@ public class TbRekapPenjualanResource extends AbstractCrudResource<TbSpkEntity, 
     @POST
     @Override
     public Response create(TbSpkEntity entity) {
-
-        fillKaryawanDetail(entity);
-        fillPelangganDetail(entity);
-        fillKendaraanDetail(entity);
-
-        TbSpkEntity created = getService().create(entity);
-        return Response.ok(ApiResponse.success(getEntityName() + " created", created)).build();
+        return Response.notModified().build();
     }
 
     @Override
     @PUT
     @Path("/{id}")
     public Response update(@PathParam("id") String id, TbSpkEntity entity) {
-
-        fillKaryawanDetail(entity);
-        fillPelangganDetail(entity);
-        fillKendaraanDetail(entity);
-
-        TbSpkEntity updated = getService().update(parseId(id), entity);
-
-        if (updated == null) {
-            return Response.ok(ApiResponse.error(getEntityName() + " not found")).build();
-        }
-        return Response.ok(ApiResponse.success(getEntityName() + " updated", updated)).build();
+        return Response.notModified().build();
     }
 
     @Override
@@ -148,7 +132,7 @@ public class TbRekapPenjualanResource extends AbstractCrudResource<TbSpkEntity, 
         return Response.ok(ApiResponse.success(getEntityName() + " cancelled", updated)).build();
     }
 
-    private void fillPelangganDetail(TbSpkEntity entity) {
+    private void fillPelangganDetail(RekapPenjualanDto entity) {
 
         TbPelangganEntity pelanggan;
         if (Objects.isNull(entity.getPelangganId())) {
@@ -168,7 +152,7 @@ public class TbRekapPenjualanResource extends AbstractCrudResource<TbSpkEntity, 
         }
     }
 
-    private void fillKaryawanDetail(TbSpkEntity entity) {
+    private void fillKaryawanDetail(RekapPenjualanDto entity) {
         if (Objects.isNull(entity.getMekanikId())) {
             if (entity.getMekanikList() == null || entity.getMekanikList().isEmpty()) {
                 return;
@@ -188,7 +172,7 @@ public class TbRekapPenjualanResource extends AbstractCrudResource<TbSpkEntity, 
         }
     }
 
-    private void fillKendaraanDetail(TbSpkEntity entity) {
+    private void fillKendaraanDetail(RekapPenjualanDto entity) {
         if (Objects.nonNull(entity.getKm())) {
             entity.setKmSaatIni(entity.getKm());
         }

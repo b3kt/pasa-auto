@@ -97,6 +97,23 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
         return entity;
     }
 
+    public RekapPenjualanDto findByIdWithPenjualan(Long id) {
+        String queryString = "SELECT new com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto(s, p) " +
+                " FROM com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity s " +
+                " LEFT JOIN com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity p " +
+                "   ON s.noSpk = p.noSpk " +
+                " WHERE s.id = ?1 ";
+        Query query = entityManager.createQuery(queryString)
+                .setParameter(1, id);
+        RekapPenjualanDto entity = (RekapPenjualanDto) query.getSingleResult();
+        if (entity != null) {
+            List<com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity> details = detailRepository
+                    .find("id.noSpk", entity.getNoSpk()).list();
+            entity.setDetails(details);
+        }
+        return entity;
+    }
+
     private void saveDetails(TbSpkEntity entity) {
         if (entity.getDetails() != null) {
             for (com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity detail : entity
