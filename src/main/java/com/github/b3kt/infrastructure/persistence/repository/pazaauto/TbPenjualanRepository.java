@@ -6,5 +6,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 public class TbPenjualanRepository implements PanacheRepositoryBase<TbPenjualanEntity, String> {
+    public TbPenjualanEntity findByNoPenjualan(String noPenjualan) {
+        return find("noPenjualan", noPenjualan).firstResult();
+    }
 }
 

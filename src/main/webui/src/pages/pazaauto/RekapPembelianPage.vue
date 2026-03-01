@@ -7,7 +7,10 @@
                       :on-create="openCreateDialog" :on-edit="openEditDialog" create-label="Tambah Pembelian"
                       row-key="noPembelian" ref="tableRef"
                       search-placeholder="Search by No Pembelian..."
-                      dense>
+                      dense
+                      footerButtonLabel="Print"
+                      :footerButtonAction="printTable"
+                      >
 
           <template v-slot:toolbar-filters>
             <div class="row items-center q-gutter-sm">
@@ -49,7 +52,7 @@
             </q-badge>
           </template>
 
-          <template v-slot:body-cell-actions="props">
+          <template v-slot:body-cell-actions="props" v-if="isEditable">
               <q-btn flat dense round icon="delete" color="negative" @click.stop="confirmDelete(props.row)">
                 <q-tooltip>Delete</q-tooltip>
               </q-btn>
@@ -60,11 +63,7 @@
       <template v-slot:after>
         <div class="q-pa-md scroll" style="height: 100%">
           <div class="row items-center q-mb-lg">
-            <div class="text-h6">{{ isEditMode ? 'Edit Pembelian' : 'Tambah Pembelian' }}</div>
-            <q-space/>
-            <q-btn flat round dense icon="add" @click="openCreateDialog" >
-              <q-tooltip>New</q-tooltip>
-            </q-btn>
+            <div class="text-h6">Detail Pengeluaran</div>
           </div>
 
           <q-form class="q-gutter-md" @submit="handleSave">
@@ -80,15 +79,15 @@
                   <q-input v-model="formData.tanggalPembelian" label="Tanggal Pembelian" outlined
                            dense type="datetime-local" stack-label :readonly="!isEditable"
                            :rules="[val => !!val || 'Tanggal pembelian harus diisi']"
-                           hide-bottom-space
+                           hide-bottom-space 
                   />
                 </div>
                 <div class="col-12">
-                  <q-select v-model="formData.jenisPembelian" :options="jenisPembelianRadioOptions"
+                  <q-input v-model="formData.jenisPembelian" :options="jenisPembelianRadioOptions"
                             label="Jenis Pembelian" outlined dense :disable="!isEditable"
                             option-label="label" option-value="value" emit-value map-options
                             :rules="[val => !!val || 'Jenis pembelian harus diisi']"
-                            hide-bottom-space/>
+                            hide-bottom-space readonly/>
                 </div>
               </div>
             </div>
@@ -103,8 +102,8 @@
                            :rules="[val => formData.jenisPembelian === 'OPERASIONAL' ? !!val || 'Jenis operasional harus diisi' : true]"/>
                 </div>
                 <div class="col-6">
-                  <q-select v-model="formData.kategoriOperasional" :options="kategoriOperasionalOptions"
-                            label="Kategori Operasional" outlined dense :disable="!isEditable"
+                  <q-input v-model="formData.kategoriOperasional" :options="kategoriOperasionalOptions"
+                            label="Kategori Operasional" outlined dense :readonly="!isEditable"
                             :rules="[val => formData.jenisPembelian === 'OPERASIONAL' ? !!val || 'Kategori operasional harus diisi' : true]"/>
                 </div>
               </div>
@@ -132,6 +131,7 @@
                     @input-value="onSupplierInput"
                     :rules="[val => formData.jenisPembelian === 'SPAREPART' ? !!val || 'Supplier harus diisi' : true]"
                     hide-bottom-space
+                    readonly
                   >
                     <template v-slot:no-option>
                       <q-item>
@@ -158,6 +158,7 @@
                 <div class="row items-center justify-between">
                   <div>Detail pembelian</div>
                   <q-btn
+                    v-if="isEditable"
                     color="primary"
                     icon="add"
                     dense
@@ -191,7 +192,7 @@
                   </q-td>
                 </template>
 
-                <template v-slot:body-cell-actions="props">
+                <template v-slot:body-cell-actions="props" v-if="isEditable">
                   <q-td :props="props" class="text-center">
                     <q-btn
                       flat
@@ -499,6 +500,7 @@ import {api} from 'boot/axios'
 import {useQuasar, date} from 'quasar'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
+import fakturTemplate from 'assets/template/rekap-pembelian.template?raw'
 
 const $q = useQuasar()
 
@@ -677,7 +679,7 @@ const grandTotal = computed(() => {
 })
 
 const isEditable = computed(() => {
-  return true // Allow editing in both create and edit modes
+  return false // Allow editing in both create and edit modes
 })
 
 const pagination = ref({
@@ -795,12 +797,6 @@ const columns = [
     align: 'center',
     field: 'statusPembayaran',
     sortable: true
-  },
-  {
-    name: 'actions',
-    label: 'Actions',
-    align: 'center',
-    field: 'actions'
   }
 ]
 
@@ -1220,6 +1216,76 @@ const deleteDetail = async (detail) => {
   })
 }
 
+const printTable = async () => {
+  try {
+    // Fetch all pembelian data without pagination
+    const response = await api.get('/api/pazaauto/pembelian/paginated', {
+      params: {
+        page: 1,
+        rowsPerPage: 10000, // Get all records
+        search: searchText.value,
+        jenisPembelian: filterJenisPembelian.value,
+        kategoriOperasional: filterKategoriOperasional.value,
+        statusFilter: filterStatus.value ? filterStatus.value.join(',') : '',
+        startDate: dateRange.value?.from ? dateRange.value.from.replace(/\//g, '-') : '',
+        endDate: dateRange.value?.to ? dateRange.value.to.replace(/\//g, '-') : ''
+      }
+    })
+    
+    if (response.data.success) {
+      // Extract rows from paginated response
+      const records = response.data.data.rows || response.data.data || []
+      
+      const data = {
+        noPenjualan: 'LAPORAN PEMBELIAN',
+        namaPelanggan: 'LAPORAN PEMBELIAN', 
+        tanggal: new Date().toLocaleDateString('id-ID'),
+        grandTotal: records.reduce((sum, item) => sum + (item.grandTotal || 0), 0),
+        filters: {
+          search: searchText.value || '-',
+          dateRange: dateRangeText.value || '-',
+          jenisPembelian: filterJenisPembelian.value || '-',
+          kategoriOperasional: filterKategoriOperasional.value || '-',
+          status: filterStatus.value?.join(', ') || '-'
+        },
+        items: records.map(item => ({
+          nama: item.noPembelian,
+          tanggal: formatDateTime(item.tanggalPembelian),
+          type: item.jenisPembelian,
+          kategori: item.kategoriOperasional,
+          supplier: item.supplierId?.namaSupplier || item.namaSupplier || '-',
+          harga: item.grandTotal,
+          status: item.statusPembayaran,
+          metode: item.jenisPembayaran
+        }))
+      }
+
+      // Render template
+      const renderedContent = renderTemplate(fakturTemplate, {
+        data,
+        formatCurrency,
+        formatNumber
+      })
+
+      printPreviewContent.value = renderedContent
+      showPrintDialog.value = true
+    }
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to fetch pembelian data for printing',
+      caption: error.response?.data?.message || error.message
+    })
+  }
+}
+
+const formatNumber = (value) => {
+  if (!value) return '0'
+  return new Intl.NumberFormat('id-ID', {
+    minimumFractionDigits: 0
+  }).format(value)
+}
+
 const confirmPrint = () => {
   let iframe = document.getElementById('print-iframe')
   if (iframe) {
@@ -1244,6 +1310,19 @@ const confirmPrint = () => {
     iframe.contentWindow.print()
   }, 250)
 }
+
+// Template rendering helper
+const renderTemplate = (template, context) => {
+  const keys = Object.keys(context)
+  const values = Object.values(context)
+  try {
+    return new Function(...keys, `return \`${template}\`;`)(...values)
+  } catch (e) {
+    console.error('Template rendering error:', e)
+    return 'Error rendering template'
+  }
+}
+
 
 const handleSave = async () => {
   saving.value = true

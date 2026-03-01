@@ -1,9 +1,9 @@
 package com.github.b3kt.presentation.rest.pazaauto;
 
-import java.time.LocalDateTime;
-import java.util.Objects;
-
 import com.github.b3kt.application.dto.ApiResponse;
+import com.github.b3kt.application.dto.PageRequest;
+import com.github.b3kt.application.dto.PageResponse;
+import com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto;
 import com.github.b3kt.application.service.pazaauto.AbstractCrudService;
 import com.github.b3kt.application.service.pazaauto.TbKaryawanService;
 import com.github.b3kt.application.service.pazaauto.TbPelangganService;
@@ -13,19 +13,17 @@ import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEnt
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
 import jakarta.enterprise.context.RequestScoped;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
 
+import java.time.LocalDateTime;
+import java.util.Objects;
+
 @RequestScoped
-@Path("/api/pazaauto/spk")
+@Path("/api/pazaauto/rekap-penjualan")
 @RequiredArgsConstructor
-public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
+public class TbRekapPenjualanResource extends AbstractCrudResource<TbSpkEntity, Long> {
 
     final TbSpkService service;
     final TbPelangganService pelangganService;
@@ -71,6 +69,32 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
         return Response.ok(ApiResponse.success(entity)).build();
     }
 
+    @Override
+    @GET
+    @Path("/paginated")
+    public Response listPaginated(
+            @QueryParam("page") @DefaultValue("1") int page,
+            @QueryParam("rowsPerPage") @DefaultValue("10") int rowsPerPage,
+            @QueryParam("sortBy") String sortBy,
+            @QueryParam("descending") @DefaultValue("false") boolean descending,
+            @QueryParam("search") String search,
+            @QueryParam("statusFilter") String statusFilter,
+            @QueryParam("filterToday") @DefaultValue("false") boolean filterToday,
+            @QueryParam("startDate") String startDate,
+            @QueryParam("endDate") String endDate) {
+
+        PageRequest pageRequest = new PageRequest(page, rowsPerPage);
+        pageRequest.setSortBy(sortBy);
+        pageRequest.setDescending(descending);
+        pageRequest.setSearch(search);
+        pageRequest.setStatusFilter(statusFilter);
+        pageRequest.setFilterToday(filterToday);
+        pageRequest.setStartDate(startDate);
+        pageRequest.setEndDate(endDate);
+
+        PageResponse<RekapPenjualanDto> pageResponse = service.findPaginatedWithPenjualan(pageRequest);
+        return Response.ok(ApiResponse.success(pageResponse)).build();
+    }
 
     @GET
     @Path("/get-next-spk-number")

@@ -1,11 +1,17 @@
 package com.github.b3kt.infrastructure.persistence.entity.pazaauto;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "tb_supplier")
+@Getter
+@Setter
+@NoArgsConstructor
 public class TbSupplierEntity {
 
     @Id
@@ -60,140 +66,4 @@ public class TbSupplierEntity {
 
     @Column(name = "no_telepon", length = 20)
     private String noTelepon;
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getNamaSupplier() {
-        return namaSupplier;
-    }
-
-    public void setNamaSupplier(String namaSupplier) {
-        this.namaSupplier = namaSupplier;
-    }
-
-    public String getAlamat() {
-        return alamat;
-    }
-
-    public void setAlamat(String alamat) {
-        this.alamat = alamat;
-    }
-
-    public String getTelepon() {
-        return telepon;
-    }
-
-    public void setTelepon(String telepon) {
-        this.telepon = telepon;
-    }
-
-    public String getDetailSupplier() {
-        return detailSupplier;
-    }
-
-    public void setDetailSupplier(String detailSupplier) {
-        this.detailSupplier = detailSupplier;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public String getCreatedBy() {
-        return createdBy;
-    }
-
-    public void setCreatedBy(String createdBy) {
-        this.createdBy = createdBy;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public String getUpdatedBy() {
-        return updatedBy;
-    }
-
-    public void setUpdatedBy(String updatedBy) {
-        this.updatedBy = updatedBy;
-    }
-
-    public Integer getVersion() {
-        return version;
-    }
-
-    public void setVersion(Integer version) {
-        this.version = version;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getKeterangan() {
-        return keterangan;
-    }
-
-    public void setKeterangan(String keterangan) {
-        this.keterangan = keterangan;
-    }
-
-    public String getKodePos() {
-        return kodePos;
-    }
-
-    public void setKodePos(String kodePos) {
-        this.kodePos = kodePos;
-    }
-
-    public String getKontakPerson() {
-        return kontakPerson;
-    }
-
-    public void setKontakPerson(String kontakPerson) {
-        this.kontakPerson = kontakPerson;
-    }
-
-    public String getKota() {
-        return kota;
-    }
-
-    public void setKota(String kota) {
-        this.kota = kota;
-    }
-
-    public String getNoHpKontak() {
-        return noHpKontak;
-    }
-
-    public void setNoHpKontak(String noHpKontak) {
-        this.noHpKontak = noHpKontak;
-    }
-
-    public String getNoTelepon() {
-        return noTelepon;
-    }
-
-    public void setNoTelepon(String noTelepon) {
-        this.noTelepon = noTelepon;
-    }
 }

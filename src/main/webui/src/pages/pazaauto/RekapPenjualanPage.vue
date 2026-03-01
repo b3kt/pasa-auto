@@ -1,6 +1,7 @@
 <template>
   <q-page padding>
-    <q-splitter v-model="splitterModel" :limits="$q.screen.xs ? [100, 100] : [50, 50]" style="height: calc(100vh - 100px)">
+    <q-splitter v-model="splitterModel" :limits="$q.screen.xs ? [100, 100] : [50, 100]"
+                style="height: calc(100vh - 100px)">
       <template v-slot:before>
         <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
                       @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
@@ -10,38 +11,59 @@
           <template v-slot:toolbar-filters>
             <div class="row items-center q-gutter-sm">
               <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly>
-                               <template v-slot:append>
-                                   <q-icon name="event" class="cursor-pointer">
-                                       <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                                           <q-date v-model="dateRange" range>
-                                               <div class="row items-center justify-end q-gutter-sm">
-                                                   <q-btn label="Clear" color="primary" flat @click="clearDateRange" />
-                                                   <q-btn label="OK" color="primary" flat v-close-popup />
-                                               </div>
-                                           </q-date>
-                                       </q-popup-proxy>
-                                   </q-icon>
-                               </template>
-                           </q-input>
+                <template v-slot:append>
+                  <q-icon name="event" class="cursor-pointer">
+                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                      <q-date v-model="dateRange" range>
+                        <div class="row items-center justify-end q-gutter-sm">
+                          <q-btn label="Clear" color="primary" flat @click="clearDateRange"/>
+                          <q-btn label="OK" color="primary" flat v-close-popup/>
+                        </div>
+                      </q-date>
+                    </q-popup-proxy>
+                  </q-icon>
+                </template>
+              </q-input>
             </div>
+            <q-btn :icon="showDetail ? 'chevron_right' : 'chevron_left'" @click="showDetailForm()" class="q-ml-sm">
+              <q-tooltip>
+                Tampilkan lebih rinci
+              </q-tooltip>
+            </q-btn>
           </template>
           <template v-slot:body-cell-statusSpk="props">
             <q-badge :color="getStatusColor(props.row.statusSpk)">
               {{ props.row.statusSpk || 'N/A' }}
             </q-badge>
           </template>
+
+          <template v-slot:body-cell-startedAt="props">
+            {{ formatDateTime(props.row.startedAt) }}
+          </template>
+          <template v-slot:body-cell-finishedAt="props">
+            {{ formatDateTime(props.row.finishedAt) }}
+          </template>
+
+          <template v-slot:body-cell-uangDibayar="props">
+            {{ formatCurrency(props.row.uangDibayar) }}
+          </template>
+
+          <template v-slot:body-cell-kembalian="props">
+            {{ formatCurrency(props.row.kembalian) }}
+          </template>
+
+          <template v-slot:body-cell-grandTotal="props">
+            {{ formatCurrency(props.row.grandTotal) }}
+          </template>
+
         </GenericTable>
       </template>
 
-      <template v-slot:after v-if="!$q.screen.xs">
-
+      <template v-slot:after>
         <div class="q-pa-md scroll" style="height: 100%">
           <div class="row items-center q-mb-md">
-            <div class="text-h6 q-mb-md">{{ isEditMode ? 'Edit SPK' : 'Tambah data SPK' }}</div>
+            <div class="text-h6 q-mb-md">Detail SPK dan Penjualan</div>
             <q-space/>
-            <q-btn flat round dense icon="add" @click="openCreateDialog">
-              <q-tooltip>New</q-tooltip>
-            </q-btn>
           </div>
           <q-form @submit="handleSave" id="karyawan-form" class="q-gutter-md">
             <q-card flat bordered>
@@ -55,45 +77,15 @@
                            readonly/>
                   <q-input v-model="formData.noSpk" label="No SPK" outlined dense readonly/>
                   <q-input v-model.number="formData.noAntrian" label="No Antrian" outlined dense type="number"
-                           :disable="(formData.statusSpk === 'SELESAI' || formData.statusSpk === 'BATAL')"/>
+                           readonly/>
 
-                  <q-select v-model="formData.nopol" label="No Polisi *" outlined dense
-                            :options="filteredPelangganOptions"
-                            :option-label="constructNopolOptions" option-value="nopol" emit-value map-options use-input
-                            input-debounce="300" @filter="filterPelanggan" @update:model-value="onNopolChange"
-                            :loading="loadingPelanggan" :disable="(formData.statusSpk !== 'OPEN')"
-                            new-value-mode="add-unique"
-                            :rules="[val => !!val || 'No Polisi harus diisi']"
-                            hide-bottom-space>
-                    <template v-slot:option="scope">
-                      <q-item v-bind="scope.itemProps" class="row">
-                        <q-item-section class="col">
-                          <q-item-label>{{ scope.opt.nopol }}</q-item-label>
-                        </q-item-section>
-                        <q-item-section class="col">
-                          <q-item-label>
-                            {{ scope.opt.namaPelanggan }}
-                          </q-item-label>
-                        </q-item-section>
-
-                        <q-item-section class="col">
-                          {{ scope.opt.merk }} {{ scope.opt.jenis }}
-                        </q-item-section>
-                      </q-item>
-                    </template>
-                    <template v-slot:no-option>
-                      <q-item>
-                        <q-item-section class="text-grey">
-                          No results
-                        </q-item-section>
-                      </q-item>
-                    </template>
-                  </q-select>
+                  <q-input v-model.number="formData.nopol" label="No Polisi *" outlined dense
+                           readonly/>
 
                   <q-select v-model="selectedMekaniks" label="Select Mechanics" outlined dense multiple
                             :options="karyawanOptions" option-label="namaKaryawan" option-value="id" use-chips use-input
                             input-debounce="300" @filter="filterKaryawan" :loading="loadingKaryawan"
-                            :disable="!isEditable"
+                            readonly
                             emit-value map-options>
                     <template v-slot:option="{ itemProps, opt }">
                       <q-item v-bind="itemProps">
@@ -113,11 +105,12 @@
                       </q-item>
                     </template>
                   </q-select>
+
                   <q-input v-model.number="formData.km" label="KM" outlined dense type="number"
-                           :rules="[val => !!val || 'KM harus diisi number']" :disable="!isEditable"
-                           hide-bottom-space/>
+                           :rules="[val => !!val || 'KM harus diisi number']"
+                           hide-bottom-space readonly/>
                   <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea" rows="2"
-                           :disable="!isEditable" autogrow/>
+                           autogrow readonly/>
                 </q-card-section>
                 <q-card-section>
                   <SPKCustomerInfo
@@ -138,47 +131,76 @@
               v-model:details="formData.details"
               :allJasaOptions="allJasaOptions"
               :allBarangOptions="allBarangOptions"
-              :canEdit="isEditable || (formData.statusSpk !== 'SELESAI' && formData.statusSpk !== 'BATAL')"
+              :canEdit="false"
               :noSpk="formData.noSpk"
               @update-master-jasa="handleUpdateMasterJasa"
               @update-master-barang="handleUpdateMasterBarang"
             />
+
+            <!-- Penjualan Information Section -->
+            <q-card flat bordered class="q-mt-md">
+              <q-card-section>
+                <div class="text-caption text-bold q-mb-md">Informasi Penjualan</div>
+                <div class="row q-col-gutter-md">
+                  <div class="col-12 col-md-6">
+                    <q-input v-model="formData.noPenjualan" label="No Faktur Penjualan" outlined dense readonly/>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <q-field label="Tanggal Penjualan" outlined dense stack-label>
+                      <template v-slot:control>
+                        <div class="self-center full-width no-outline" tabindex="0">
+                          {{ formatDateTime(formData.tanggalJamPenjualan) }}
+                        </div>
+                      </template>
+                    </q-field>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <q-field label="Total Tagihan" outlined dense stack-label>
+                      <template v-slot:control>
+                        <div class="self-center full-width no-outline" tabindex="0">{{ formatCurrency(formData.grandTotal) }}</div>
+                      </template>
+                    </q-field>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <q-field label="Uang Dibayar" outlined dense stack-label>
+                      <template v-slot:control>
+                        <div class="self-center full-width no-outline" tabindex="0">{{ formatCurrency(formData.uangDibayar) }}</div>
+                      </template>
+                    </q-field>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <q-field label="Kembalian" outlined dense stack-label>
+                      <template v-slot:control>
+                        <div class="self-center full-width no-outline" tabindex="0">{{ formatCurrency(formData.kembalian) }}</div>
+                      </template>
+                    </q-field>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <q-input v-model="formData.metodePembayaran" label="Metode Pembayaran" outlined dense readonly/>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <q-input v-model="formData.statusPembayaran" label="Status Pembayaran" outlined dense readonly>
+                      <template v-slot:append>
+                        <q-badge :color="getPaymentStatusColor(formData.statusPembayaran)">
+                          {{ formData.statusPembayaran || 'N/A' }}
+                        </q-badge>
+                      </template>
+                    </q-input>
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
 
             <div class="row justify-end q-gutter-sm">
               <div v-if="formData.statusSpk === 'SELESAI'">
                 <q-btn label="Print" type="button" @click="printSpk" style="width: 100px;"
                        :loading="saving" class="q-mr-sm"/>
               </div>
-              <div v-if="formData.statusSpk === 'PROSES'">
-                <q-btn label="Print" type="button" @click="printSpk" style="width: 100px;"
-                       :loading="saving" class="q-mr-sm"/>
-                <q-btn label="Selesai" type="button" color="green" @click="finishProcess" style="width: 100px;"
-                       :loading="saving"/>
-              </div>
-              <div v-if="isEditMode && formData.statusSpk === 'OPEN'">
-                <q-btn label="Mulai Proses" type="button" color="green" @click="startProcess" :loading="saving"/>
-              </div>
-              <q-space/>
-              <q-btn v-if="isEditMode && formData.statusSpk === 'OPEN'"
-                     label="Hapus" color="negative" flat @click="confirmDelete(formData)" :loading="deleting"/>
-              <q-btn label="Simpan" type="submit" color="primary" :loading="saving"
-                     v-if="formData.statusSpk != 'SELESAI' && formData.statusSpk != 'BATAL'"
-                     :disable="isEditMode && !isDirty(formData)"/>
-
             </div>
           </q-form>
         </div>
       </template>
     </q-splitter>
-
-    <!-- Delete Confirmation Dialog -->
-    <GenericDialog v-model="showDeleteDialog" title="Konfirmasi hapus data" min-width="400px" position="standard">
-      Are you sure you want to delete SPK <strong>{{ itemToDelete?.noSpk }}</strong>?
-      <template #actions>
-        <q-btn flat label="Batalkan" color="primary" @click="showDeleteDialog = false"/>
-        <q-btn flat label="Hapus saja" color="negative" @click="deleteSpk" :loading="deleting"/>
-      </template>
-    </GenericDialog>
 
     <!-- Print Preview Dialog -->
     <GenericDialog v-model="showPrintDialog" title="Print Preview" min-width="800px" max-width="90vw">
@@ -186,8 +208,8 @@
         <iframe :srcdoc="printPreviewContent" style="width: 100%; height: 100%; border: 1px solid #ccc;"></iframe>
       </div>
       <template #actions>
-        <q-btn flat label="Tutup" color="primary" @click="showPrintDialog = false" />
-        <q-btn label="Print" icon="print" color="secondary" @click="confirmPrint" />
+        <q-btn flat label="Tutup" color="primary" @click="showPrintDialog = false"/>
+        <q-btn label="Print" icon="print" color="secondary" @click="confirmPrint"/>
       </template>
     </GenericDialog>
 
@@ -196,7 +218,7 @@
       <div class="q-pa-md">
         <div class="row q-col-gutter-md">
           <div class="col-12">
-            <q-input v-model="paymentData.noPenjualan" label="No Penjualan" outlined dense readonly />
+            <q-input v-model="paymentData.noPenjualan" label="No Penjualan" outlined dense readonly/>
           </div>
           <div class="col-12">
             <q-field label="Total Tagihan" outlined dense stack-label>
@@ -207,33 +229,33 @@
           </div>
           <div class="col-12">
             <q-select v-model="paymentData.metodePembayaran" :options="['CASH', 'TRANSFER', 'DEBIT', 'KREDIT']"
-                      label="Metode Pembayaran" outlined dense />
+                      label="Metode Pembayaran" outlined dense/>
           </div>
           <div class="col-12">
             <q-input v-model.number="paymentData.uangDibayar" label="Uang Dibayar" outlined dense type="number"
                      prefix="Rp" @update:model-value="calculateKembalian" autofocus
-                     :rules="[val => val >= grandTotal || 'Uang dibayar kurang dari total tagihan']" />
+                     :rules="[val => val >= grandTotal || 'Uang dibayar kurang dari total tagihan']"/>
           </div>
           <div class="col-12">
             <q-input v-model="paymentData.kembalian" label="Kembalian" outlined dense readonly
-                     :model-value="formatCurrency(paymentData.kembalian)" stack-label />
+                     :model-value="formatCurrency(paymentData.kembalian)" stack-label/>
           </div>
         </div>
       </div>
       <template #actions>
-        <q-btn flat label="Batal" color="primary" @click="showPaymentDialog = false" />
-        <q-btn label="Konfirmasi & Selesai" color="green" @click="confirmPayment" :loading="saving" />
+        <q-btn flat label="Batal" color="primary" @click="showPaymentDialog = false"/>
+        <q-btn label="Konfirmasi & Selesai" color="green" @click="confirmPayment" :loading="saving"/>
       </template>
     </GenericDialog>
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed, nextTick } from 'vue'
-import { api } from 'boot/axios'
-import { useQuasar, date } from 'quasar'
+import {ref, onMounted, watch, computed, nextTick} from 'vue'
+import {api} from 'boot/axios'
+import {useQuasar, date} from 'quasar'
 import GenericDialog from 'components/GenericDialog.vue'
-import { useKeyboardShortcuts } from 'src/composables/useKeyboardShortcuts'
+import {useKeyboardShortcuts} from 'src/composables/useKeyboardShortcuts'
 import GenericTable from "components/GenericTable.vue";
 import SPKDetailsEditor from 'components/SPKDetailsEditor.vue'
 import SPKCustomerInfo from 'components/SPKCustomerInfo.vue'
@@ -265,7 +287,7 @@ const saveFilterToStorage = (filter) => {
 }
 
 // State
-const splitterModel = $q.screen.xs ? ref(100) : ref(50)
+const splitterModel = $q.screen.xs ? ref(100) : ref(100)
 const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
@@ -276,27 +298,28 @@ const searchText = ref('')
 const filterStatus = ref(loadFilterFromStorage())
 const filterToday = ref(false)
 const todayVal = new Date()
-const yesterdayVal = date.subtractFromDate(todayVal, { days: 1 })
+const yesterdayVal = date.subtractFromDate(todayVal, {days: 1})
 const dateRange = ref({
-    from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'),
-    to: date.formatDate(todayVal, 'YYYY/MM/DD')
+  from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'),
+  to: date.formatDate(todayVal, 'YYYY/MM/DD')
 })
+const showDetail = ref(false)
 
 // Computed property for date range display text
 const dateRangeText = computed(() => {
-    if (!dateRange.value || (!dateRange.value.from && !dateRange.value.to)) {
-        return ''
-    }
-    if (dateRange.value.from && dateRange.value.to) {
-        return `${dateRange.value.from} - ${dateRange.value.to}`
-    }
-    if (dateRange.value.from) {
-        return `From: ${dateRange.value.from}`
-    }
-    if (dateRange.value.to) {
-        return `To: ${dateRange.value.to}`
-    }
+  if (!dateRange.value || (!dateRange.value.from && !dateRange.value.to)) {
     return ''
+  }
+  if (dateRange.value.from && dateRange.value.to) {
+    return `${dateRange.value.from} - ${dateRange.value.to}`
+  }
+  if (dateRange.value.from) {
+    return `From: ${dateRange.value.from}`
+  }
+  if (dateRange.value.to) {
+    return `To: ${dateRange.value.to}`
+  }
+  return ''
 })
 const rows = ref([])
 const pelangganOptions = ref([])
@@ -381,7 +404,7 @@ const formData = ref({
   nopol: '',
   namaKaryawan: '',
   km: null,
-  statusSpk: 'OPEN',
+  statusSpk: 'SELESAI',
   diskon: null,
   keluhan: '',
   keterangan: '',
@@ -400,6 +423,11 @@ const formData = ref({
   details: [],
   startProcess: false
 })
+
+const formatDateTime = (value) => {
+  if (!value) return ''
+  return date.formatDate(value, 'YYYY-MM-DD HH:mm')
+}
 
 // Table columns
 const columns = [
@@ -467,12 +495,55 @@ const columns = [
     field: 'finishedAt',
     sortable: true
   },
-
   {
     name: 'namaKaryawan',
     label: 'Mekanik',
     align: 'left',
     field: 'namaKaryawan',
+    sortable: true
+  },
+  {
+    name: 'noPenjualan',
+    required: true,
+    label: 'No Faktur Penjualan',
+    align: 'left',
+    field: 'noPenjualan',
+    sortable: true
+  },
+  {
+    name: 'grandTotal',
+    required: true,
+    label: 'Total',
+    align: 'left',
+    field: 'grandTotal',
+    sortable: true
+  },
+  {
+    name: 'uangDibayar',
+    label: 'Dibayar',
+    align: 'left',
+    field: 'uangDibayar',
+    sortable: true
+  },
+  {
+    name: 'kembalian',
+    label: 'Kembalian',
+    align: 'left',
+    field: 'kembalian',
+    sortable: true
+  },
+  {
+    name: 'metodePembayaran',
+    label: 'Metode pembayaran',
+    align: 'left',
+    field: 'metodePembayaran',
+    sortable: true
+  },
+  {
+    name: 'statusPembayaran',
+    label: 'Status pembayaran',
+    align: 'left',
+    field: 'statusPembayaran',
     sortable: true
   }
 ]
@@ -498,7 +569,7 @@ const fetchSpk = async (paginationData = pagination.value) => {
     }
 
     // Add status filter - always filter for OPEN status
-    params.statusFilter = 'OPEN'
+    params.statusFilter = 'SELESAI'
 
     // Add today filter if checked
     if (filterToday.value) {
@@ -514,7 +585,7 @@ const fetchSpk = async (paginationData = pagination.value) => {
       params.endDate = dateRange.value.to.replace(/\//g, '-')
     }
 
-    const response = await api.get('/api/pazaauto/spk/paginated', {params})
+    const response = await api.get('/api/pazaauto/rekap-penjualan/paginated', {params})
     if (response.data.success) {
       const pageData = response.data.data
       rows.value = pageData.rows || []
@@ -535,7 +606,7 @@ const fetchSpk = async (paginationData = pagination.value) => {
 
 const fetchNextSpkNumber = async () => {
   try {
-    const response = await api.get('/api/pazaauto/spk/get-next-spk-number')
+    const response = await api.get('/api/pazaauto/rekap-penjualan/get-next-spk-number')
     if (response.data.success) {
       formData.value.noSpk = response.data.data
     }
@@ -565,19 +636,6 @@ const fetchPelanggan = async () => {
   } finally {
     loadingPelanggan.value = false
   }
-}
-
-const filterPelanggan = (val, update) => {
-  update(() => {
-    if (val === '') {
-      filteredPelangganOptions.value = pelangganOptions.value
-    } else {
-      const needle = val.toLowerCase()
-      filteredPelangganOptions.value = pelangganOptions.value.filter(
-        v => v.nopol.toLowerCase().indexOf(needle) > -1
-      )
-    }
-  })
 }
 
 const onNopolChange = async (nopol) => {
@@ -686,6 +744,11 @@ const setMekanikTugas = (id, tugas) => {
   }
 }
 
+const showDetailForm = () => {
+  showDetail.value = !showDetail.value
+  splitterModel.value = showDetail.value ? 50 : 100
+}
+
 const onRequest = (props) => {
   const {page, rowsPerPage, sortBy, descending} = props.pagination
   pagination.value.page = page
@@ -702,12 +765,12 @@ const onSearch = (val) => {
 }
 
 const clearDateRange = () => {
-  dateRange.value = { from: '', to: '' }
+  dateRange.value = {from: '', to: ''}
 }
 
 const openCreateDialog = async () => {
   isEditMode.value = false
-  isEditable.value = true
+  isEditable.value = false
   resetForm()
   initNoSpk()
   initialData.value = null
@@ -724,7 +787,7 @@ const openEditDialog = async (row) => {
 
   // Fetch full details including details list
   try {
-    const response = await api.get(`/api/pazaauto/spk/${row.id}`)
+    const response = await api.get(`/api/pazaauto/rekap-penjualan/${row.id}`)
     if (response.data.success) {
       formData.value = response.data.data
       // Ensure details is an array
@@ -755,7 +818,7 @@ const openEditDialog = async (row) => {
     selectedMekaniks.value = []
   }
 
-  isEditable.value = formData.value.statusSpk === 'OPEN' || formData.value.statusSpk === 'PROSES'
+  isEditable.value = false
   initialData.value = JSON.parse(JSON.stringify(formData.value))
   showDialog.value = true
 }
@@ -776,7 +839,7 @@ const resetForm = () => {
     nopol: '',
     namaKaryawan: '',
     km: null,
-    statusSpk: 'OPEN',
+    statusSpk: 'PROSES',
     diskon: null,
     keluhan: '',
     keterangan: '',
@@ -800,12 +863,6 @@ const initNoSpk = () => {
   const gmt7Iso = gmt7.toISOString().replace("T", " ").replace("Z", "").substring(0, 16);
   formData.value.tanggalJamSpk = gmt7Iso;
   fetchNextSpkNumber()
-}
-
-const startProcess = () => {
-  formData.value.statusSpk = 'PROSES'
-  formData.value.startedAt = new Date().toISOString()
-  saveSpk()
 }
 
 const printSpk = async () => {
@@ -895,17 +952,6 @@ const renderTemplate = (template, context) => {
   }
 }
 
-const finishProcess = async () => {
-  // Save current SPK data first to ensure we have latest totals
-  //await saveSpk()
-
-  // Generate penjualan number
-  await generatePenjualanNumber(formData.value.noSpk)
-
-  // Open payment dialog
-  showPaymentDialog.value = true
-}
-
 const handleSave = async () => {
   await saveSpk()
   // Re-fetch the full SPK (with details) and update the selected row in the table
@@ -974,9 +1020,9 @@ const saveSpk = async () => {
     // Proceed with SPK creation/update
     let response
     if (isEditMode.value) {
-      response = await api.put(`/api/pazaauto/spk/${formData.value.id}`, formData.value)
+      response = await api.put(`/api/pazaauto/rekap-penjualan/${formData.value.id}`, formData.value)
     } else {
-      response = await api.post('/api/pazaauto/spk', formData.value)
+      response = await api.post('/api/pazaauto/rekap-penjualan', formData.value)
     }
 
     if (response.data.success) {
@@ -1006,11 +1052,6 @@ const saveSpk = async () => {
   } finally {
     saving.value = false
   }
-}
-
-// Payment dialog functions
-const generatePenjualanNumber = async (spkNo) => {
-  paymentData.value.noPenjualan = `F${spkNo}`
 }
 
 const calculateKembalian = () => {
@@ -1105,7 +1146,7 @@ const confirmPayment = async () => {
     formData.value.finishedAt = new Date().toISOString()
 
     // Save SPK
-    const spkResponse = await api.put(`/api/pazaauto/spk/${formData.value.id}`, formData.value)
+    const spkResponse = await api.put(`/api/pazaauto/rekap-penjualan/${formData.value.id}`, formData.value)
 
     if (spkResponse.data.success) {
       $q.notify({
@@ -1158,32 +1199,6 @@ const confirmDelete = (row) => {
   showDeleteDialog.value = true
 }
 
-const deleteSpk = async () => {
-  deleting.value = true
-  try {
-    const response = await api.delete(`/api/pazaauto/spk/${itemToDelete.value.id}`)
-    if (response.data.success) {
-      $q.notify({
-        type: 'positive',
-        message: 'SPK deleted successfully'
-      })
-      showDeleteDialog.value = false
-      itemToDelete.value = null
-      await fetchSpk()
-      resetForm()
-      isEditMode.value = false
-    }
-  } catch (error) {
-    $q.notify({
-      type: 'negative',
-      message: 'Failed to delete SPK',
-      caption: error.response?.data?.message || error.message
-    })
-  } finally {
-    deleting.value = false
-  }
-}
-
 const formatCurrency = (value) => {
   if (!value) return 'Rp 0'
   return new Intl.NumberFormat('id-ID', {
@@ -1209,13 +1224,13 @@ const getStatusColor = (status) => {
   return 'blue'
 }
 
-const constructNopolOptions = (formData) => {
-  if (!isNewCustomer.value) {
-    if (formData.nopol) {
-      return `${formData.nopol} - ${formData.namaPelanggan}`
-    }
-  }
-  return formData
+const getPaymentStatusColor = (status) => {
+  if (!status) return 'grey'
+  const statusLower = status.toLowerCase()
+  if (statusLower.includes('lunas')) return 'green'
+  if (statusLower.includes('dp')) return 'orange'
+  if (statusLower.includes('belum') || statusLower.includes('pending')) return 'red'
+  return 'blue'
 }
 
 // Detail SPK Methods
@@ -1311,7 +1326,7 @@ watch(filterStatus, (newVal) => {
 watch(dateRange, () => {
   pagination.value.page = 1
   fetchSpk()
-}, { deep: true })
+}, {deep: true})
 
 watch(filterToday, (newVal) => {
   console.log('filterToday changed to:', newVal)

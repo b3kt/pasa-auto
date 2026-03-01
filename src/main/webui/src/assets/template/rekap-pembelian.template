@@ -13,8 +13,7 @@
         td,
         th {
             font-family: 'Courier New', Courier, monospace;
-            font-size: 10pt;
-            font-weight: bold;
+            font-size: 8pt;
             margin: 0;
             padding: 2px;
             color: #000;
@@ -180,58 +179,44 @@
                 <div>TLP: 0813 8101 46747</div>
             </div>
             <div class="invoice-title">
-                <div class="invoice-header">FAKTUR PENJUALAN</div>
+                <div class="invoice-header">REKAP PEMBELIAN</div>
             </div>
         </div>
 
         <div class="info-section">
             <div class="info-left">
-                <!--
-                <div class="info-row">
-                    <div class="label">Kepada YTH,</div>
-                </div>
-                -->
-                <div class="info-row">
-                    <div class="label">NAMA PEMILIK</div>
-                    <div class="separator">:</div>
-                    <div class="value uppercase">${data.namaPelanggan || 'TUNAI'}</div>
-                </div>
-                <div class="info-row">
-                    <div class="label">NO POLISI</div>
-                    <div class="separator">:</div>
-                    <div class="value uppercase">${data.nopol || '-'}</div>
-                </div>
-                <div class="info-row">
-                    <div class="label">MERK - JENIS</div>
-                    <div class="separator">:</div>
-                    <div class="value uppercase">${data.merk || '-'} ${data.model || ''}</div>
-                </div>
-                <div class="info-row">
-                    <div class="label">ALAMAT</div>
-                    <div class="separator">:</div>
-                    <div class="value uppercase">${data.alamatPelanggan || '-'}</div>
-                </div>
-            </div>
-            <div class="info-right">
-                <div class="info-row">
-                    <div class="label">KM</div>
-                    <div class="separator">:</div>
-                    <div class="value">${data.km || '-'}</div>
-                </div>
-                <div class="info-row">
-                    <div class="label">MEKANIK</div>
-                    <div class="separator">:</div>
-                    <div class="value uppercase">${data.namaMekanik || '-'}</div>
-                </div>
-                <div class="info-row">
-                    <div class="label">NO FAKTUR</div>
-                    <div class="separator">:</div>
-                    <div class="value">${data.noPenjualan}</div>
-                </div>
                 <div class="info-row">
                     <div class="label">TANGGAL</div>
                     <div class="separator">:</div>
                     <div class="value">${data.tanggal}</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">PERIODE</div>
+                    <div class="separator">:</div>
+                    <div class="value">${data.filters.dateRange || '-'}</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">SEARCH</div>
+                    <div class="separator">:</div>
+                    <div class="value">${data.filters.search || '-'}</div>
+                </div>
+            </div>
+            <div class="info-right">
+
+                <div class="info-row">
+                    <div class="label">JENIS</div>
+                    <div class="separator">:</div>
+                    <div class="value">${data.filters.jenisPembelian || '-'}</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">KATEGORI</div>
+                    <div class="separator">:</div>
+                    <div class="value">${data.filters.kategoriOperasional || '-'}</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">STATUS</div>
+                    <div class="separator">:</div>
+                    <div class="value">${data.filters.status || '-'}</div>
                 </div>
             </div>
         </div>
@@ -239,52 +224,36 @@
         <table class="items-table">
             <thead>
                 <tr>
-                    <th></th>
                     <th width="5%">NO</th>
-                    <th width="50%">JASA & BARANG</th>
-                    <th width="15%" class="text-right">HARGA</th>
-                    <th width="10%" class="text-right">QTY</th>
-                    <th width="20%" class="text-right">TOTAL</th>
+                    <th width="15%">NO. PEMBELIAN</th>
+                    <th width="17%">TANGGAL</th>
+                    <th width="12%">JENIS</th>
+                    <th width="10%">KATEGORI</th>
+                    <th width="15%">SUPPLIER</th>
+                    <th width="10%">STATUS</th>
+                    <th width="10%" class="text-center">METODE</th>
+                    <th width="15%" class="text-right">TOTAL</th>
                 </tr>
             </thead>
             <tbody>
                 ${(() => {
-                    const jasaItems = data.items.filter(i => i.type === 'JASA');
-                    const barangItems = data.items.filter(i => i.type === 'BARANG');
                     let html = '';
                     let rowNo = 1;
-
-                    if (jasaItems.length > 0) {
-                        let firstRow = 'Jasa ';
-                        jasaItems.forEach(item => {
-                            html += `
-                            <tr>
-                                <td class="group-header">${firstRow}</td>
-                                <td>${rowNo++}</td>
-                                <td class="uppercase">${item.nama}</td>
-                                <td class="text-right">${formatNumber(item.harga)}</td>
-                                <td class="text-right">${item.qty}</td>
-                                <td class="text-right">${formatNumber(item.subTotal)}</td>
-                            </tr>`;
-                            firstRow = '';
-                        });
-                    }
-
-                    if (barangItems.length > 0) {
-                        let firstRow = 'Barang ';
-                        barangItems.forEach(item => {
-                            html += `
-                            <tr>
-                                <td class="group-header">${firstRow}</td>
-                                <td>${rowNo++}</td>
-                                <td class="uppercase">${item.nama}</td>
-                                <td class="text-right">${formatNumber(item.harga)}</td>
-                                <td class="text-right">${item.qty}</td>
-                                <td class="text-right">${formatNumber(item.subTotal)}</td>
-                            </tr>`;
-                            firstRow = '';
-                        });
-                    }
+                    
+                    data.items.forEach(item => {
+                        html += '<tr>';
+                        html += '<td>' + rowNo++ + '</td>';
+                        html += '<td class="uppercase">' + item.nama + '</td>';
+                        html += '<td>' + (item.tanggal || '-') + '</td>';
+                        html += '<td class="uppercase">' + item.type + '</td>';
+                        html += '<td class="uppercase">' + (item.kategori || '-') + '</td>';
+                        html += '<td class="uppercase">' + (item.supplier || '-') + '</td>';
+                        html += '<td class="text-center">' + (item.status || '-') + '</td>';
+                        html += '<td class="text-center">' + (item.metode || '-') + '</td>';
+                        html += '<td class="text-right">' + formatCurrency(item.harga) + '</td>';
+                        html += '</tr>';
+                    });
+                    
                     return html;
                 })()}
             </tbody>
@@ -293,21 +262,12 @@
         <div class="footer-section">
             <div class="footer-left">
                 <br/>
-                <div>Diterima</div>
                 <div class="sig-line"></div>
-                <br/>
-                <div>Untuk pembayaran transfer ke rek. BCA 8820626291 a/n PAIYO</div>
             </div>
             <div class="footer-right">
                 <div class="total-row grand-total">
                     <div>Grand Total:</div>
                     <div>${formatCurrency(data.grandTotal)}</div>
-                </div>
-                <br/>
-                <div class="text-center">
-                    <div>Hormat Kami,</div>
-                    <div class="sig-line"></div>
-                    <div>( PASA AUTO )</div>
                 </div>
             </div>
         </div>

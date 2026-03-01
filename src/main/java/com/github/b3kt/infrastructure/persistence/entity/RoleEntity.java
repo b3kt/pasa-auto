@@ -6,6 +6,11 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 /**
  * JPA Entity for Role.
  */
@@ -13,6 +18,10 @@ import java.util.stream.Collectors;
 @Table(name = "roles", indexes = {
     @Index(name = "idx_role_name", columnList = "name", unique = true)
 })
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class RoleEntity {
 
     @Id
@@ -36,8 +45,6 @@ public class RoleEntity {
     @Column(nullable = false)
     private boolean active = true;
 
-    public RoleEntity() {
-    }
 
     public RoleEntity(String name, String description) {
         this.name = name;
@@ -77,45 +84,9 @@ public class RoleEntity {
         return entity;
     }
 
-    // Getters and Setters
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public Set<PermissionEntity> getPermissions() {
-        return permissions;
-    }
-
+    // Custom setter for permissions with null handling
     public void setPermissions(Set<PermissionEntity> permissions) {
         this.permissions = permissions != null ? new HashSet<>(permissions) : new HashSet<>();
-    }
-
-    public boolean isActive() {
-        return active;
-    }
-
-    public void setActive(boolean active) {
-        this.active = active;
     }
 }
 

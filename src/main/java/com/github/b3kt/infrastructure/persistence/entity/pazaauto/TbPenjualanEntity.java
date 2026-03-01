@@ -6,6 +6,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 import com.github.b3kt.infrastructure.persistence.entity.BaseEntity;
 
@@ -25,19 +26,13 @@ public class TbPenjualanEntity extends BaseEntity {
     private String noSpk;
 
     @Column(name = "grand_total")
-    private Integer grandTotal;
-
-    @Column(name = "diskon", precision = 18, scale = 2)
-    private BigDecimal diskon;
+    private BigDecimal grandTotal;
 
     @Column(name = "kembalian", precision = 18, scale = 2)
     private BigDecimal kembalian;
 
     @Column(name = "keterangan", length = 500)
     private String keterangan;
-
-    @Column(name = "ppn", precision = 18, scale = 2)
-    private BigDecimal ppn;
 
     @Column(name = "status_pembayaran", length = 20)
     private String statusPembayaran;
@@ -56,5 +51,26 @@ public class TbPenjualanEntity extends BaseEntity {
 
     @Column(name = "metode_pembayaran", length = 20)
     private String metodePembayaran;
+
+
+
+    @Transient
+    private String namaPelanggan;
+
+    @Transient
+    private String alamatPelanggan;
+
+    @Transient
+    private String merkKendaraan;
+
+    @Transient
+    private String jenisKendaraan;
+
+    @Transient
+    private String noPolisi;
+
+    @Transient
+    private List<TbSpkDetailEntity> details;
+
 
 }

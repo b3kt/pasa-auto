@@ -33,15 +33,11 @@
         </GenericTable>
       </template>
 
-      <template v-slot:after v-if="!$q.screen.xs">
-
+      <template v-slot:after>
         <div class="q-pa-md scroll" style="height: 100%">
           <div class="row items-center q-mb-md">
-            <div class="text-h6 q-mb-md">{{ isEditMode ? 'Edit SPK' : 'Tambah data SPK' }}</div>
+            <div class="text-h6 q-mb-md">Detail SPK dan Penjualan</div>
             <q-space/>
-            <q-btn flat round dense icon="add" @click="openCreateDialog">
-              <q-tooltip>New</q-tooltip>
-            </q-btn>
           </div>
           <q-form @submit="handleSave" id="karyawan-form" class="q-gutter-md">
             <q-card flat bordered>
@@ -381,7 +377,7 @@ const formData = ref({
   nopol: '',
   namaKaryawan: '',
   km: null,
-  statusSpk: 'OPEN',
+  statusSpk: 'PROSES',
   diskon: null,
   keluhan: '',
   keterangan: '',
@@ -498,7 +494,7 @@ const fetchSpk = async (paginationData = pagination.value) => {
     }
 
     // Add status filter - always filter for OPEN status
-    params.statusFilter = 'OPEN'
+    params.statusFilter = 'PROSES'
 
     // Add today filter if checked
     if (filterToday.value) {
@@ -776,7 +772,7 @@ const resetForm = () => {
     nopol: '',
     namaKaryawan: '',
     km: null,
-    statusSpk: 'OPEN',
+    statusSpk: 'PROSES',
     diskon: null,
     keluhan: '',
     keterangan: '',
