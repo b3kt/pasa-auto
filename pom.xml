@@ -192,14 +192,13 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire-plugin.version}</version>
                 <configuration>
-                    <argLine>--add-opens java.base/java.lang=ALL-UNNAMED</argLine>
+                    <argLine>--add-opens java.base/java.lang=ALL-UNNAMED ${argLine}</argLine>
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
                     </systemPropertyVariables>
-                    <redirectTestOutputToFile>true</redirectTestOutputToFile>
                     <printSummary>true</printSummary>
-                    <useFile>true</useFile>
+                    <useFile>false</useFile>
                     <reportFormat>brief</reportFormat>
                     <trimStackTrace>true</trimStackTrace>
                 </configuration>
@@ -216,7 +215,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <argLine>--add-opens java.base/java.lang=ALL-UNNAMED</argLine>
+                    <argLine>--add-opens java.base/java.lang=ALL-UNNAMED ${argLine}</argLine>
                     <systemPropertyVariables>
                         <native.image.path>
                             ${project.build.directory}/${project.build.finalName}-runner</native.image.path>
@@ -234,6 +233,9 @@
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
+                        <configuration>
+                            <propertyName>argLine</propertyName>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>report</id>
@@ -244,6 +246,7 @@
                     </execution>
                     <execution>
                         <id>check</id>
+                        <phase>test</phase>
                         <goals>
                             <goal>check</goal>
                         </goals>

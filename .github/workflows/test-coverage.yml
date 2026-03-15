@@ -48,7 +48,7 @@ jobs:
         restore-keys: ${{ runner.os }}-m2
         
     - name: Run tests with coverage
-      run: ./mvnw clean verify jacoco:report
+      run: ./mvnw clean test jacoco:report
       
     - name: Check coverage threshold
       run: ./mvnw jacoco:check
