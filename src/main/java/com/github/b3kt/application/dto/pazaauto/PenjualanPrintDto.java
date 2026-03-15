@@ -33,7 +33,7 @@ public class PenjualanPrintDto {
     private BigDecimal subTotal;
     private BigDecimal diskon;
     private BigDecimal ppn;
-    private Integer grandTotal;
+    private BigDecimal grandTotal;
     private BigDecimal uangDibayar;
     private BigDecimal kembalian;
 

@@ -1,28 +1,36 @@
 package com.github.b3kt.presentation.rest.pazaauto;
 
-import com.github.b3kt.application.service.pazaauto.AbstractCrudService;
-import com.github.b3kt.application.service.pazaauto.TbPenjualanService;
+import com.github.b3kt.application.dto.ApiResponse;
+import com.github.b3kt.application.service.pazaauto.*;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.*;
 import jakarta.enterprise.context.RequestScoped;
-import jakarta.inject.Inject;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.Path;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 @RequestScoped
 @Path("/api/pazaauto/penjualan")
+@RequiredArgsConstructor
 public class TbPenjualanResource extends AbstractCrudResource<TbPenjualanEntity, String> {
 
-    @Inject
-    TbPenjualanService service;
-
-    @Inject
-    com.github.b3kt.application.service.pazaauto.TbSpkService spkService;
-
-    @Inject
-    com.github.b3kt.application.service.pazaauto.TbPelangganService pelangganService;
-
-    @Inject
-    com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKendaraanRepository kendaraanRepository;
+    private final TbPenjualanService service;
+    private final TbSpkService spkService;
+    private final TbPelangganService pelangganService;
+    private final TbKendaraanRepository kendaraanRepository;
+    private final TbSpkRepository spkRepository;
+    private final TbSpkDetailService spkDetailService;
+    private final TbJasaRepository jasaRepository;
+    private final TbSparepartRepository sparepartRepository;
+    private final TbBarangRepository barangRepository;
+    private final TbPenjualanRepository penjualanRepository;
+    private final TbKaryawanRepository karyawanRepository;
 
     @Override
     protected AbstractCrudService<TbPenjualanEntity, String> getService() {
@@ -38,24 +46,6 @@ public class TbPenjualanResource extends AbstractCrudResource<TbPenjualanEntity,
     protected String getEntityName() {
         return "Penjualan";
     }
-
-    @Inject
-    com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkRepository spkRepository;
-
-    @Inject
-    com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbJasaRepository jasaRepository;
-
-    @Inject
-    com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSparepartRepository sparepartRepository;
-
-    @Inject
-    com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbBarangRepository barangRepository;
-
-    @Inject
-    com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPenjualanRepository penjualanRepository;
-
-    @Inject
-    com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawanRepository karyawanRepository;
 
     @GET
     @Path("/{noPenjualan}/print")
@@ -79,8 +69,6 @@ public class TbPenjualanResource extends AbstractCrudResource<TbPenjualanEntity,
         dto.setGrandTotal(penjualan.getGrandTotal());
         dto.setUangDibayar(penjualan.getUangDibayar());
         dto.setKembalian(penjualan.getKembalian());
-        dto.setDiskon(penjualan.getDiskon());
-        dto.setPpn(penjualan.getPpn());
 
         // Customer Lookup
         Long pelangganId = penjualan.getPelangganId();
@@ -144,7 +132,6 @@ public class TbPenjualanResource extends AbstractCrudResource<TbPenjualanEntity,
                 for (com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity detail : fullSpk
                         .getDetails()) {
                     com.github.b3kt.application.dto.pazaauto.PenjualanPrintDto.ItemDto item = new com.github.b3kt.application.dto.pazaauto.PenjualanPrintDto.ItemDto();
-                    item.setNama(detail.getId().getNamaJasa());
                     item.setQty(detail.getJumlah());
 
                     java.math.BigDecimal price = java.math.BigDecimal.ZERO;
@@ -190,5 +177,55 @@ public class TbPenjualanResource extends AbstractCrudResource<TbPenjualanEntity,
         }
 
         return jakarta.ws.rs.core.Response.ok(com.github.b3kt.application.dto.ApiResponse.success(dto)).build();
+    }
+
+    @Override
+    @GET
+    @Path("/{id}")
+    public Response getById(@PathParam("id") String noPenjualan) {
+        TbPenjualanEntity entity = service.findByNoPenjualan(noPenjualan);
+
+        fillTransientFields(entity);
+        return Response.ok(ApiResponse.success(entity)).build();
+    }
+
+    private void fillTransientFields(TbPenjualanEntity entity) {
+
+        Long pelangganId = null;
+        if(Objects.isNull(entity.getPelangganId())){
+            TbSpkEntity spkEntity = spkService.findByNoSpk(entity.getNoSpk());
+            pelangganId = spkEntity.getPelangganId();
+
+
+            List<TbSpkDetailEntity> details = spkDetailService.findByNoSpk(entity.getNoSpk());
+            Optional.ofNullable(details)
+                    .ifPresent(list -> entity.setDetails(list));
+        }
+
+        if(Objects.nonNull(pelangganId)){
+            Optional.ofNullable(pelangganService.findById(pelangganId))
+                    .ifPresent(pelanggan ->  {
+                        entity.setNamaPelanggan(pelanggan.getNamaPelanggan());
+                        entity.setAlamatPelanggan(pelanggan.getAlamat());
+                        entity.setMerkKendaraan(pelanggan.getMerk());
+                        entity.setJenisKendaraan(pelanggan.getJenis());
+                        entity.setNoPolisi(pelanggan.getNopol());
+                    });
+        }
+    }
+
+    @Override
+    @POST
+    public Response create(TbPenjualanEntity entity) {
+        TbPenjualanEntity created = service.createWithNoSpkValidation(entity);
+        return Response.ok(ApiResponse.success(getEntityName() + " created", created)).build();
+    }
+
+    @Override
+    @PUT
+    @Path("/{id}")
+    public Response update(@PathParam("id") String id, TbPenjualanEntity entity) {
+        TbPenjualanEntity updated = service.updateWithNoSpkValidation(entity);
+        return Response.ok(ApiResponse.success(getEntityName() + " updated", updated)).build();
     }
 }
