@@ -12,6 +12,8 @@ import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKaryawanEnti
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
+import io.opentelemetry.instrumentation.annotations.SpanAttribute;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -48,12 +50,14 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
 
     @GET
     @Path("/by-no-spk/{noSpk}")
-    public Response findByNoSpk(@PathParam("noSpk") String noSpk) {
+    @WithSpan("find-spk-by-no-spk")
+    public Response findByNoSpk(@PathParam("noSpk") @SpanAttribute("spk.no-spk") String noSpk) {
         return Response.ok(ApiResponse.success(service.findByNoSpk(noSpk))).build();
     }
 
     @GET
     @Path("/unprocessed")
+    @WithSpan("get-unprocessed-spk")
     public Response getUnprocessedSpk() {
         return Response.ok(ApiResponse.success(service.findUnprocessedSpk())).build();
     }
@@ -74,6 +78,7 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
 
     @GET
     @Path("/get-next-spk-number")
+    @WithSpan("get-next-spk-number")
     public Response getNextSpk() {
         String lastSpkNumber = service.getNextSpkNumber(spkNoformatter.format(LocalDateTime.now()));
         String lastQueueNumber = lastSpkNumber.substring(lastSpkNumber.length() - 2);

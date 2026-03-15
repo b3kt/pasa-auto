@@ -4,6 +4,8 @@ import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.service.pazaauto.AbstractCrudService;
+import io.opentelemetry.instrumentation.annotations.SpanAttribute;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -24,6 +26,7 @@ public abstract class AbstractCrudResource<T, ID> {
     protected DateTimeFormatter spkNoformatter = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     @GET
+    @WithSpan("list-all-entities")
     public Response list() {
         List<T> items = getService().findAll();
         return Response.ok(ApiResponse.success(items)).build();
@@ -31,6 +34,7 @@ public abstract class AbstractCrudResource<T, ID> {
 
     @GET
     @Path("/paginated")
+    @WithSpan("list-paginated-entities")
     public Response listPaginated(
             @QueryParam("page") @DefaultValue("1") int page,
             @QueryParam("rowsPerPage") @DefaultValue("10") int rowsPerPage,
@@ -57,12 +61,14 @@ public abstract class AbstractCrudResource<T, ID> {
 
     @GET
     @Path("/{id}")
-    public Response getById(@PathParam("id") String id) {
+    @WithSpan("get-entity-by-id")
+    public Response getById(@PathParam("id") @SpanAttribute("entity.id") String id) {
         T entity = getService().findById(parseId(id));
         return Response.ok(ApiResponse.success(entity)).build();
     }
 
     @POST
+    @WithSpan("create-entity")
     public Response create(T entity) {
         T created = getService().create(entity);
         return Response.ok(ApiResponse.success(getEntityName() + " created", created)).build();
@@ -70,14 +76,16 @@ public abstract class AbstractCrudResource<T, ID> {
 
     @PUT
     @Path("/{id}")
-    public Response update(@PathParam("id") String id, T entity) {
+    @WithSpan("update-entity")
+    public Response update(@PathParam("id") @SpanAttribute("entity.id") String id, T entity) {
         T updated = getService().update(parseId(id), entity);
         return Response.ok(ApiResponse.success(getEntityName() + " updated", updated)).build();
     }
 
     @DELETE
     @Path("/{id}")
-    public Response delete(@PathParam("id") String id) {
+    @WithSpan("delete-entity")
+    public Response delete(@PathParam("id") @SpanAttribute("entity.id") String id) {
         getService().delete(parseId(id));
         return Response.ok(ApiResponse.success(getEntityName() + " deleted", null)).build();
     }

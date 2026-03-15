@@ -70,7 +70,7 @@
               </q-list>
             </q-menu>
           </q-btn>
-          <span v-else>Quasar v{{ $q.version }}</span>
+          <span v-else>v{{ $q.version }}</span>
         </div>
       </q-toolbar>
     </q-header>

@@ -4,14 +4,16 @@
       <q-card-section>
         <div class="text-h6 text-center q-mb-md">Login</div>
         <q-form @submit="onSubmit" class="q-gutter-md">
-          <q-input v-model="username" label="Username" :rules="[val => !!val || 'Username harus diisi']" outlined dense>
+          <q-input v-model="username" label="Username" :rules="[val => !!val || 'Username harus diisi']" outlined dense
+          hide-bottom-space>
             <template v-slot:prepend>
               <q-icon name="person" />
             </template>
           </q-input>
 
           <q-input v-model="password" label="Password" type="password" :rules="[val => !!val || 'Password harus diisi']"
-            outlined dense>
+            outlined dense
+           hide-bottom-space>
             <template v-slot:prepend>
               <q-icon name="lock" />
             </template>
@@ -51,7 +53,7 @@ const clearAuthData = () => {
   localStorage.removeItem('auth_token')
   localStorage.removeItem('refresh_token')
   localStorage.removeItem('auth_user')
-  
+
   // Clear all cookies
   document.cookie.split(';').forEach(cookie => {
     const eqPos = cookie.indexOf('=')
@@ -60,10 +62,10 @@ const clearAuthData = () => {
       document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`
     }
   })
-  
+
   // Reset auth store
   authStore.$reset()
-  
+
   // Clear axios default headers
   delete authStore.api.defaults.headers.common['Authorization']
 }
@@ -73,22 +75,22 @@ onMounted(() => {
   const urlParams = new URLSearchParams(window.location.search)
   const expired = urlParams.get('expired')
   const logoutMessage = urlParams.get('message')
-  
+
   if (expired === 'true') {
     clearAuthData()
-    
+
     if (logoutMessage) {
       error.value = decodeURIComponent(logoutMessage)
     } else {
       error.value = 'Session has expired. Please login again.'
     }
-    
+
     $q.notify({
       type: 'warning',
       message: 'Session expired, please login again',
       position: 'top'
     })
-    
+
     // Clean URL
     window.history.replaceState({}, document.title, window.location.pathname)
   }

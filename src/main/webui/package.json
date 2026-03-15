@@ -10,8 +10,8 @@
     "lint": "eslint -c ./eslint.config.js \"./src*/**/*.{js,cjs,mjs,vue}\"",
     "format": "prettier --write \"**/*.{js,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "test": "echo \"No test specified\" && exit 0",
-    "start": "quasar dev -m pwa -p 5173",
-    "dev": "quasar dev -m pwa",
+    "start": "quasar dev -p 5173",
+    "dev": "quasar dev ",
     "build": "quasar build",
     "postinstall": "quasar prepare"
   },
