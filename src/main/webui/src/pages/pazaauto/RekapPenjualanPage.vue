@@ -25,9 +25,9 @@
                 </template>
               </q-input>
             </div>
-            <q-btn :icon="showDetail ? 'chevron_right' : 'chevron_left'" @click="showDetailForm()" class="q-ml-sm">
+            <q-btn :icon="showDetail ? 'chevron_left' : 'chevron_right'" @click="showDetailForm()" class="q-ml-sm">
               <q-tooltip>
-                Tampilkan lebih rinci
+                {{ showDetail ? 'Sembunyikan detail' : 'Tampilkan lebih rinci' }}
               </q-tooltip>
             </q-btn>
           </template>
