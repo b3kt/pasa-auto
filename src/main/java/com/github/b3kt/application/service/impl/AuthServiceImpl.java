@@ -13,8 +13,6 @@ import com.github.b3kt.infrastructure.security.PasswordEncoder;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-import java.util.Objects;
-
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 /**
@@ -48,12 +46,12 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // Verify password
-        // if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-        // throw new AuthenticationException("Invalid username or password");
-        // }
-        if (!Objects.equals(password, user.getPasswordHash())) {
-            throw new AuthenticationException("Invalid username or password");
-        }
+         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+             throw new AuthenticationException("Invalid username or password");
+         }
+//        if (!Objects.equals(password, user.getPasswordHash())) {
+//            throw new AuthenticationException("Invalid username or password");
+//        }
 
         // Get related karyawan info
         tbKaryawanRepository.findByUsername(username)

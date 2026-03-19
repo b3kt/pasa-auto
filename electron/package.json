@@ -5,7 +5,10 @@
   "scripts": {
     "start": "electron .",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
   },
   "devDependencies": {
     "electron": "^28.0.0",
@@ -13,19 +16,29 @@
   },
   "build": {
     "appId": "com.github.b3kt.pazaauto",
-    "productName": "PazaAutoApp",
+    "productName": "PazaAuto",
     "files": [
       "main.js",
       "resources/**/*"
     ],
     "extraResources": [
       {
-        "from": "resources/",
-        "to": "."
+        "from": "../target/pasa-auto-0.0.14.jar",
+        "to": "backend.jar"
       }
     ],
     "directories": {
       "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.business",
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "linux": {
+      "target": ["AppImage", "deb"]
     }
   }
 }
