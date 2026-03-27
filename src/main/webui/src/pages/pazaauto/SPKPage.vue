@@ -242,7 +242,7 @@
         <p class="text-body2 q-mb-lg">
           Apakah Anda ingin menambahkan data kendaraan baru ke database?
         </p>
-        
+
         <div class="row q-col-gutter-md">
           <div class="col-12">
             <q-input v-model="newVehicleData.merk" label="Merk" outlined dense readonly />
@@ -1312,10 +1312,10 @@ const fetchMerkOptions = async () => {
 const fetchJenisOptions = async (merk = null) => {
   loadingJenis.value = true
   try {
-    const url = merk 
+    const url = merk
       ? `/api/pazaauto/kendaraan/jenis/by-merk?merk=${encodeURIComponent(merk)}`
       : '/api/pazaauto/kendaraan/jenis/distinct'
-    
+
     const response = await api.get(url)
     if (response.data.success) {
       if (merk) {
@@ -1338,27 +1338,27 @@ const fetchJenisOptions = async (merk = null) => {
 }
 
 // Filter functions for dropdowns
-const filterMerk = (val, update, abort) => {
+const filterMerk = (val, update) => {
   update(() => {
     if (val === '') {
       // Return all merk options
       return
     }
     const needle = val.toLowerCase()
-    merkOptions.value = merkOptions.value.filter(v => 
+    merkOptions.value = merkOptions.value.filter(v =>
       v.toLowerCase().indexOf(needle) > -1
     )
   })
 }
 
-const filterJenis = (val, update, abort) => {
+const filterJenis = (val, update) => {
   update(() => {
     if (val === '') {
       // Return filtered jenis options
       return
     }
     const needle = val.toLowerCase()
-    filteredJenisOptions.value = filteredJenisOptions.value.filter(v => 
+    filteredJenisOptions.value = filteredJenisOptions.value.filter(v =>
       v.toLowerCase().indexOf(needle) > -1
     )
   })
@@ -1411,10 +1411,10 @@ const findMerkByJenis = async (jenis) => {
 // Vehicle creation functions
 const checkAndShowVehicleDialog = (merk, jenis) => {
   if (!merk || !jenis) return
-  
+
   const merkExists = merkOptions.value.includes(merk)
   const jenisExists = filteredJenisOptions.value.includes(jenis)
-  
+
   if (!merkExists || !jenisExists) {
     newVehicleData.value = { merk, jenis, keterangan: '' }
     showVehicleDialog.value = true
@@ -1429,22 +1429,22 @@ const confirmAddVehicle = async () => {
       jenis: newVehicleData.value.jenis,
       keterangan: newVehicleData.value.keterangan
     }
-    
+
     const response = await api.post('/api/pazaauto/kendaraan', vehicleData)
     if (response.data.success) {
       $q.notify({
         type: 'positive',
         message: 'Vehicle data added successfully'
       })
-      
+
       // Refresh vehicle options
       await Promise.all([fetchMerkOptions(), fetchJenisOptions()])
-      
+
       // If merk was selected, refresh filtered jenis
       if (formData.value.merk) {
         await fetchJenisOptions(formData.value.merk)
       }
-      
+
       showVehicleDialog.value = false
     }
   } catch (error) {
