@@ -72,3 +72,86 @@ jobs:
         with:
           name: quarkus-native-windows
           path: target/*-runner.exe
+
+  electron-linux:
+    needs: native-linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: electron/package-lock.json
+
+      - name: Download Quarkus Linux Binary
+        uses: actions/download-artifact@v4
+        with:
+          name: quarkus-native-linux
+          path: electron/bin/
+
+      - name: Rename binary and set executable
+        run: |
+          mv electron/bin/*-runner electron/bin/pasa-auto-runner
+          chmod +x electron/bin/pasa-auto-runner
+
+      - name: Install Electron dependencies
+        working-directory: electron
+        run: npm ci
+
+      - name: Build Electron App (Linux)
+        working-directory: electron
+        run: npm run dist:linux
+
+      - name: Upload Electron Linux Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: electron-linux
+          path: |
+            electron/dist/*.AppImage
+            electron/dist/*.deb
+
+  electron-windows:
+    needs: native-windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: electron/package-lock.json
+
+      - name: Download Quarkus Windows Binary
+        uses: actions/download-artifact@v4
+        with:
+          name: quarkus-native-windows
+          path: electron/bin/
+
+      - name: Rename binary
+        shell: pwsh
+        run: |
+          Get-ChildItem electron/bin/*-runner.exe | Rename-Item -NewName pasa-auto-runner.exe
+
+      - name: Install Electron dependencies
+        working-directory: electron
+        run: npm ci
+
+      - name: Build Electron App (Windows)
+        working-directory: electron
+        run: npm run dist:win
+
+      - name: Upload Electron Windows Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: electron-windows
+          path: |
+            electron/dist/*.exe

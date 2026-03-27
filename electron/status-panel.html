@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:*">
-  <title>PazaAuto - Server Manager</title>
+  <title>PasaAuto - Server Manager</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
       background: #1a1a2e;
@@ -26,10 +26,7 @@
       border-bottom: 1px solid #0f3460;
     }
 
-    .header h1 {
-      font-size: 18px;
-      color: #e94560;
-    }
+    .header h1 { font-size: 18px; color: #e94560; }
 
     .status-badge {
       display: inline-flex;
@@ -41,11 +38,11 @@
       font-weight: 500;
     }
 
-    .status-badge.running { background: #1b5e20; color: #4caf50; }
-    .status-badge.stopped { background: #b71c1c; color: #ef5350; }
-    .status-badge.starting { background: #e65100; color: #ff9800; }
+    .status-badge.running   { background: #1b5e20; color: #4caf50; }
+    .status-badge.stopped   { background: #b71c1c; color: #ef5350; }
+    .status-badge.starting  { background: #e65100; color: #ff9800; }
     .status-badge.unhealthy { background: #f57f17; color: #ffeb3b; }
-    .status-badge.error { background: #4a148c; color: #ce93d8; }
+    .status-badge.error     { background: #4a148c; color: #ce93d8; }
 
     .status-dot {
       width: 8px;
@@ -55,7 +52,7 @@
     }
 
     .status-badge.running .status-dot { animation: pulse 2s infinite; }
-    
+
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.4; }
@@ -70,7 +67,7 @@
     }
 
     .btn {
-      padding: 8px 16px;
+      padding: 8px 18px;
       border: none;
       border-radius: 6px;
       font-size: 13px;
@@ -79,14 +76,14 @@
       transition: all 0.2s;
     }
 
-    .btn-start { background: #2e7d32; color: white; }
-    .btn-start:hover:not(:disabled) { background: #388e3c; }
-    
-    .btn-stop { background: #c62828; color: white; }
-    .btn-stop:hover:not(:disabled) { background: #d32f2f; }
-    
+    .btn-start   { background: #2e7d32; color: white; }
+    .btn-start:hover:not(:disabled)   { background: #388e3c; }
+    .btn-stop    { background: #c62828; color: white; }
+    .btn-stop:hover:not(:disabled)    { background: #d32f2f; }
     .btn-restart { background: #1565c0; color: white; }
     .btn-restart:hover:not(:disabled) { background: #1976d2; }
+    .btn-clear   { background: transparent; color: #888; border: 1px solid #444; }
+    .btn-clear:hover { background: #333; color: #fff; }
 
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -115,6 +112,7 @@
       font-size: 14px;
       color: #fff;
       font-family: monospace;
+      word-break: break-all;
     }
 
     .logs-container {
@@ -133,18 +131,7 @@
       border-bottom: 1px solid #0f3460;
     }
 
-    .logs-header h2 {
-      font-size: 14px;
-      color: #888;
-    }
-
-    .btn-clear {
-      background: transparent;
-      color: #888;
-      border: 1px solid #444;
-    }
-
-    .btn-clear:hover { background: #333; color: #fff; }
+    .logs-header h2 { font-size: 14px; color: #888; }
 
     .logs {
       flex: 1;
@@ -157,25 +144,24 @@
     }
 
     .log-entry {
-      padding: 4px 8px;
+      padding: 3px 8px;
       border-radius: 4px;
       margin-bottom: 2px;
+      word-break: break-word;
     }
 
     .log-entry:hover { background: #1a1a2e; }
 
-    .log-time { color: #666; margin-right: 8px; }
-    .log-info { color: #4fc3f7; }
-    .log-warn { color: #ffb74d; }
+    .log-time  { color: #666; margin-right: 8px; }
+    .log-info  { color: #4fc3f7; }
+    .log-warn  { color: #ffb74d; }
     .log-error { color: #ef5350; }
     .log-debug { color: #9e9e9e; }
-
-    .log-app { color: #e94560; font-weight: 500; }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>PazaAuto Server Manager</h1>
+    <h1>PasaAuto Server Manager</h1>
     <div id="statusBadge" class="status-badge stopped">
       <span class="status-dot"></span>
       <span id="statusText">STOPPED</span>
@@ -183,8 +169,8 @@
   </div>
 
   <div class="controls">
-    <button id="btnStart" class="btn btn-start" onclick="startServer()">Start Server</button>
-    <button id="btnStop" class="btn btn-stop" onclick="stopServer()" disabled>Stop Server</button>
+    <button id="btnStart"   class="btn btn-start"   onclick="startServer()">Start Server</button>
+    <button id="btnStop"    class="btn btn-stop"    onclick="stopServer()"    disabled>Stop Server</button>
     <button id="btnRestart" class="btn btn-restart" onclick="restartServer()" disabled>Restart</button>
   </div>
 
@@ -216,68 +202,74 @@
   </div>
 
   <script>
-    let uptimeInterval;
+    let startTime = null;
+    let uptimeInterval = null;
 
     function formatUptime(ms) {
       if (!ms) return '-';
-      const seconds = Math.floor(ms / 1000);
-      const minutes = Math.floor(seconds / 60);
-      const hours = Math.floor(minutes / 60);
-      
-      if (hours > 0) return `${hours}h ${minutes % 60}m`;
-      if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
-      return `${seconds}s`;
+      const s = Math.floor(ms / 1000);
+      const m = Math.floor(s / 60);
+      const h = Math.floor(m / 60);
+      if (h > 0) return `${h}h ${m % 60}m`;
+      if (m > 0) return `${m}m ${s % 60}s`;
+      return `${s}s`;
     }
 
     function formatTime(isoString) {
-      const date = new Date(isoString);
-      return date.toLocaleTimeString();
+      return new Date(isoString).toLocaleTimeString();
     }
 
     function updateStatus(status) {
-      const badge = document.getElementById('statusBadge');
-      const statusText = document.getElementById('statusText');
-      const btnStart = document.getElementById('btnStart');
-      const btnStop = document.getElementById('btnStop');
+      const badge    = document.getElementById('statusBadge');
+      const btnStart   = document.getElementById('btnStart');
+      const btnStop    = document.getElementById('btnStop');
       const btnRestart = document.getElementById('btnRestart');
-      
+
       badge.className = `status-badge ${status.status}`;
-      statusText.textContent = status.status.toUpperCase();
-      
-      const isRunning = status.status === 'running';
+      document.getElementById('statusText').textContent = status.status.toUpperCase();
+
+      const isRunning  = status.status === 'running';
       const isStarting = status.status === 'starting';
-      
-      btnStart.disabled = isRunning || isStarting;
-      btnStop.disabled = !isRunning;
-      btnRestart.disabled = !isRunning;
-      
-      document.getElementById('serverUrl').textContent = status.url;
-      document.getElementById('processId').textContent = status.processId || '-';
-      
-      if (uptimeInterval) clearInterval(uptimeInterval);
-      if (status.uptime && isRunning) {
-        updateUptime(status.uptime);
-        uptimeInterval = setInterval(() => {
-          const elapsed = Date.now() - (status.startTime || Date.now() - status.uptime);
-          updateUptime(elapsed);
-        }, 1000);
+
+      btnStart.disabled   = isRunning || isStarting;
+      btnStop.disabled    = !isRunning && !isStarting;
+      btnRestart.disabled = !isRunning && !isStarting;
+
+      document.getElementById('serverUrl').textContent  = status.url || '-';
+      document.getElementById('processId').textContent  = status.processId || '-';
+      document.getElementById('healthStatus').textContent = isRunning ? 'OK' : status.status;
+
+      if (uptimeInterval) { clearInterval(uptimeInterval); uptimeInterval = null; }
+
+      if (status.uptime && (isRunning || isStarting)) {
+        startTime = Date.now() - status.uptime;
+        updateUptime();
+        uptimeInterval = setInterval(updateUptime, 1000);
       } else {
         document.getElementById('uptime').textContent = '-';
-        document.getElementById('healthStatus').textContent = '-';
+        startTime = null;
       }
     }
 
-    function updateUptime(elapsed) {
-      document.getElementById('uptime').textContent = formatUptime(elapsed);
+    function updateUptime() {
+      if (!startTime) return;
+      document.getElementById('uptime').textContent = formatUptime(Date.now() - startTime);
     }
 
     function addLog(entry) {
-      const logsContainer = document.getElementById('logs');
+      const container = document.getElementById('logs');
       const div = document.createElement('div');
       div.className = `log-entry log-${entry.level}`;
-      div.innerHTML = `<span class="log-time">${formatTime(entry.timestamp)}</span>${entry.message}`;
-      logsContainer.appendChild(div);
-      logsContainer.scrollTop = logsContainer.scrollHeight;
+      div.innerHTML = `<span class="log-time">${formatTime(entry.timestamp)}</span>${escapeHtml(entry.message)}`;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
     }
 
     async function refreshStatus() {
@@ -285,19 +277,23 @@
       updateStatus(status);
     }
 
+    async function loadLogs() {
+      const logs = await window.electronAPI.getLogs();
+      const container = document.getElementById('logs');
+      container.innerHTML = '';
+      logs.forEach(addLog);
+    }
+
     async function startServer() {
       await window.electronAPI.startServer();
-      await refreshStatus();
     }
 
     async function stopServer() {
       await window.electronAPI.stopServer();
-      await refreshStatus();
     }
 
     async function restartServer() {
       await window.electronAPI.restartServer();
-      await refreshStatus();
     }
 
     async function clearLogs() {
@@ -305,15 +301,12 @@
       document.getElementById('logs').innerHTML = '';
     }
 
-    window.electronAPI.onServerStatus((status) => {
-      updateStatus(status);
-    });
+    window.electronAPI.onServerStatus(updateStatus);
+    window.electronAPI.onLogEntry(addLog);
 
-    window.electronAPI.onLogEntry((entry) => {
-      addLog(entry);
-    });
-
+    // Initial load
     refreshStatus();
+    loadLogs();
   </script>
 </body>
 </html>

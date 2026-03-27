@@ -60,9 +60,6 @@ public class AuthServiceImpl implements AuthService {
          if (!passwordEncoder.matches(password, user.getPasswordHash())) {
              throw new AuthenticationException("Invalid username or password");
          }
-//        if (!Objects.equals(password, user.getPasswordHash())) {
-//            throw new AuthenticationException("Invalid username or password");
-//        }
 
         // Get related karyawan info
         tbKaryawanRepository.findByUsername(username)

@@ -93,7 +93,7 @@ public class AuthResource {
 
     @POST
     @Path("/logout")
-    @RolesAllowed("user")
+    @RolesAllowed("User")
     @Operation(
         summary = "User logout",
         description = "Logout the current user. In JWT systems, this is typically handled client-side."
@@ -121,7 +121,7 @@ public class AuthResource {
 
     @GET
     @Path("/me")
-    @RolesAllowed("user")
+    @RolesAllowed("User")
     @Operation(
         summary = "Get current user info",
         description = "Retrieve information about the currently authenticated user from JWT token"

@@ -6,6 +6,7 @@ import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.service.pazaauto.AbstractCrudService;
 import io.opentelemetry.instrumentation.annotations.SpanAttribute;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -27,6 +28,7 @@ public abstract class AbstractCrudResource<T, ID> {
 
     @GET
     @WithSpan("list-all-entities")
+    @RolesAllowed("Admin")
     public Response list() {
         List<T> items = getService().findAll();
         return Response.ok(ApiResponse.success(items)).build();
@@ -35,6 +37,7 @@ public abstract class AbstractCrudResource<T, ID> {
     @GET
     @Path("/paginated")
     @WithSpan("list-paginated-entities")
+    @RolesAllowed({"Admin"})
     public Response listPaginated(
             @QueryParam("page") @DefaultValue("1") int page,
             @QueryParam("rowsPerPage") @DefaultValue("10") int rowsPerPage,
@@ -62,6 +65,7 @@ public abstract class AbstractCrudResource<T, ID> {
     @GET
     @Path("/{id}")
     @WithSpan("get-entity-by-id")
+    @RolesAllowed("Admin")
     public Response getById(@PathParam("id") @SpanAttribute("entity.id") String id) {
         T entity = getService().findById(parseId(id));
         return Response.ok(ApiResponse.success(entity)).build();
@@ -69,6 +73,7 @@ public abstract class AbstractCrudResource<T, ID> {
 
     @POST
     @WithSpan("create-entity")
+    @RolesAllowed("Admin")
     public Response create(T entity) {
         T created = getService().create(entity);
         return Response.ok(ApiResponse.success(getEntityName() + " created", created)).build();
@@ -77,6 +82,7 @@ public abstract class AbstractCrudResource<T, ID> {
     @PUT
     @Path("/{id}")
     @WithSpan("update-entity")
+    @RolesAllowed("Admin")
     public Response update(@PathParam("id") @SpanAttribute("entity.id") String id, T entity) {
         T updated = getService().update(parseId(id), entity);
         return Response.ok(ApiResponse.success(getEntityName() + " updated", updated)).build();
@@ -85,6 +91,7 @@ public abstract class AbstractCrudResource<T, ID> {
     @DELETE
     @Path("/{id}")
     @WithSpan("delete-entity")
+    @RolesAllowed("Admin")
     public Response delete(@PathParam("id") @SpanAttribute("entity.id") String id) {
         getService().delete(parseId(id));
         return Response.ok(ApiResponse.success(getEntityName() + " deleted", null)).build();

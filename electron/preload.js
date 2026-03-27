@@ -8,15 +8,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getLogs: () => ipcRenderer.invoke('get-logs'),
   clearLogs: () => ipcRenderer.invoke('clear-logs'),
   getConfig: () => ipcRenderer.invoke('get-config'),
-  
+  openServerManager: () => ipcRenderer.invoke('open-server-manager'),
+
   onServerStatus: (callback) => {
-    const handler = (event, data) => callback(data);
+    const handler = (_event, data) => callback(data);
     ipcRenderer.on('server-status', handler);
     return () => ipcRenderer.removeListener('server-status', handler);
   },
-  
+
   onLogEntry: (callback) => {
-    const handler = (event, data) => callback(data);
+    const handler = (_event, data) => callback(data);
     ipcRenderer.on('log-entry', handler);
     return () => ipcRenderer.removeListener('log-entry', handler);
   },

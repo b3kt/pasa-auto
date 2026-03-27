@@ -42,7 +42,7 @@ public class RbacResource {
     // Role endpoints
     @POST
     @Path("/roles")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Create a new role",
         description = "Create a new role in the RBAC system. Requires admin role."
@@ -88,7 +88,7 @@ public class RbacResource {
 
     @GET
     @Path("/roles")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Get all roles",
         description = "Retrieve all roles in the RBAC system. Requires admin role."
@@ -108,7 +108,7 @@ public class RbacResource {
 
     @GET
     @Path("/roles/{id}")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Get role by ID",
         description = "Retrieve a specific role by its ID. Requires admin role."
@@ -132,7 +132,7 @@ public class RbacResource {
 
     @PUT
     @Path("/roles/{id}")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Update a role",
         description = "Update an existing role. Requires admin role."
@@ -156,7 +156,7 @@ public class RbacResource {
 
     @DELETE
     @Path("/roles/{id}")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Delete a role",
         description = "Delete a role from the RBAC system. Requires admin role."
@@ -180,7 +180,7 @@ public class RbacResource {
 
     @POST
     @Path("/roles/{id}/activate")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Activate a role",
         description = "Activate a deactivated role. Requires admin role."
@@ -204,7 +204,7 @@ public class RbacResource {
 
     @POST
     @Path("/roles/{id}/deactivate")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Deactivate a role",
         description = "Deactivate a role. Requires admin role."
@@ -229,7 +229,7 @@ public class RbacResource {
     // Permission endpoints
     @POST
     @Path("/permissions")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Create a new permission",
         description = "Create a new permission in the RBAC system. Requires admin role."
@@ -258,7 +258,7 @@ public class RbacResource {
 
     @GET
     @Path("/permissions")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Get all permissions",
         description = "Retrieve all permissions in the RBAC system. Requires admin role."
@@ -278,7 +278,7 @@ public class RbacResource {
 
     @GET
     @Path("/permissions/{id}")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Get permission by ID",
         description = "Retrieve a specific permission by its ID. Requires admin role."
@@ -303,7 +303,7 @@ public class RbacResource {
     // Role-Permission endpoints
     @POST
     @Path("/roles/{roleId}/permissions/{permissionId}")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Assign permission to role",
         description = "Assign a permission to a role. Requires admin role."
@@ -329,7 +329,7 @@ public class RbacResource {
 
     @DELETE
     @Path("/roles/{roleId}/permissions/{permissionId}")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Remove permission from role",
         description = "Remove a permission from a role. Requires admin role."
@@ -355,7 +355,7 @@ public class RbacResource {
 
     @GET
     @Path("/roles/{roleId}/permissions")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Get permissions for a role",
         description = "Retrieve all permissions assigned to a role. Requires admin role."
@@ -380,7 +380,7 @@ public class RbacResource {
     // User-Role endpoints
     @POST
     @Path("/users/{username}/roles/{roleId}")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Assign role to user",
         description = "Assign a role to a user. Requires admin role."
@@ -406,7 +406,7 @@ public class RbacResource {
 
     @DELETE
     @Path("/users/{username}/roles/{roleId}")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Remove role from user",
         description = "Remove a role from a user. Requires admin role."
@@ -432,7 +432,7 @@ public class RbacResource {
 
     @GET
     @Path("/users/{username}/roles")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Get roles for a user",
         description = "Retrieve all roles assigned to a user. Requires admin role."
@@ -456,7 +456,7 @@ public class RbacResource {
 
     @GET
     @Path("/users/{username}/permissions")
-    @RolesAllowed("admin")
+    @RolesAllowed("Admin")
     @Operation(
         summary = "Get permissions for a user",
         description = "Retrieve all permissions for a user (aggregated from all roles). Requires admin role."

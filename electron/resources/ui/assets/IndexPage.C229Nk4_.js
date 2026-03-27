@@ -1,1 +1,0 @@
-import{Q as e}from"./QPage.Bol3KtuZ.js";import{a as t,o as s,w as o,f as r}from"./index.Ba1QpUQ0.js";const l="/assets/pasa.B0TSjQ39.svg",m={__name:"IndexPage",setup(n){return(p,a)=>(s(),t(e,{class:"flex flex-center"},{default:o(()=>[...a[0]||(a[0]=[r("img",{alt:"Quasar logo",src:l,style:{width:"100%",height:"auto","max-height":"640px"}},null,-1)])]),_:1}))}};export{m as default};

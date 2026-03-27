@@ -1,12 +1,38 @@
-const { app, BrowserWindow, Menu, Tray, nativeImage, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, Tray, nativeImage, dialog, ipcMain, shell } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
 
+// Read .env early so CONFIG can use the port from it
+function readDotEnvSync() {
+  const envPath = path.join(__dirname, 'bin', '.env');
+  if (!fs.existsSync(envPath)) return {};
+  const vars = {};
+  for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) continue;
+    const eq = t.indexOf('=');
+    if (eq === -1) continue;
+    const k = t.slice(0, eq).trim();
+    const v = t.slice(eq + 1).trim().replace(/^["']|["']$/g, '');
+    if (k) vars[k] = v;
+  }
+  return vars;
+}
+
+const _envVars = readDotEnvSync();
+
+function resolveBackendUrl() {
+  if (process.env.BACKEND_URL) return process.env.BACKEND_URL;
+  if (_envVars.SERVER_URL) return _envVars.SERVER_URL;
+  const port = _envVars.HTTP_PORT || '8080';
+  return `http://localhost:${port}`;
+}
+
 const CONFIG = {
-  backendUrl: process.env.BACKEND_URL || 'http://localhost:8080',
-  healthEndpoint: '/q/health',
+  backendUrl: resolveBackendUrl(),
+  healthEndpoint: '/health',
   startupDelay: 5000,
   healthCheckInterval: 10000,
   getFrontendPath() {
@@ -20,39 +46,34 @@ const state = {
   statusWindow: null,
   tray: null,
   serverStatus: 'stopped',
-  serverUptime: null,
   startTime: null,
   healthCheckTimer: null,
   logs: [],
   maxLogs: 500,
 };
 
-function findJava() {
-  const candidates = [
-    process.env.JAVA_HOME ? path.join(process.env.JAVA_HOME, 'bin', 'java') : null,
-    '/usr/bin/java',
-    '/usr/local/bin/java',
-    '/opt/homebrew/bin/java',
-  ].filter(Boolean);
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
+// Return already-parsed .env vars and log the count
+function loadDotEnv() {
+  const envPath = path.join(__dirname, 'bin', '.env');
+  if (!fs.existsSync(envPath)) {
+    addLog('warn', 'No .env file found at electron/bin/.env');
+    return {};
   }
-  return 'java';
+  addLog('info', `Loaded ${Object.keys(_envVars).length} variable(s) from electron/bin/.env`);
+  return _envVars;
 }
 
-function findBackendJar() {
-  const packaged = path.join(process.resourcesPath, 'backend.jar');
-  if (fs.existsSync(packaged)) return packaged;
+// Resolve the native binary path
+function findBinary() {
+  const binaryName = process.platform === 'win32' ? 'pasa-auto-runner.exe' : 'pasa-auto-runner';
 
-  const candidates = fs.readdirSync(path.join(__dirname, '..'), { withFileTypes: true })
-    .filter(e => e.isFile() && e.name.endsWith('.jar') && e.name.includes('pasa-auto'))
-    .map(e => path.join(__dirname, '..', e.name));
+  // When packaged, electron-builder places extraResources under process.resourcesPath
+  const packedBinary = path.join(process.resourcesPath, 'bin', binaryName);
+  if (fs.existsSync(packedBinary)) return packedBinary;
 
-  if (candidates.length > 0) return candidates.sort().pop();
-
-  const devJar = path.join(__dirname, '..', 'target', 'pasa-auto-0.0.14-runner');
-  if (fs.existsSync(devJar)) return devJar;
+  // Development: binary lives next to main.js in electron/bin/
+  const devBinary = path.join(__dirname, 'bin', binaryName);
+  if (fs.existsSync(devBinary)) return devBinary;
 
   return null;
 }
@@ -62,33 +83,30 @@ function addLog(level, message) {
   const entry = { timestamp, level, message };
   state.logs.push(entry);
   if (state.logs.length > state.maxLogs) state.logs.shift();
-  if (state.mainWindow) {
-    state.mainWindow.webContents.send('log-entry', entry);
-  }
+
+  if (state.mainWindow) state.mainWindow.webContents.send('log-entry', entry);
+  if (state.statusWindow) state.statusWindow.webContents.send('log-entry', entry);
 }
 
 function checkServerHealth() {
   return new Promise((resolve) => {
     const url = new URL(CONFIG.healthEndpoint, CONFIG.backendUrl);
-    
-    http.get(url.toString(), { timeout: 5000 }, (res) => {
+    const req = http.get(url.toString(), { timeout: 5000 }, (res) => {
       const isHealthy = res.statusCode >= 200 && res.statusCode < 300;
-      addLog('info', `Health check: ${isHealthy ? 'OK' : 'FAILED'} (${res.statusCode})`);
       resolve(isHealthy);
-    }).on('error', (err) => {
-      addLog('warn', `Health check failed: ${err.message}`);
-      resolve(false);
     });
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => { req.destroy(); resolve(false); });
   });
 }
 
 async function startHealthCheck() {
   if (state.healthCheckTimer) clearInterval(state.healthCheckTimer);
-  
+
   state.healthCheckTimer = setInterval(async () => {
     const isHealthy = await checkServerHealth();
     const newStatus = isHealthy ? 'running' : 'unhealthy';
-    
+
     if (newStatus !== state.serverStatus) {
       state.serverStatus = newStatus;
       updateTray();
@@ -97,7 +115,15 @@ async function startHealthCheck() {
     }
   }, CONFIG.healthCheckInterval);
 
-  await checkServerHealth();
+  // Immediate check
+  const isHealthy = await checkServerHealth();
+  const newStatus = isHealthy ? 'running' : 'starting';
+  if (newStatus !== state.serverStatus) {
+    state.serverStatus = newStatus;
+    updateTray();
+    updateMenu();
+    notifyRenderer();
+  }
 }
 
 function stopHealthCheck() {
@@ -109,37 +135,48 @@ function stopHealthCheck() {
 
 async function startBackend() {
   if (state.backendProcess) {
-    addLog('warn', 'Backend already running');
-    return { success: false, message: 'Backend already running' };
+    addLog('warn', 'Server already running');
+    return { success: false, message: 'Server already running' };
   }
 
-  const jarPath = findBackendJar();
-  if (!jarPath) {
-    const error = 'Could not find pasa-auto JAR. Please build: mvn clean package -DskipTests';
+  const binaryPath = findBinary();
+  if (!binaryPath) {
+    const error = 'Could not find pasa-auto-runner binary at electron/bin/pasa-auto-runner';
     addLog('error', error);
-    dialog.showErrorBox('Backend Not Found', error);
+    dialog.showErrorBox('Binary Not Found', error);
     return { success: false, message: error };
   }
 
-  const java = findJava();
-  addLog('info', `Starting backend with: ${java}`);
-  addLog('info', `JAR: ${path.basename(jarPath)}`);
+  // Ensure the binary is executable
+  try {
+    fs.chmodSync(binaryPath, 0o755);
+  } catch (e) {
+    addLog('warn', `Could not set executable bit: ${e.message}`);
+  }
 
-  state.backendProcess = spawn(java, ['-jar', jarPath], {
+  addLog('info', `Starting server: ${binaryPath}`);
+
+  const dotEnvVars = loadDotEnv();
+  const spawnEnv = { ...process.env, ...dotEnvVars };
+
+  state.backendProcess = spawn(binaryPath, [], {
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
+    env: spawnEnv,
   });
 
   state.backendProcess.stdout.on('data', (data) => {
-    addLog('debug', data.toString().trim());
+    const lines = data.toString().trim().split('\n');
+    lines.forEach(line => line && addLog('debug', line));
   });
 
   state.backendProcess.stderr.on('data', (data) => {
-    addLog('error', data.toString().trim());
+    const lines = data.toString().trim().split('\n');
+    lines.forEach(line => line && addLog('error', line));
   });
 
-  state.backendProcess.on('exit', (code) => {
-    addLog('info', `Backend exited with code: ${code}`);
+  state.backendProcess.on('exit', (code, signal) => {
+    addLog('info', `Server exited (code=${code}, signal=${signal})`);
     state.backendProcess = null;
     state.serverStatus = 'stopped';
     state.startTime = null;
@@ -150,7 +187,7 @@ async function startBackend() {
   });
 
   state.backendProcess.on('error', (err) => {
-    addLog('error', `Failed to start backend: ${err.message}`);
+    addLog('error', `Failed to start server: ${err.message}`);
     state.backendProcess = null;
     state.serverStatus = 'error';
     stopHealthCheck();
@@ -166,102 +203,82 @@ async function startBackend() {
   notifyRenderer();
 
   addLog('info', `Waiting ${CONFIG.startupDelay / 1000}s for server startup...`);
-  
+
   setTimeout(async () => {
     await startHealthCheck();
-    if (state.mainWindow) {
+    if (state.serverStatus === 'running' && state.mainWindow) {
       state.mainWindow.reload();
     }
   }, CONFIG.startupDelay);
 
-  return { success: true, message: 'Backend starting...' };
+  return { success: true, message: 'Server starting...' };
 }
 
 function stopBackend() {
   if (!state.backendProcess) {
-    addLog('warn', 'No backend process to stop');
-    return { success: false, message: 'No backend process running' };
+    addLog('warn', 'No server process to stop');
+    return { success: false, message: 'No server process running' };
   }
 
-  addLog('info', 'Stopping backend...');
+  addLog('info', 'Stopping server...');
   stopHealthCheck();
+
   state.backendProcess.kill('SIGTERM');
-  
-  setTimeout(() => {
+
+  // Force kill if still running after 5s
+  const forceKillTimer = setTimeout(() => {
     if (state.backendProcess) {
-      addLog('warn', 'Force killing backend...');
+      addLog('warn', 'Force killing server (SIGKILL)...');
       state.backendProcess.kill('SIGKILL');
     }
-    state.serverStatus = 'stopped';
-    state.startTime = null;
-    updateMenu();
-    updateTray();
-    notifyRenderer();
-  }, 3000);
+  }, 5000);
 
-  return { success: true, message: 'Backend stopping...' };
+  state.backendProcess.once('exit', () => clearTimeout(forceKillTimer));
+
+  state.serverStatus = 'stopped';
+  state.startTime = null;
+  updateMenu();
+  updateTray();
+  notifyRenderer();
+
+  return { success: true, message: 'Server stopping...' };
 }
 
-function restartBackend() {
-  addLog('info', 'Restarting backend...');
+async function restartBackend() {
+  addLog('info', 'Restarting server...');
   stopBackend();
-  setTimeout(() => {
-    startBackend();
-  }, 3500);
+  await new Promise(resolve => setTimeout(resolve, 3500));
+  return startBackend();
 }
 
 function notifyRenderer() {
-  if (state.mainWindow) {
-    state.mainWindow.webContents.send('server-status', getServerStatus());
-  }
+  const status = getServerStatus();
+  if (state.mainWindow) state.mainWindow.webContents.send('server-status', status);
+  if (state.statusWindow) state.statusWindow.webContents.send('server-status', status);
 }
 
 function getServerStatus() {
   return {
     status: state.serverStatus,
     uptime: state.startTime ? Date.now() - state.startTime : null,
+    startTime: state.startTime,
     url: CONFIG.backendUrl,
     processId: state.backendProcess?.pid || null,
-    logs: state.logs.slice(-50),
   };
 }
 
 function updateMenu() {
-  createMenu();
-}
+  const isRunning = !!state.backendProcess;
 
-function createMenu() {
   const template = [
     {
       label: 'Service',
       submenu: [
         {
-          label: 'Start Backend',
-          click: () => startBackend(),
-          enabled: !state.backendProcess,
-        },
-        {
-          label: 'Stop Backend',
-          click: () => stopBackend(),
-          enabled: !!state.backendProcess,
-        },
-        {
-          label: 'Restart Backend',
-          click: () => restartBackend(),
-          enabled: !!state.backendProcess,
-        },
-        { type: 'separator' },
-        {
           label: `Status: ${state.serverStatus.toUpperCase()}`,
           enabled: false,
         },
         { type: 'separator' },
-        { role: 'quit' },
-      ],
-    },
-    {
-      label: 'View',
-      submenu: [
         {
           label: 'Server Manager',
           accelerator: 'CmdOrCtrl+Shift+S',
@@ -271,6 +288,12 @@ function createMenu() {
         { role: 'reload' },
         { role: 'forceReload' },
         { type: 'separator' },
+        { role: 'quit' },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
         { role: 'resetZoom' },
         { role: 'zoomIn' },
         { role: 'zoomOut' },
@@ -302,32 +325,47 @@ function updateTray() {
   switch (state.serverStatus) {
     case 'running':
       iconName = 'icon-green.png';
-      tooltip = `PazaAuto: Running\n${CONFIG.backendUrl}`;
+      tooltip = `PasaAuto: Running\n${CONFIG.backendUrl}`;
       break;
     case 'starting':
-      iconName = 'icon-yellow.png';
-      tooltip = 'PazaAuto: Starting...';
+      iconName = 'icon-red.png';
+      tooltip = 'PasaAuto: Starting...';
       break;
     case 'unhealthy':
-      iconName = 'icon-yellow.png';
-      tooltip = 'PazaAuto: Unhealthy';
+      iconName = 'icon-red.png';
+      tooltip = 'PasaAuto: Unhealthy';
       break;
     default:
       iconName = 'icon-red.png';
-      tooltip = 'PazaAuto: Stopped';
+      tooltip = 'PasaAuto: Stopped';
   }
 
   const iconPath = path.join(__dirname, 'resources', iconName);
-  const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+  const icon = fs.existsSync(iconPath)
+    ? nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 })
+    : nativeImage.createEmpty();
+
   state.tray.setImage(icon);
   state.tray.setToolTip(tooltip);
 
   const contextMenu = Menu.buildFromTemplate([
     { label: `Status: ${state.serverStatus.toUpperCase()}`, enabled: false },
     { type: 'separator' },
-    { label: 'Start', click: () => startBackend(), enabled: !state.backendProcess },
-    { label: 'Stop', click: () => stopBackend(), enabled: !!state.backendProcess },
-    { label: 'Restart', click: () => restartBackend(), enabled: !!state.backendProcess },
+    {
+      label: 'Start',
+      click: () => startBackend(),
+      enabled: !state.backendProcess,
+    },
+    {
+      label: 'Stop',
+      click: () => stopBackend(),
+      enabled: !!state.backendProcess,
+    },
+    {
+      label: 'Restart',
+      click: () => restartBackend(),
+      enabled: !!state.backendProcess,
+    },
     { type: 'separator' },
     { label: 'Server Manager', click: () => createStatusWindow() },
     { type: 'separator' },
@@ -340,24 +378,16 @@ function updateTray() {
 
 function createTray() {
   const iconPath = path.join(__dirname, 'resources', 'icon-red.png');
-  let icon = nativeImage.createFromPath(iconPath);
-  
-  if (icon.isEmpty()) {
-    icon = nativeImage.createEmpty();
-  } else {
-    icon = icon.resize({ width: 16, height: 16 });
-  }
-  
+  let icon = fs.existsSync(iconPath)
+    ? nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 })
+    : nativeImage.createEmpty();
+
   state.tray = new Tray(icon);
   updateTray();
 
   state.tray.on('click', () => {
     if (state.mainWindow) {
-      if (state.mainWindow.isVisible()) {
-        state.mainWindow.focus();
-      } else {
-        state.mainWindow.show();
-      }
+      state.mainWindow.isVisible() ? state.mainWindow.focus() : state.mainWindow.show();
     }
   });
 }
@@ -377,7 +407,15 @@ function createWindow() {
     show: false,
   });
 
-  state.mainWindow.loadFile(CONFIG.getFrontendPath());
+  const frontendPath = CONFIG.getFrontendPath();
+
+  if (fs.existsSync(frontendPath)) {
+    state.mainWindow.loadFile(frontendPath);
+  } else {
+    // Fallback: open backend URL directly in the window
+    addLog('warn', 'Frontend UI not found, loading backend URL directly');
+    state.mainWindow.loadURL(CONFIG.backendUrl);
+  }
 
   state.mainWindow.once('ready-to-show', () => {
     state.mainWindow.show();
@@ -388,12 +426,11 @@ function createWindow() {
     state.mainWindow = null;
   });
 
-  state.mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+  state.mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
     addLog('error', `Failed to load: ${errorDescription} (${errorCode})`);
   });
 
   state.mainWindow.webContents.on('did-finish-load', () => {
-    addLog('info', 'Application loaded successfully');
     notifyRenderer();
   });
 }
@@ -405,18 +442,17 @@ function createStatusWindow() {
   }
 
   state.statusWindow = new BrowserWindow({
-    width: 600,
-    height: 700,
-    minWidth: 400,
-    minHeight: 500,
+    width: 650,
+    height: 750,
+    minWidth: 450,
+    minHeight: 550,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
     },
     icon: path.join(__dirname, 'resources', 'icon-green.png'),
-    title: 'PazaAuto - Server Manager',
-    parent: null,
+    title: 'PasaAuto - Server Manager',
     modal: false,
   });
 
@@ -426,14 +462,7 @@ function createStatusWindow() {
     state.statusWindow = null;
   });
 
-  addLog('info', 'Status panel opened');
-}
-
-function closeStatusWindow() {
-  if (state.statusWindow) {
-    state.statusWindow.close();
-    state.statusWindow = null;
-  }
+  addLog('info', 'Server Manager opened');
 }
 
 function setupIPC() {
@@ -442,19 +471,17 @@ function setupIPC() {
   ipcMain.handle('stop-server', () => stopBackend());
   ipcMain.handle('restart-server', () => restartBackend());
   ipcMain.handle('get-logs', () => state.logs);
-  ipcMain.handle('clear-logs', () => {
-    state.logs = [];
-    return [];
-  });
-  ipcMain.handle('get-config', () => CONFIG);
+  ipcMain.handle('clear-logs', () => { state.logs = []; return []; });
+  ipcMain.handle('get-config', () => ({ backendUrl: CONFIG.backendUrl }));
+  ipcMain.handle('open-server-manager', () => createStatusWindow());
 }
 
 app.whenReady().then(() => {
   setupIPC();
-  createMenu();
+  updateMenu();
   createTray();
   createWindow();
-  
+
   if (process.env.AUTO_START !== 'false') {
     startBackend();
   }
@@ -463,20 +490,16 @@ app.whenReady().then(() => {
 app.on('before-quit', () => {
   stopHealthCheck();
   if (state.backendProcess) {
+    addLog('info', 'Shutting down server...');
     state.backendProcess.kill('SIGTERM');
   }
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  // Keep running in tray on all platforms when window is closed
+  // (do not quit)
 });
 
 app.on('activate', () => {
   if (state.mainWindow === null) createWindow();
-});
-
-app.on('quit', () => {
-  addLog('info', 'Application closing...');
 });

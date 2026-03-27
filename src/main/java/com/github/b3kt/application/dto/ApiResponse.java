@@ -1,19 +1,22 @@
 package com.github.b3kt.application.dto;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * Generic API response wrapper.
  */
+@Getter
+@Setter
+@NoArgsConstructor
 @RegisterForReflection
 public class ApiResponse<T> {
     private boolean success;
     private String message;
     private T data;
     private String error;
-
-    public ApiResponse() {
-    }
 
     public ApiResponse(boolean success, String message, T data) {
         this.success = success;
@@ -34,37 +37,5 @@ public class ApiResponse<T> {
         response.setSuccess(false);
         response.setError(error);
         return response;
-    }
-
-    public boolean isSuccess() {
-        return success;
-    }
-
-    public void setSuccess(boolean success) {
-        this.success = success;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public T getData() {
-        return data;
-    }
-
-    public void setData(T data) {
-        this.data = data;
-    }
-
-    public String getError() {
-        return error;
-    }
-
-    public void setError(String error) {
-        this.error = error;
     }
 }
