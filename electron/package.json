@@ -1,9 +1,10 @@
 {
-  "name": "pazaauto-electron",
+  "name": "pasa-auto-electron",
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "dev": "electron . --enable-logging",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "dist:mac": "electron-builder --mac",
@@ -15,16 +16,19 @@
     "electron-builder": "^24.9.1"
   },
   "build": {
-    "appId": "com.github.b3kt.pazaauto",
-    "productName": "PazaAuto",
+    "appId": "com.github.b3kt.pasa-auto",
+    "productName": "PasaAuto",
     "files": [
       "main.js",
+      "preload.js",
+      "status-panel.html",
       "resources/**/*"
     ],
     "extraResources": [
       {
-        "from": "../target/pasa-auto-0.0.14.jar",
-        "to": "backend.jar"
+        "from": "bin/",
+        "to": "bin/",
+        "filter": ["pasa-auto-runner", "pasa-auto-runner.exe"]
       }
     ],
     "directories": {
@@ -32,13 +36,16 @@
     },
     "mac": {
       "category": "public.app-category.business",
-      "target": ["dmg", "zip"]
+      "target": ["dmg", "zip"],
+      "icon": "resources/icon-green.png"
     },
     "win": {
-      "target": ["nsis", "portable"]
+      "target": ["nsis", "portable"],
+      "icon": "resources/icon-green.png"
     },
     "linux": {
-      "target": ["AppImage", "deb"]
+      "target": ["AppImage", "deb"],
+      "icon": "resources/icon-green.png"
     }
   }
 }
