@@ -40,6 +40,18 @@ public class JwtTokenServiceImpl implements JwtTokenService {
     @Inject
     RbacService rbacService;
 
+    public void setIssuer(String issuer) {
+        this.issuer = issuer;
+    }
+
+    public void setExpirationHours(long expirationHours) {
+        this.expirationHours = expirationHours;
+    }
+
+    public void setRefreshExpirationDays(long refreshExpirationDays) {
+        this.refreshExpirationDays = refreshExpirationDays;
+    }
+
     @Override
     public String generateToken(User user) {
         io.smallrye.jwt.build.JwtClaimsBuilder jwtBuilder = Jwt.issuer(issuer)

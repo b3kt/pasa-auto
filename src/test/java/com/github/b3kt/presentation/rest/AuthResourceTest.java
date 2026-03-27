@@ -5,7 +5,6 @@ import com.github.b3kt.application.dto.LoginResponse;
 import com.github.b3kt.application.dto.UserInfo;
 import com.github.b3kt.application.service.AuthService;
 import com.github.b3kt.domain.exception.AuthenticationException;
-import com.github.b3kt.integration.IntegrationTestBase;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -21,7 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @QuarkusTest
-class AuthResourceTest extends IntegrationTestBase {
+class AuthResourceTest {
 
     @InjectMock
     AuthService authService;

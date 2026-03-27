@@ -1,15 +1,11 @@
 package com.github.b3kt.integration;
 
-import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@QuarkusTest
 @Testcontainers
-@QuarkusTestResource(PostgresTestResource.class)
 public abstract class IntegrationTestBase {
 
     @Container

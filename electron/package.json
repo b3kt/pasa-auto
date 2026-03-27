@@ -4,11 +4,15 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "dev": "electron . --enable-logging",
+    "build:frontend": "cd ../src/main/webui && npm run build",
+    "copy:frontend": "rm -rf resources/ui && mkdir -p resources/ui && cp -r ../src/main/webui/dist/spa/* resources/ui/",
+    "prebuild": "npm run build:frontend && npm run copy:frontend",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder",
-    "dist:mac": "electron-builder --mac",
-    "dist:win": "electron-builder --win",
-    "dist:linux": "electron-builder --linux"
+    "dist": "npm run prebuild && electron-builder",
+    "dist:mac": "npm run prebuild && electron-builder --mac",
+    "dist:win": "npm run prebuild && electron-builder --win",
+    "dist:linux": "npm run prebuild && electron-builder --linux"
   },
   "devDependencies": {
     "electron": "^28.0.0",
@@ -19,26 +23,25 @@
     "productName": "PazaAuto",
     "files": [
       "main.js",
+      "preload.js",
+      "status-panel.html",
       "resources/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "../target/pasa-auto-0.0.14.jar",
-        "to": "backend.jar"
-      }
     ],
     "directories": {
       "output": "dist"
     },
     "mac": {
       "category": "public.app-category.business",
-      "target": ["dmg", "zip"]
+      "target": ["dmg", "zip"],
+      "icon": "resources/icon-green.png"
     },
     "win": {
-      "target": ["nsis", "portable"]
+      "target": ["nsis", "portable"],
+      "icon": "resources/icon-green.png"
     },
     "linux": {
-      "target": ["AppImage", "deb"]
+      "target": ["AppImage", "deb"],
+      "icon": "resources/icon-green.png"
     }
   }
 }

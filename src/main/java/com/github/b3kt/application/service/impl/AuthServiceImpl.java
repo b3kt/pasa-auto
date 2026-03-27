@@ -34,6 +34,17 @@ public class AuthServiceImpl implements AuthService {
     @Inject
     PasswordEncoder passwordEncoder;
 
+    public AuthServiceImpl() {
+    }
+
+    public AuthServiceImpl(UserRepository userRepository, TbKaryawanRepository tbKaryawanRepository,
+                           JwtTokenService jwtTokenService, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.tbKaryawanRepository = tbKaryawanRepository;
+        this.jwtTokenService = jwtTokenService;
+        this.passwordEncoder = passwordEncoder;
+    }
+
     @Override
     public LoginResponse login(String username, String password) {
         // Find user

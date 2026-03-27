@@ -1,54 +1,83 @@
 package com.github.b3kt.infrastructure.security;
 
-import com.github.b3kt.domain.model.User;
-import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
-
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
-import java.util.HashSet;
+import java.util.Base64;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.*;
 
-@QuarkusTest
-public class JwtTokenServiceImplTest {
-
-    @Inject
-    JwtTokenServiceImpl jwtTokenService;
+class JwtTokenServiceImplTest {
 
     @Test
-    public void generateToken_shouldNotThrowNPE_whenKaryawanIdIsNull() {
-        // Arrange
-        User user = new User();
-        user.setUsername("testuser");
-        user.setEmail("test@example.com");
-        user.setRoles(new HashSet<>());
-        // karyawanId and karyawanNama are null by default
-
-        // Act & Assert
-        assertDoesNotThrow(() -> {
-            String token = jwtTokenService.generateToken(user);
-            assertNotNull(token);
-        });
+    @DisplayName("Should validate refresh token format")
+    void validateRefreshToken_shouldCheckFormat() {
+        JwtTokenServiceImpl service = new JwtTokenServiceImpl();
+        
+        assertNull(service.validateRefreshToken(null));
+        assertNull(service.validateRefreshToken(""));
+        assertNull(service.validateRefreshToken("invalid"));
+        assertNull(service.validateRefreshToken("only.two"));
+        assertNull(service.validateRefreshToken("not.a.valid.jwt.token"));
     }
 
-    @Disabled
     @Test
-    public void generateToken_shouldWork_whenKaryawanIdIsPresent() {
-        // Arrange
-        User user = new User();
-        user.setUsername("testuser");
-        user.setEmail("test@example.com");
-        user.setRoles(new HashSet<>());
-        user.setKaryawanId(123L);
-        user.setKaryawanNama("Test Karyawan");
+    @DisplayName("Should return expiration seconds greater than zero")
+    void getTokenExpirationSeconds_shouldReturnConfiguredValue() {
+        JwtTokenServiceImpl service = new JwtTokenServiceImpl();
+        service.setExpirationHours(24);
+        
+        long result = service.getTokenExpirationSeconds();
+        
+        assertEquals(86400L, result);
+    }
 
-        // Act & Assert
-        assertDoesNotThrow(() -> {
-            String token = jwtTokenService.generateToken(user);
-            assertNotNull(token);
-        });
+    @Test
+    @DisplayName("Should decode valid refresh token payload")
+    void validateRefreshToken_shouldDecodePayload() {
+        JwtTokenServiceImpl service = new JwtTokenServiceImpl();
+        
+        String validPayload = "{\"sub\":\"testuser\",\"type\":\"refresh\",\"exp\":9999999999}";
+        String encoded = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(validPayload.getBytes());
+        String token = "header." + encoded + ".signature";
+        
+        String result = service.validateRefreshToken(token);
+        
+        assertEquals("testuser", result);
+    }
+
+    @Test
+    @DisplayName("Should reject token without refresh type")
+    void validateRefreshToken_shouldRejectNonRefreshToken() {
+        JwtTokenServiceImpl service = new JwtTokenServiceImpl();
+        
+        String payload = "{\"sub\":\"testuser\",\"exp\":9999999999}";
+        String encoded = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(payload.getBytes());
+        String token = "header." + encoded + ".signature";
+        
+        assertNull(service.validateRefreshToken(token));
+    }
+
+    @Test
+    @DisplayName("Should reject expired token")
+    void validateRefreshToken_shouldRejectExpiredToken() {
+        JwtTokenServiceImpl service = new JwtTokenServiceImpl();
+        
+        String payload = "{\"sub\":\"testuser\",\"type\":\"refresh\",\"exp\":0}";
+        String encoded = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(payload.getBytes());
+        String token = "header." + encoded + ".signature";
+        
+        assertNull(service.validateRefreshToken(token));
+    }
+
+    @Test
+    @DisplayName("Should handle malformed Base64 gracefully")
+    void validateRefreshToken_shouldHandleMalformedBase64() {
+        JwtTokenServiceImpl service = new JwtTokenServiceImpl();
+        
+        assertNull(service.validateRefreshToken("not!!!base64@!.header.signature"));
     }
 }

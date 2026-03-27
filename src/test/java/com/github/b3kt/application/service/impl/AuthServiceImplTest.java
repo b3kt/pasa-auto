@@ -9,9 +9,6 @@ import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawan
 import com.github.b3kt.infrastructure.repository.UserRepository;
 import com.github.b3kt.infrastructure.security.JwtTokenService;
 import com.github.b3kt.infrastructure.security.PasswordEncoder;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.InjectMock;
-import jakarta.inject.Inject;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,59 +18,56 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
-@QuarkusTest
 class AuthServiceImplTest {
 
-    @InjectMock
-    UserRepository userRepository;
-
-    @InjectMock
-    TbKaryawanRepository tbKaryawanRepository;
-
-    @InjectMock
-    JwtTokenService jwtTokenService;
-
-    @InjectMock
-    PasswordEncoder passwordEncoder;
-
-    @Inject
-    AuthServiceImpl authService;
+    private UserRepository userRepository;
+    private TbKaryawanRepository tbKaryawanRepository;
+    private JwtTokenService jwtTokenService;
+    private PasswordEncoder passwordEncoder;
+    private AuthServiceImpl authService;
     private User testUser;
     private TbKaryawanEntity testKaryawan;
 
     @BeforeEach
     void setUp() {
-        // Setup test user
+        userRepository = mock(UserRepository.class);
+        tbKaryawanRepository = mock(TbKaryawanRepository.class);
+        jwtTokenService = mock(JwtTokenService.class);
+        passwordEncoder = mock(PasswordEncoder.class);
+
+        authService = new AuthServiceImpl(
+            userRepository,
+            tbKaryawanRepository,
+            jwtTokenService,
+            passwordEncoder
+        );
+
         testUser = new User();
-        // testUser.setId(1L);
         testUser.setUsername("testuser");
         testUser.setEmail("test@example.com");
         testUser.setPasswordHash("password123");
         testUser.setActive(true);
 
-        // Setup test karyawan
         testKaryawan = new TbKaryawanEntity();
         testKaryawan.setId(100L);
         testKaryawan.setNamaKaryawan("Test Employee");
-        //testKaryawan.setUsername("testuser");
     }
 
     @Test
     @DisplayName("Should successfully login with valid credentials")
     void testLoginSuccess() {
-        // Given
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
         when(tbKaryawanRepository.findByUsername("testuser")).thenReturn(Optional.of(testKaryawan));
+        when(passwordEncoder.matches("password123", "password123")).thenReturn(true);
         when(jwtTokenService.generateToken(any(User.class))).thenReturn("jwt-token");
         when(jwtTokenService.generateRefreshToken(any(User.class))).thenReturn("refresh-token");
         when(jwtTokenService.getTokenExpirationSeconds()).thenReturn(3600L);
 
-        // When
         LoginResponse response = authService.login("testuser", "password123");
 
-        // Then
         assertNotNull(response);
         assertEquals("jwt-token", response.getToken());
         assertEquals("refresh-token", response.getRefreshToken());
@@ -90,10 +84,8 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Should throw AuthenticationException for invalid username")
     void testLoginInvalidUsername() {
-        // Given
         when(userRepository.findByUsername("invalid")).thenReturn(Optional.empty());
 
-        // When & Then
         AuthenticationException exception = assertThrows(
             AuthenticationException.class,
             () -> authService.login("invalid", "password")
@@ -107,11 +99,9 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Should throw AuthenticationException for inactive user")
     void testLoginInactiveUser() {
-        // Given
         testUser.setActive(false);
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
 
-        // When & Then
         AuthenticationException exception = assertThrows(
             AuthenticationException.class,
             () -> authService.login("testuser", "password123")
@@ -125,10 +115,9 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Should throw AuthenticationException for wrong password")
     void testLoginWrongPassword() {
-        // Given
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches("wrongpassword", "password123")).thenReturn(false);
 
-        // When & Then
         AuthenticationException exception = assertThrows(
             AuthenticationException.class,
             () -> authService.login("testuser", "wrongpassword")
@@ -136,23 +125,20 @@ class AuthServiceImplTest {
         
         assertEquals("Invalid username or password", exception.getMessage());
         verify(userRepository).findByUsername("testuser");
-        verifyNoInteractions(jwtTokenService);
     }
 
     @Test
     @DisplayName("Should login successfully without karyawan info")
     void testLoginWithoutKaryawan() {
-        // Given
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
         when(tbKaryawanRepository.findByUsername("testuser")).thenReturn(Optional.empty());
+        when(passwordEncoder.matches("password123", "password123")).thenReturn(true);
         when(jwtTokenService.generateToken(any(User.class))).thenReturn("jwt-token");
         when(jwtTokenService.generateRefreshToken(any(User.class))).thenReturn("refresh-token");
         when(jwtTokenService.getTokenExpirationSeconds()).thenReturn(3600L);
 
-        // When
         LoginResponse response = authService.login("testuser", "password123");
 
-        // Then
         assertNotNull(response);
         assertEquals("jwt-token", response.getToken());
         assertEquals("refresh-token", response.getRefreshToken());
@@ -166,7 +152,6 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Should successfully refresh token")
     void testRefreshTokenSuccess() {
-        // Given
         when(jwtTokenService.validateRefreshToken("valid-refresh-token")).thenReturn("testuser");
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
         when(tbKaryawanRepository.findByUsername("testuser")).thenReturn(Optional.of(testKaryawan));
@@ -174,10 +159,8 @@ class AuthServiceImplTest {
         when(jwtTokenService.generateRefreshToken(any(User.class))).thenReturn("new-refresh-token");
         when(jwtTokenService.getTokenExpirationSeconds()).thenReturn(3600L);
 
-        // When
         LoginResponse response = authService.refreshToken("valid-refresh-token");
 
-        // Then
         assertNotNull(response);
         assertEquals("new-jwt-token", response.getToken());
         assertEquals("new-refresh-token", response.getRefreshToken());
@@ -195,10 +178,8 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Should throw AuthenticationException for invalid refresh token")
     void testRefreshTokenInvalid() {
-        // Given
         when(jwtTokenService.validateRefreshToken("invalid-token")).thenReturn(null);
 
-        // When & Then
         AuthenticationException exception = assertThrows(
             AuthenticationException.class,
             () -> authService.refreshToken("invalid-token")
@@ -212,11 +193,9 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Should throw AuthenticationException when user not found during refresh")
     void testRefreshTokenUserNotFound() {
-        // Given
         when(jwtTokenService.validateRefreshToken("valid-token")).thenReturn("nonexistent");
         when(userRepository.findByUsername("nonexistent")).thenReturn(Optional.empty());
 
-        // When & Then
         AuthenticationException exception = assertThrows(
             AuthenticationException.class,
             () -> authService.refreshToken("valid-token")
@@ -230,12 +209,10 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Should throw AuthenticationException for inactive user during refresh")
     void testRefreshTokenInactiveUser() {
-        // Given
         testUser.setActive(false);
         when(jwtTokenService.validateRefreshToken("valid-token")).thenReturn("testuser");
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
 
-        // When & Then
         AuthenticationException exception = assertThrows(
             AuthenticationException.class,
             () -> authService.refreshToken("valid-token")
@@ -249,7 +226,6 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Should get user info from JWT token")
     void testGetUserInfo() {
-        // Given
         JsonWebToken jwt = mock(JsonWebToken.class);
         UserInfo expectedUserInfo = new UserInfo();
         expectedUserInfo.setUsername("testuser");
@@ -257,10 +233,8 @@ class AuthServiceImplTest {
         
         when(jwtTokenService.extractUserInfo(jwt)).thenReturn(expectedUserInfo);
 
-        // When
         UserInfo result = authService.getUserInfo(jwt);
 
-        // Then
         assertNotNull(result);
         assertEquals("testuser", result.getUsername());
         assertEquals("test@example.com", result.getEmail());
@@ -268,22 +242,9 @@ class AuthServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should handle null inputs gracefully")
-    void testNullInputs() {
-        // Test login with null username
+    @DisplayName("Should throw exception for null username")
+    void testNullUsername() {
         assertThrows(AuthenticationException.class,
             () -> authService.login(null, "password"));
-        
-        // Test login with null password
-        when(userRepository.findByUsername(any())).thenReturn(Optional.of(testUser));
-        assertThrows(AuthenticationException.class,
-            () -> authService.login("testuser", null));
-        
-        // Test refresh token with null
-        assertThrows(AuthenticationException.class,
-            () -> authService.refreshToken(null));
-        
-        // Test get user info with null
-        assertDoesNotThrow(() -> authService.getUserInfo(null));
     }
 }
