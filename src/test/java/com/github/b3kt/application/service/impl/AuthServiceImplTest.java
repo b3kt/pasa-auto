@@ -66,6 +66,7 @@ class AuthServiceImplTest {
         // Given
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
         when(tbKaryawanRepository.findByUsername("testuser")).thenReturn(Optional.of(testKaryawan));
+        when(passwordEncoder.matches("password123", "password123")).thenReturn(true);
         when(jwtTokenService.generateToken(any(User.class))).thenReturn("jwt-token");
         when(jwtTokenService.generateRefreshToken(any(User.class))).thenReturn("refresh-token");
         when(jwtTokenService.getTokenExpirationSeconds()).thenReturn(3600L);
@@ -145,6 +146,7 @@ class AuthServiceImplTest {
         // Given
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
         when(tbKaryawanRepository.findByUsername("testuser")).thenReturn(Optional.empty());
+        when(passwordEncoder.matches("password123", "password123")).thenReturn(true);
         when(jwtTokenService.generateToken(any(User.class))).thenReturn("jwt-token");
         when(jwtTokenService.generateRefreshToken(any(User.class))).thenReturn("refresh-token");
         when(jwtTokenService.getTokenExpirationSeconds()).thenReturn(3600L);
