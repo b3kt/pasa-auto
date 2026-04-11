@@ -23,7 +23,7 @@ public abstract class AbstractCrudResource<T, ID> {
 
     protected abstract String getEntityName();
 
-    protected DateTimeFormatter spkNoformatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+    protected static final DateTimeFormatter SPK_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     @GET
     @WithSpan("list-all-entities")

@@ -1,6 +1,5 @@
 package com.github.b3kt.application.service.pazaauto;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto;
@@ -34,9 +33,7 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
     private final TbKaryawanRepository karyawanRepository;
     private final TbPelangganService pelangganService;
     private final TbSpkDetailRepository detailRepository;
-    private final ObjectMapper objectMapper;
-    @Inject
-    EntityManager entityManager;
+    private final EntityManager entityManager;
 
     @Override
     protected PanacheRepositoryBase<TbSpkEntity, Long> getRepository() {

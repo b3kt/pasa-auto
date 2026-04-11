@@ -1,5 +1,6 @@
 package com.github.b3kt.application.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 /**
@@ -8,6 +9,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 @Schema(description = "Request to refresh access token using refresh token")
 public class RefreshTokenRequest {
     
+    @NotBlank(message = "Refresh token harus diisi")
     @Schema(description = "The refresh token", required = true)
     private String refreshToken;
     
