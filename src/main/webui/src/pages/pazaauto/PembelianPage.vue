@@ -497,6 +497,7 @@
 import {ref, onMounted, watch, nextTick, computed} from 'vue'
 import {api} from 'boot/axios'
 import {useQuasar, date} from 'quasar'
+import { useDateFilter } from 'src/composables/useDateFilter'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
 
@@ -533,33 +534,11 @@ const searchText = ref('')
 const filterJenisPembelian = ref(null)
 const filterKategoriOperasional = ref(null)
 const filterStatus = ref(loadFilterFromStorage())
-const todayVal = new Date()
-const yesterdayVal = date.subtractFromDate(todayVal, {days: 1})
-const dateRange = ref({
-  from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'),
-  to: date.formatDate(todayVal, 'YYYY/MM/DD')
-})
+const { dateRange, dateRangeText, clearDateRange } = useDateFilter('pembelian')
 
 // Print dialog state
 const showPrintDialog = ref(false)
 const printPreviewContent = ref('')
-
-// Computed property for date range display text
-const dateRangeText = computed(() => {
-  if (!dateRange.value || (!dateRange.value.from && !dateRange.value.to)) {
-    return ''
-  }
-  if (dateRange.value.from && dateRange.value.to) {
-    return `${dateRange.value.from} - ${dateRange.value.to}`
-  }
-  if (dateRange.value.from) {
-    return `From: ${dateRange.value.from}`
-  }
-  if (dateRange.value.to) {
-    return `To: ${dateRange.value.to}`
-  }
-  return ''
-})
 
 const rows = ref([])
 const showDeleteDialog = ref(false)
@@ -877,9 +856,7 @@ const onSearch = (val) => {
   fetchPembelian()
 }
 
-const clearDateRange = () => {
-  dateRange.value = {from: '', to: ''}
-}
+
 
 const formatDateTime = (value) => {
   if (!value) return ''

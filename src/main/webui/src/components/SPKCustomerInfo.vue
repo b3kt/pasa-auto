@@ -93,4 +93,12 @@ const handleJenisChange = (value) => {
     emit('check:vehicle', props.merk, value)
   }
 }
+
+const filterMerk = (inputVal, doneFn) => {
+  emit('filter:merk', inputVal, doneFn)
+}
+
+const filterJenis = (inputVal, doneFn) => {
+  emit('filter:jenis', inputVal, doneFn)
+}
 </script>

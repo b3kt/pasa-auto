@@ -176,6 +176,7 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
+import browserCache from '../utils/browserCache.js'
 import GenericDialog from 'components/GenericDialog.vue'
 import { useAuthStore } from 'stores/auth-store'
 import { computed } from 'vue'
@@ -199,11 +200,24 @@ const filteredKaryawanOptions = ref([])
 const historyRows = ref([])
 const showMarkAbsenceDialog = ref(false)
 
+const _absensiDateCache = browserCache.getItem('date-filter-absensi')
+const _today = new Date().toISOString().slice(0, 10)
 const filters = ref({
-    startDate: null,
-    endDate: null,
+    startDate: _absensiDateCache?.cachedDate === _today ? _absensiDateCache.startDate : null,
+    endDate: _absensiDateCache?.cachedDate === _today ? _absensiDateCache.endDate : null,
     status: null
 })
+
+watch(
+  () => [filters.value.startDate, filters.value.endDate],
+  ([startDate, endDate]) => {
+    if (startDate || endDate) {
+      browserCache.setItem('date-filter-absensi', { startDate, endDate, cachedDate: _today }, 24 * 60 * 60 * 1000)
+    } else {
+      browserCache.removeItem('date-filter-absensi')
+    }
+  }
+)
 
 const historyPagination = ref({
     page: 1,
