@@ -1338,7 +1338,8 @@ const fetchJenisOptions = async (merk = null) => {
 }
 
 // Filter functions for dropdowns
-const filterMerk = (val, update, abort) => {
+// eslint-disable-next-line no-unused-vars
+const filterMerk = (val, update, _abort) => {
   update(() => {
     if (val === '') {
       // Return all merk options
@@ -1351,7 +1352,8 @@ const filterMerk = (val, update, abort) => {
   })
 }
 
-const filterJenis = (val, update, abort) => {
+// eslint-disable-next-line no-unused-vars
+const filterJenis = (val, update, _abort) => {
   update(() => {
     if (val === '') {
       // Return filtered jenis options
