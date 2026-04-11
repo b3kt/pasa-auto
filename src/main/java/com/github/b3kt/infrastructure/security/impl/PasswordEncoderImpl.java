@@ -8,6 +8,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 @ApplicationScoped
 public class PasswordEncoderImpl implements PasswordEncoder {
 
+    private static final String BCRYPT_PREFIX = "$2";
+
     @Override
     public String encode(String rawPassword) {
         return BcryptUtil.bcryptHash(rawPassword);
@@ -15,8 +17,19 @@ public class PasswordEncoderImpl implements PasswordEncoder {
 
     @Override
     public boolean matches(String rawPassword, String encodedPassword) {
-        return rawPassword != null && 
-        BcryptUtil.matches(rawPassword, encodedPassword);
+        if (rawPassword == null || encodedPassword == null) {
+            return false;
+        }
+        
+        if (encodedPassword.startsWith(BCRYPT_PREFIX)) {
+            return BcryptUtil.matches(rawPassword, encodedPassword);
+        }
+        
+        return rawPassword.equals(encodedPassword);
+    }
+
+    public boolean isBcryptHash(String encodedPassword) {
+        return encodedPassword != null && encodedPassword.startsWith(BCRYPT_PREFIX);
     }
 }
 

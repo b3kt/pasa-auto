@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- **Fixed**: Password verification in `AuthServiceImpl` now uses `PasswordEncoder.matches()` with backward compatibility for plain-text passwords
+- **Enhanced**: `PasswordEncoderImpl` supports both bcrypt-hashed and plain-text passwords for seamless migration
+- **Fixed**: `SecurityProperties` interface properly configured as SmallRye ConfigMapping (removed stub method)
+
+### Changed
 - **Fixed**: Replaced hardcoded security salt `1234567890` with environment variable `APP_SECURITY_SALT`
 - **Fixed**: Removed hardcoded SSL certificate paths `/etc/letsencrypt/live/pasa-auto.web.id/` 
 - **Fixed**: Updated JWT configuration to require explicit environment variables instead of classpath defaults
