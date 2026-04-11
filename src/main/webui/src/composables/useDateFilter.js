@@ -9,14 +9,15 @@ const CACHE_TTL = 24 * 60 * 60 * 1000 // 24 hours
  * The cache resets automatically when the calendar date changes (a new day begins).
  *
  * @param {string} pageKey - Unique key identifying the page (e.g. 'spk', 'penjualan')
+ * @param {{ from: string, to: string }|null} customDefault - Optional default range (YYYY/MM/DD). Defaults to yesterday–today.
  */
-export function useDateFilter(pageKey) {
+export function useDateFilter(pageKey, customDefault = null) {
   const cacheKey = `date-filter-${pageKey}`
   const today = date.formatDate(new Date(), 'YYYY-MM-DD')
 
   const todayVal = new Date()
   const yesterdayVal = date.subtractFromDate(todayVal, { days: 1 })
-  const defaultRange = {
+  const defaultRange = customDefault || {
     from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'),
     to: date.formatDate(todayVal, 'YYYY/MM/DD')
   }

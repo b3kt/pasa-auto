@@ -83,6 +83,10 @@ export default {
         title: 'Laporan',
         caption: 'Laporan'
       },
+      summary: {
+        title: 'Ringkasan',
+        caption: 'Ringkasan Pemasukan & Pengeluaran'
+      },
       admin: {
         title: 'Admin',
         caption: 'Admin',

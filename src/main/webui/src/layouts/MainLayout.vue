@@ -195,6 +195,13 @@ const linksList = computed(() => [
     visible: hasRole('Admin') || hasRole('Owner'),
     children: [
       {
+        title: t('app.menu.summary.title'),
+        caption: t('app.menu.summary.caption'),
+        icon: 'assessment',
+        visible: hasRole('Admin') || hasRole('Owner'),
+        link: '/pazaauto/summary'
+      },
+      {
         title: t('app.menu.recap.buy.title'),
         caption: t('app.menu.recap.buy.caption'),
         icon: 'warehouse',

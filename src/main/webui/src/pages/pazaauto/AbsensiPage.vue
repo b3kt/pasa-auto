@@ -176,7 +176,7 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
-import browserCache from '../utils/browserCache.js'
+import browserCache from '../../utils/browserCache.js'
 import GenericDialog from 'components/GenericDialog.vue'
 import { useAuthStore } from 'stores/auth-store'
 import { computed } from 'vue'

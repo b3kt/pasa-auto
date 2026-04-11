@@ -6,6 +6,8 @@ import com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto;
 import com.github.b3kt.application.helper.QueryFilterBuilder;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbBarangRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbJasaRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkDetailRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkRepository;
@@ -34,6 +36,8 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
     private final TbKaryawanRepository karyawanRepository;
     private final TbPelangganService pelangganService;
     private final TbSpkDetailRepository detailRepository;
+    private final TbBarangRepository barangRepository;
+    private final TbJasaRepository jasaRepository;
     private final EntityManager entityManager;
 
     @Override
@@ -120,14 +124,23 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
                     detail.setId(new com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailId());
                 }
                 detail.getId().setNoSpk(entity.getNoSpk());
-                // Ensure namaJasa is set from frontend or logic
-                if (detail.getId().getNamaJasa() == null || detail.getId().getNamaJasa().isEmpty()) {
-                    // Fallback or error? Assuming frontend sends it.
-                    // If it's a Barang, we might need to use namaBarang as namaJasa for the key?
-                    // The requirement says "Detail SPK can be TbJasaEntity / TbBarangEntity"
-                    // But TbSpkDetailId has 'namaJasa'.
-                    // We'll assume the frontend puts the item name in 'namaJasa' of the ID.
+
+                // Ensure hargaMaster is populated from master data if not set
+                if (detail.getHargaMaster() == null) {
+                    if (detail.getSparepartId() != null) {
+                        barangRepository.findByIdOptional(detail.getSparepartId())
+                            .ifPresent(barang -> detail.setHargaMaster(barang.getHargaJual()));
+                    } else if (detail.getJasaId() != null) {
+                        jasaRepository.findByIdOptional(detail.getJasaId())
+                            .ifPresent(jasa -> detail.setHargaMaster(
+                                jasa.getHargaJasa() != null ? java.math.BigDecimal.valueOf(jasa.getHargaJasa()) : null));
+                    }
                 }
+                // If no custom price set, harga equals hargaMaster
+                if (detail.getHarga() == null && detail.getHargaMaster() != null) {
+                    detail.setHarga(detail.getHargaMaster());
+                }
+
                 detailRepository.persist(detail);
             }
         }
