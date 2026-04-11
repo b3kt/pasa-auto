@@ -246,14 +246,14 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { date } from 'quasar'
 import {
   Chart as ChartJS,
-  CategoryScale, LinearScale, BarElement, LineElement,
+  CategoryScale, LinearScale, BarElement, LineElement, BarController, LineController,
   PointElement, ArcElement, Title, Tooltip, Legend
 } from 'chart.js'
-import { Bar, Doughnut } from 'vue-chartjs'
+import { Bar, Doughnut, Line } from 'vue-chartjs'
 import { api } from 'boot/axios'
 import { useDateFilter } from 'src/composables/useDateFilter'
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend)
+ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, BarController, LineController, PointElement, ArcElement, Title, Tooltip, Legend)
 
 // ── Date filter — default: first day of current month → today ─────────────
 const todayVal = new Date()
