@@ -1,0 +1,277 @@
+<html>
+
+<head>
+    <title>Print Penjualan ${data.noPenjualan}</title>
+    <style>
+        @page {
+            size: letter;
+            margin: 0.5cm;
+        }
+
+        body,
+        table,
+        td,
+        th {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 8pt;
+            margin: 0;
+            padding: 2px;
+            color: #000;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 21cm;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .company-info {
+            width: 60%;
+        }
+
+        .company-name {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .invoice-title {
+            width: 40%;
+            text-align: right;
+        }
+
+        .invoice-header {
+            font-size: 11pt;
+            font-weight: bold;
+            border: 1px solid #000;
+            padding: 5px 15px;
+            display: inline-block;
+        }
+
+        .info-section {
+            display: flex;
+            margin-bottom: 5px;
+            border-top: 1px double #000;
+            border-bottom: 1px double #000;
+            padding: 5px 0;
+        }
+
+        .info-left {
+            width: 55%;
+        }
+
+        .info-right {
+            width: 45%;
+        }
+
+        .info-row {
+            display: flex;
+            margin-bottom: 1px;
+        }
+
+        .label {
+            width: 120px;
+        }
+
+        .separator {
+            width: 15px;
+        }
+
+        .value {
+            flex: 1;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 5px;
+        }
+
+        .items-table th {
+            border-bottom: 1px solid #000;
+            padding: 3px 2px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .items-table td {
+            padding: 2px 2px;
+            vertical-align: top;
+        }
+
+        .text-right {
+            text-align: right !important;
+        }
+
+        .text-center {
+            text-align: center !important;
+        }
+
+        .footer-section {
+            display: flex;
+            margin-top: 5px;
+            border-top: 1px solid #000;
+            padding-top: 5px;
+        }
+
+        .footer-left {
+            width: 65%;
+            font-size: 8pt;
+        }
+
+        .footer-right {
+            width: 35%;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1px;
+        }
+
+        .grand-total {
+            font-weight: bold;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+            padding: 3px 0;
+            margin: 3px 0;
+        }
+
+        .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .sig-box {
+            width: 30%;
+        }
+
+        .sig-line {
+            margin-top: 40px;
+        }
+
+        .uppercase {
+            text-transform: uppercase;
+        }
+
+        .group-header {
+            font-weight: bold;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="company-info">
+                <div class="company-name">PASA AUTO</div>
+                <div>JL. REGENSI 2 RUKO WISMA HARAPAN BLOK D5 NO. 25,</div>
+                <div>GEMBOR, PERIUK, KOTA TANGERANG</div>
+                <div>TLP: 0813 8101 46747</div>
+            </div>
+            <div class="invoice-title">
+                <div class="invoice-header">REKAP PEMBELIAN</div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="info-left">
+                <div class="info-row">
+                    <div class="label">TANGGAL</div>
+                    <div class="separator">:</div>
+                    <div class="value">${data.tanggal}</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">PERIODE</div>
+                    <div class="separator">:</div>
+                    <div class="value">${data.filters.dateRange || '-'}</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">SEARCH</div>
+                    <div class="separator">:</div>
+                    <div class="value">${data.filters.search || '-'}</div>
+                </div>
+            </div>
+            <div class="info-right">
+
+                <div class="info-row">
+                    <div class="label">JENIS</div>
+                    <div class="separator">:</div>
+                    <div class="value">${data.filters.jenisPembelian || '-'}</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">KATEGORI</div>
+                    <div class="separator">:</div>
+                    <div class="value">${data.filters.kategoriOperasional || '-'}</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">STATUS</div>
+                    <div class="separator">:</div>
+                    <div class="value">${data.filters.status || '-'}</div>
+                </div>
+            </div>
+        </div>
+
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th width="5%">NO</th>
+                    <th width="15%">NO. PEMBELIAN</th>
+                    <th width="17%">TANGGAL</th>
+                    <th width="12%">JENIS</th>
+                    <th width="10%">KATEGORI</th>
+                    <th width="15%">SUPPLIER</th>
+                    <th width="10%">STATUS</th>
+                    <th width="10%" class="text-center">METODE</th>
+                    <th width="15%" class="text-right">TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${(() => {
+                    let html = '';
+                    let rowNo = 1;
+                    
+                    data.items.forEach(item => {
+                        html += '<tr>';
+                        html += '<td>' + rowNo++ + '</td>';
+                        html += '<td class="uppercase">' + item.nama + '</td>';
+                        html += '<td>' + (item.tanggal || '-') + '</td>';
+                        html += '<td class="uppercase">' + item.type + '</td>';
+                        html += '<td class="uppercase">' + (item.kategori || '-') + '</td>';
+                        html += '<td class="uppercase">' + (item.supplier || '-') + '</td>';
+                        html += '<td class="text-center">' + (item.status || '-') + '</td>';
+                        html += '<td class="text-center">' + (item.metode || '-') + '</td>';
+                        html += '<td class="text-right">' + formatCurrency(item.harga) + '</td>';
+                        html += '</tr>';
+                    });
+                    
+                    return html;
+                })()}
+            </tbody>
+        </table>
+
+        <div class="footer-section">
+            <div class="footer-left">
+                <br/>
+                <div class="sig-line"></div>
+            </div>
+            <div class="footer-right">
+                <div class="total-row grand-total">
+                    <div>Grand Total:</div>
+                    <div>${formatCurrency(data.grandTotal)}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

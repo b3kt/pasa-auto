@@ -33,7 +33,7 @@ public class TbPembelianDetailEntity extends BaseEntity {
     @Column(name = "total", precision = 18, scale = 2)
     private BigDecimal total;
 
-    @Column(name = "keterangan", length = 255)
+    @Column(name = "keterangan")
     private String keterangan;
 
     @Column(name = "id_barang")
@@ -45,21 +45,6 @@ public class TbPembelianDetailEntity extends BaseEntity {
 
     @Column(name = "id_sparepart", length = 20)
     private Long sparepartId;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @Column(name = "created_by")
-    private String createdBy;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    @Column(name = "updated_by")
-    private String updatedBy;
-
-    @Column(name = "version")
-    private Integer version;
 
     @PrePersist
     public void prePersist() {

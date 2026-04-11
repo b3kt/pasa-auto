@@ -1,11 +1,19 @@
 package com.github.b3kt.application.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+
 /**
  * DTO for pagination request parameters.
  */
 public class PageRequest {
+    @Min(value = 1, message = "Page must be at least 1")
     private int page = 1;
+    
+    @Min(value = 1, message = "Rows per page must be at least 1")
+    @Max(value = 100, message = "Rows per page must not exceed 100")
     private int rowsPerPage = 10;
+    
     private String sortBy;
     private boolean descending = false;
     private String search;

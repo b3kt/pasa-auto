@@ -8,16 +8,20 @@
 
         <q-separator vertical inset dark class="q-mx-md" />
 
-        <div class="row no-wrap">
+        <div class="q-pa-sm q-pl-md row items-center xs-hide" >
           <template v-for="menu in linksList" :key="menu.title">
             <q-btn-dropdown
               v-if="menu.visible"
               flat
               stretch
               no-caps
-              :label="menu.title"
+              :title="menu.title"
               :icon="menu.icon"
             >
+              <template v-slot:label>
+                <span class="q-px-sm" v-if="$q.screen.gt.sm">{{menu.title}}</span>
+              </template>
+
               <q-list dense>
                 <q-item
                   v-for="child in menu.children"
@@ -66,7 +70,7 @@
               </q-list>
             </q-menu>
           </q-btn>
-          <span v-else>Quasar v{{ $q.version }}</span>
+          <span v-else>v{{ $q.version }}</span>
         </div>
       </q-toolbar>
     </q-header>
@@ -151,7 +155,6 @@ const linksList = computed(() => [
     title: t('app.menu.process.title'),
     caption: t('app.menu.process.caption'),
     icon: 'conveyor_belt',
-    link: 'https://quasar.dev',
     visible: hasRole('Admin') || hasRole('Karyawan'),
     children: [
       {
@@ -181,7 +184,7 @@ const linksList = computed(() => [
         caption: t('app.menu.sales.sell.caption'),
         icon: 'warehouse',
         visible: hasRole('Admin') || hasRole('Owner'),
-        link: '/pazaauto/penjualan-barang'
+        link: '/pazaauto/penjualan'
       },
     ]
   },
@@ -196,14 +199,14 @@ const linksList = computed(() => [
         caption: t('app.menu.recap.buy.caption'),
         icon: 'warehouse',
         visible: hasRole('Admin') || hasRole('Owner'),
-        link: '/pazaauto/pembelian'
+        link: '/pazaauto/rekap-pembelian'
       },
       {
         title: t('app.menu.recap.sell.title'),
         caption: t('app.menu.recap.sell.caption'),
         icon: 'warehouse',
         visible: hasRole('Admin') || hasRole('Owner'),
-        link: '/pazaauto/penjualan-barang'
+        link: '/pazaauto/rekap-penjualan'
       },
     ]
   },

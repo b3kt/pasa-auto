@@ -13,8 +13,6 @@ import com.github.b3kt.infrastructure.security.PasswordEncoder;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-import java.util.Objects;
-
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 /**
@@ -47,11 +45,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthenticationException("User account is not active");
         }
 
-        // Verify password
-        // if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-        // throw new AuthenticationException("Invalid username or password");
-        // }
-        if (!Objects.equals(password, user.getPasswordHash())) {
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new AuthenticationException("Invalid username or password");
         }
 

@@ -4,22 +4,34 @@ import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.service.pazaauto.AbstractCrudService;
+import com.github.b3kt.application.service.pazaauto.TbPembelianDetailService;
 import com.github.b3kt.application.service.pazaauto.TbPembelianService;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPembelianEntity;
 import jakarta.enterprise.context.RequestScoped;
-import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
+
+import java.util.Optional;
 
 @RequestScoped
 @Path("/api/pazaauto/pembelian")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@RequiredArgsConstructor
 public class TbPembelianResource extends AbstractCrudResource<TbPembelianEntity, Long> {
 
-    @Inject
-    TbPembelianService service;
+    private final TbPembelianService service;
+    private final TbPembelianDetailService tbPembelianDetailService;
 
     @Override
     protected AbstractCrudService<TbPembelianEntity, Long> getService() {
@@ -66,6 +78,28 @@ public class TbPembelianResource extends AbstractCrudResource<TbPembelianEntity,
         return Response.ok(ApiResponse.success(pageResponse)).build();
     }
 
+    @GET
+    @Path("/{noPembelian}")
+    public Response getByNoPembelian(@PathParam("noPembelian") String noPembelian) {
+        try {
+            TbPembelianEntity entity = service.findByNoPembelian(noPembelian);
+            if (entity == null) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(ApiResponse.error("Pembelian not found"))
+                        .build();
+            }
+
+            Optional.ofNullable(tbPembelianDetailService.findByPembelianId(entity.getId()))
+                            .ifPresent(entity::setDetails);
+
+            return Response.ok(ApiResponse.success(entity)).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to fetch pembelian: " + e.getMessage()))
+                    .build();
+        }
+    }
+
     @Override
     @POST
     public Response create(TbPembelianEntity entity) {
@@ -97,6 +131,18 @@ public class TbPembelianResource extends AbstractCrudResource<TbPembelianEntity,
         TbPembelianEntity updated = service.updateWithDetails(parseId(id), request.getPembelian(),
                 request.getDetails());
         return Response.ok(ApiResponse.success(getEntityName() + " updated with details", updated)).build();
+    }
+
+    @GET
+    @Path("/get-next-number")
+    public Response getNextPembelianNumber(@QueryParam("jenisPembelian") @DefaultValue("SPAREPART") String jenisPembelian) {
+        try {
+            String noPembelian = service.generateNoPembelian(jenisPembelian);
+            return Response.ok(ApiResponse.success(noPembelian)).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to generate no pembelian: " + e.getMessage())).build();
+        }
     }
 
     @GET

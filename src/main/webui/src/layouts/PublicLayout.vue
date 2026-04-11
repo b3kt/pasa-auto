@@ -8,7 +8,7 @@
 
         <div class="q-gutter-sm">
           <q-btn v-if="authStore.isLoggedIn" flat dense icon="logout" :label="$t('logout')" @click="handleLogout" />
-          <span v-else>Quasar v{{ $q.version }}</span>
+          <span v-else>v{{ $q.version }}</span>
         </div>
       </q-toolbar>
     </q-header>

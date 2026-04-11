@@ -2,6 +2,10 @@ package com.github.b3kt.infrastructure.persistence.entity;
 
 import com.github.b3kt.domain.model.Permission;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * JPA Entity for Permission.
@@ -11,6 +15,10 @@ import jakarta.persistence.*;
     @Index(name = "idx_permission_name", columnList = "name", unique = true),
     @Index(name = "idx_permission_resource_action", columnList = "resource,action")
 })
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class PermissionEntity {
 
     @Id
@@ -32,15 +40,12 @@ public class PermissionEntity {
     @Column(nullable = false)
     private boolean active = true;
 
-    public PermissionEntity() {
-    }
 
     public PermissionEntity(String name, String description, String resource, String action) {
         this.name = name;
         this.description = description;
         this.resource = resource;
         this.action = action;
-        this.active = true;
     }
 
     /**
@@ -69,55 +74,6 @@ public class PermissionEntity {
         entity.setAction(permission.getAction());
         entity.setActive(permission.isActive());
         return entity;
-    }
-
-    // Getters and Setters
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getResource() {
-        return resource;
-    }
-
-    public void setResource(String resource) {
-        this.resource = resource;
-    }
-
-    public String getAction() {
-        return action;
-    }
-
-    public void setAction(String action) {
-        this.action = action;
-    }
-
-    public boolean isActive() {
-        return active;
-    }
-
-    public void setActive(boolean active) {
-        this.active = active;
     }
 }
 

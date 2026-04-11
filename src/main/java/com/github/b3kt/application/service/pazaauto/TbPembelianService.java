@@ -10,29 +10,28 @@ import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, Long> {
 
-    @Inject
-    TbPembelianRepository repository;
-
-    @Inject
-    TbPembelianDetailService detailService;
-
-    @Inject
-    TbSparepartService sparepartService;
+    private final TbPembelianRepository repository;
+    private final TbPembelianDetailService detailService;
+    private final TbSparepartService sparepartService;
 
     @ConfigProperty(name = "app.features.stock-integration.enabled", defaultValue = "false")
-    Boolean stockIntegrationEnabled;
+    boolean stockIntegrationEnabled;
 
     @Override
     protected PanacheRepositoryBase<TbPembelianEntity, Long> getRepository() {
@@ -49,8 +48,7 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
     public TbPembelianEntity create(TbPembelianEntity entity) {
         setNoUrutFromNoPembelian(entity);
         // Save main pembelian record
-        TbPembelianEntity saved = super.create(entity);
-        return saved;
+        return super.create(entity);
     }
 
     @Transactional
@@ -94,10 +92,27 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
             }
         }
 
-        // Update main record
-        TbPembelianEntity updated = super.update(id, entity);
+        // Update the details
+        updateItemDetails(entity);
 
-        return updated;
+        // Update main record
+        return super.update(id, entity);
+    }
+
+    private void updateItemDetails(TbPembelianEntity entity){
+        if(Objects.nonNull(entity.getDetails()) && !entity.getDetails().isEmpty()){
+            BigDecimal grandTotal = new BigDecimal(0);
+            for(TbPembelianDetailEntity detail: entity.getDetails()){
+                if(Objects.nonNull(detail.getId())){
+                    detailService.update(detail.getId(), detail);
+                }else {
+                    detailService.create(detail);
+                }
+                grandTotal = grandTotal.add(detail.getTotal());
+            }
+            entity.setGrandTotal(grandTotal);
+        }
+
     }
 
     @Transactional
@@ -154,7 +169,11 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
     @Override
     public PageResponse<TbPembelianEntity> findPaginated(PageRequest pageRequest) {
         // Build query with filters
-        StringBuilder queryStr = new StringBuilder("1=1");
+        StringBuilder queryStr = new StringBuilder("" +
+                " SELECT new com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPembelianEntity(b, s.namaSupplier)  " +
+                " FROM TbPembelianEntity b " +
+                " LEFT JOIN TbSupplierEntity s ON b.supplierId = s.id " +
+                " WHERE 1=1 ");
         io.quarkus.panache.common.Parameters params = new io.quarkus.panache.common.Parameters();
 
         // Search filter
@@ -207,11 +226,13 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
         }
 
         long totalCount = query.count();
+
         List<TbPembelianEntity> rows = query.page(Page.of(pageRequest.getPage() - 1, pageRequest.getRowsPerPage()))
                 .list();
 
         return new PageResponse<>(rows, pageRequest.getPage(), pageRequest.getRowsPerPage(), totalCount);
     }
+
     public String generateNoPembelian(String jenisPembelian) {
         String code;
         if ("SPAREPART".equalsIgnoreCase(jenisPembelian)) {
@@ -230,12 +251,12 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
         Integer maxNoUrut = repository.findMaxNoUrut(startOfDay, endOfDay, jenisPembelian);
         int nextNoUrut = (maxNoUrut == null ? 0 : maxNoUrut) + 1;
         
-        String noPembelian = String.format("%s-%s-%d", code, datePart, nextNoUrut);
+        String noPembelian = String.format("%s%s%d", code, datePart, nextNoUrut);
         
         // Ensure uniqueness (collision check)
         while (repository.find("noPembelian", noPembelian).count() > 0) {
             nextNoUrut++;
-            noPembelian = String.format("%s-%s-%d", code, datePart, nextNoUrut);
+            noPembelian = String.format("%s%s%d", code, datePart, nextNoUrut);
         }
         
         return noPembelian;
@@ -252,5 +273,10 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
                 // Ignore if format is invalid, noUrut will be null
             }
         }
+    }
+
+    public TbPembelianEntity findByNoPembelian(String noPembelian) {
+        return repository.find("noPembelian", noPembelian)
+                .firstResult();
     }
 }

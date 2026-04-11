@@ -15,6 +15,7 @@ public interface PasswordEncoder {
     
     /**
      * Verify if a raw password matches an encoded password.
+     * Supports both bcrypt-hashed and plain-text passwords for migration.
      * 
      * @param rawPassword the raw password
      * @param encodedPassword the encoded password
