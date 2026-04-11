@@ -80,7 +80,7 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
     @Path("/get-next-spk-number")
     @WithSpan("get-next-spk-number")
     public Response getNextSpk() {
-        String lastSpkNumber = service.getNextSpkNumber(spkNoformatter.format(LocalDateTime.now()));
+        String lastSpkNumber = service.getNextSpkNumber(SPK_DATE_FORMATTER.format(LocalDateTime.now()));
         String lastQueueNumber = lastSpkNumber.substring(lastSpkNumber.length() - 2);
         int nextQueueNumber = Integer.parseInt(lastQueueNumber) + 1;
         String nextSpkNumber = lastSpkNumber.substring(0, lastSpkNumber.length() - 2)

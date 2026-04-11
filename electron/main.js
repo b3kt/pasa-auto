@@ -1,21 +1,53 @@
-const { app, BrowserWindow, Menu, Tray, nativeImage } = require('electron');
+const { app, BrowserWindow, Menu, Tray, nativeImage, dialog } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 let backendProcess;
 let mainWindow;
 let tray;
 
+function findJava() {
+  const candidates = [
+    process.env.JAVA_HOME ? path.join(process.env.JAVA_HOME, 'bin', 'java') : null,
+    '/usr/bin/java',
+    '/usr/local/bin/java',
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return 'java'; // fallback to PATH
+}
+
+function findBackendJar() {
+  // Packaged app: jar is in extraResources
+  const packaged = path.join(process.resourcesPath, 'backend.jar');
+  if (fs.existsSync(packaged)) return packaged;
+
+  // Development: look for the built jar in target/
+  const devJar = path.join(__dirname, '..', 'target', 'pasa-auto-0.0.14.jar');
+  if (fs.existsSync(devJar)) return devJar;
+
+  return null;
+}
+
 function startBackend() {
   if (backendProcess) {
-    console.log("Backend already running");
+    console.log('Backend already running');
     return;
   }
 
-  const backendPath = path.join(process.resourcesPath, 'myapp');
-  console.log("Starting backend from:", backendPath);
+  const jarPath = findBackendJar();
+  if (!jarPath) {
+    dialog.showErrorBox('Backend Not Found', 'Could not find pasa-auto JAR. Please build the project first with: mvn clean package -DskipTests');
+    return;
+  }
 
-  backendProcess = spawn(backendPath, [], {
+  const java = findJava();
+  console.log('Starting backend:', java, '-jar', jarPath);
+
+  backendProcess = spawn(java, ['-jar', jarPath], {
     stdio: 'ignore',
     windowsHide: true,
   });
@@ -23,7 +55,7 @@ function startBackend() {
   updateTray();
 
   backendProcess.on('exit', (code) => {
-    console.log("Native App exited with code:", code);
+    console.log('Backend exited with code:', code);
     backendProcess = null;
     updateMenu();
     updateTray();
@@ -38,9 +70,9 @@ function startBackend() {
 
   updateMenu();
 
-  // Reload page after a delay to ensure backend is up
+  // Reload page after backend starts
   if (mainWindow) {
-    setTimeout(() => mainWindow.reload(), 1000);
+    setTimeout(() => mainWindow.reload(), 3000);
   }
 }
 
@@ -50,7 +82,7 @@ function stopBackend() {
     backendProcess = null;
     updateMenu();
     updateTray();
-    console.log("Backend stopped");
+    console.log('Backend stopped');
   }
 }
 
@@ -62,25 +94,25 @@ function createMenu() {
         {
           label: 'Start Backend',
           click: startBackend,
-          enabled: !backendProcess
+          enabled: !backendProcess,
         },
         {
           label: 'Stop Backend',
           click: stopBackend,
-          enabled: !!backendProcess
+          enabled: !!backendProcess,
         },
         { type: 'separator' },
-        { role: 'quit' }
-      ]
+        { role: 'quit' },
+      ],
     },
     {
       label: 'View',
       submenu: [
         { role: 'reload' },
         { role: 'forceReload' },
-        { role: 'toggleDevTools' }
-      ]
-    }
+        { role: 'toggleDevTools' },
+      ],
+    },
   ];
 
   const menu = Menu.buildFromTemplate(template);
@@ -96,48 +128,39 @@ function updateTray() {
 
   const iconName = backendProcess ? 'icon-green.png' : 'icon-red.png';
   const iconPath = path.join(__dirname, 'resources', iconName);
-  const icon = nativeImage.createFromPath(iconPath);
+  const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
 
-  // Resize to 16x16 for tray
-  const trayIcon = icon.resize({ width: 16, height: 16 });
-
-  tray.setImage(trayIcon);
+  tray.setImage(icon);
   tray.setToolTip(backendProcess ? 'Backend: Running' : 'Backend: Stopped');
 
   const contextMenu = Menu.buildFromTemplate([
-    {
-      label: 'Start Backend',
-      click: startBackend,
-      enabled: !backendProcess
-    },
-    {
-      label: 'Stop Backend',
-      click: stopBackend,
-      enabled: !!backendProcess
-    },
+    { label: 'Start Backend', click: startBackend, enabled: !backendProcess },
+    { label: 'Stop Backend', click: stopBackend, enabled: !!backendProcess },
     { type: 'separator' },
-    { label: 'Quit', role: 'quit' }
+    { label: 'Quit', role: 'quit' },
   ]);
 
   tray.setContextMenu(contextMenu);
 }
 
 function createTray() {
-  const iconPath = path.join(__dirname, 'resources', 'icon-red.png'); // Default to stopped/red
+  const iconPath = path.join(__dirname, 'resources', 'icon-red.png');
   const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
-
   tray = new Tray(icon);
   updateTray();
 }
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1000,
-    height: 800,
+    width: 1280,
+    height: 900,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
   });
 
-  // Load the SPA served by the native image
-  mainWindow.loadURL("http://localhost:8080/");
+  mainWindow.loadURL('http://localhost:8080/');
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -148,10 +171,20 @@ app.whenReady().then(() => {
   createMenu();
   createTray();
   createWindow();
+  startBackend(); // auto-start backend on launch
 });
 
 app.on('before-quit', () => {
   if (backendProcess) backendProcess.kill();
 });
 
+app.on('window-all-closed', () => {
+  // Keep app alive in tray on macOS
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
 
+app.on('activate', () => {
+  if (mainWindow === null) createWindow();
+});

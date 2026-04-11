@@ -242,7 +242,7 @@
         <p class="text-body2 q-mb-lg">
           Apakah Anda ingin menambahkan data kendaraan baru ke database?
         </p>
-        
+
         <div class="row q-col-gutter-md">
           <div class="col-12">
             <q-input v-model="newVehicleData.merk" label="Merk" outlined dense readonly />

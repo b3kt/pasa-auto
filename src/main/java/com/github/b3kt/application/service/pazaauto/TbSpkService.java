@@ -3,6 +3,7 @@ package com.github.b3kt.application.service.pazaauto;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto;
+import com.github.b3kt.application.helper.QueryFilterBuilder;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawanRepository;
@@ -134,89 +135,29 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
 
     @Override
     public PageResponse<TbSpkEntity> findPaginated(PageRequest pageRequest) {
+        QueryFilterBuilder filterBuilder = QueryFilterBuilder.create()
+                .withSearch(pageRequest.getSearch())
+                .withStatusFilter(pageRequest.getStatusFilter(), "statusSpk")
+                .withDateRange(pageRequest.getStartDate(), pageRequest.getEndDate(), "tanggalJamSpk");
+
+        String queryString = filterBuilder.getQueryString();
+        Object[] params = filterBuilder.getParams();
+
         PanacheQuery<TbSpkEntity> query;
-
-        // Build query with filters
-        String queryString = "1=1";
-        Object[] params = new Object[0];
-        int paramIndex = 1;
-
-        // Apply search filter if specified
-        if (pageRequest.getSearch() != null && !pageRequest.getSearch().isEmpty()) {
-            String searchPattern = "%" + pageRequest.getSearch().toLowerCase() + "%";
-            queryString += " and (lower(noSpk) like ?" + paramIndex
-                    + " or lower(nopol) like ?" + paramIndex
-                    + " or lower(namaKaryawan) like ?" + paramIndex
-                    + " or lower(namaPelanggan) like ?" + paramIndex
-                    + ")";
-            params = new Object[] { searchPattern };
-            paramIndex++;
-        }
-
-        // Apply status filter if specified
-        if (pageRequest.getStatusFilter() != null && !pageRequest.getStatusFilter().isEmpty()) {
-            String[] statuses = pageRequest.getStatusFilter().split(",");
-            StringBuilder statusQuery = new StringBuilder(" and (");
-            Object[] newParams = new Object[params.length + statuses.length];
-            System.arraycopy(params, 0, newParams, 0, params.length);
-
-            for (int i = 0; i < statuses.length; i++) {
-                if (i > 0) {
-                    statusQuery.append(" or ");
-                }
-                statusQuery.append("statusSpk = ?").append(paramIndex);
-                newParams[params.length + i] = statuses[i].trim().toUpperCase();
-                paramIndex++;
-            }
-            statusQuery.append(")");
-            queryString += statusQuery.toString();
-            params = newParams;
-        }
-
-        // Apply date range filter if specified
-        if (pageRequest.getStartDate() != null && !pageRequest.getStartDate().isEmpty()) {
-            queryString += " and tanggalJamSpk >= ?" + paramIndex;
-            Object[] newParams = new Object[params.length + 1];
-            System.arraycopy(params, 0, newParams, 0, params.length);
-            newParams[params.length] = pageRequest.getStartDate();
-            params = newParams;
-            paramIndex++;
-        }
-        if (pageRequest.getEndDate() != null && !pageRequest.getEndDate().isEmpty()) {
-            // Append end-of-day suffix so that the entire end date is included
-            queryString += " and tanggalJamSpk <= ?" + paramIndex;
-            Object[] newParams = new Object[params.length + 1];
-            System.arraycopy(params, 0, newParams, 0, params.length);
-            newParams[params.length] = pageRequest.getEndDate() + " 23:59:59";
-            params = newParams;
-            paramIndex++;
-        }
-
-        // Create query
         if (params.length > 0) {
             query = repository.find(queryString, params);
         } else {
             query = repository.find(queryString);
         }
 
-        // Apply sorting if specified
         if (pageRequest.getSortBy() != null && !pageRequest.getSortBy().isEmpty()) {
             Sort sort = pageRequest.isDescending()
                     ? Sort.descending(pageRequest.getSortBy())
                     : Sort.ascending(pageRequest.getSortBy());
-
-            // Re-apply query with sorting
-            if (params.length > 0) {
-                query = repository.find(queryString, sort, params);
-            } else {
-                query = repository.find(queryString, sort);
-            }
+            query = repository.find(queryString, sort, params);
         }
 
-        // Get total count
         long totalCount = query.count();
-
-        // Apply pagination
         List<TbSpkEntity> rows = query.page(Page.of(pageRequest.getPage() - 1, pageRequest.getRowsPerPage())).list();
         fillRequiredFields(rows);
 
@@ -224,105 +165,43 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
     }
 
     public PageResponse<RekapPenjualanDto> findPaginatedWithPenjualan(PageRequest pageRequest) {
-        // Build query with filters
-        String queryString = "SELECT new com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto(s, p) " +
+        String baseQuery = "SELECT new com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto(s, p) " +
                 " FROM com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity s " +
                 " LEFT JOIN com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity p " +
                 "   ON s.noSpk = p.noSpk " +
                 " WHERE 1=1";
-        String countQueryString = "SELECT COUNT(s) " +
-                " FROM com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity s " +
+        String countQuery = "SELECT COUNT(s) FROM com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity s " +
                 " LEFT JOIN com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity p " +
-                "   ON s.noSpk = p.noSpk " +
-                " WHERE 1=1";
-        
-        Object[] params = new Object[0];
-        int paramIndex = 1;
+                "   ON s.noSpk = p.noSpk WHERE 1=1";
 
-        // Apply search filter if specified
-        if (pageRequest.getSearch() != null && !pageRequest.getSearch().isEmpty()) {
-            String searchPattern = "%" + pageRequest.getSearch().toLowerCase() + "%";
-            queryString += " and (lower(s.noSpk) like ?" + paramIndex
-                    + " or lower(nopol) like ?" + paramIndex
-                    + " or lower(namaKaryawan) like ?" + paramIndex
-                    + " or lower(namaPelanggan) like ?" + paramIndex
-                    + ")";
-            countQueryString += " and (lower(s.noSpk) like ?" + paramIndex
-                    + " or lower(nopol) like ?" + paramIndex
-                    + " or lower(namaKaryawan) like ?" + paramIndex
-                    + " or lower(namaPelanggan) like ?" + paramIndex
-                    + ")";
-            params = new Object[] { searchPattern };
-            paramIndex++;
-        }
+        QueryFilterBuilder filterBuilder = QueryFilterBuilder.create()
+                .withSearch(pageRequest.getSearch())
+                .withStatusFilter(pageRequest.getStatusFilter(), "statusSpk")
+                .withDateRange(pageRequest.getStartDate(), pageRequest.getEndDate(), "tanggalJamSpk");
 
-        // Apply status filter if specified
-        if (pageRequest.getStatusFilter() != null && !pageRequest.getStatusFilter().isEmpty()) {
-            String[] statuses = pageRequest.getStatusFilter().split(",");
-            StringBuilder statusQuery = new StringBuilder(" and (");
-            Object[] newParams = new Object[params.length + statuses.length];
-            System.arraycopy(params, 0, newParams, 0, params.length);
+        String filterClause = filterBuilder.getQueryString().replace("1=1", "");
+        baseQuery += filterClause;
+        countQuery += filterClause;
 
-            for (int i = 0; i < statuses.length; i++) {
-                if (i > 0) {
-                    statusQuery.append(" or ");
-                }
-                statusQuery.append("statusSpk = ?").append(paramIndex);
-                newParams[params.length + i] = statuses[i].trim().toUpperCase();
-                paramIndex++;
-            }
-            statusQuery.append(")");
-            queryString += statusQuery.toString();
-            countQueryString += statusQuery.toString();
-            params = newParams;
-        }
+        Object[] params = filterBuilder.getParams();
+        TypedQuery<RekapPenjualanDto> query = entityManager.createQuery(baseQuery, RekapPenjualanDto.class);
+        Query countQ = entityManager.createQuery(countQuery);
 
-        // Apply date range filter if specified
-        if (pageRequest.getStartDate() != null && !pageRequest.getStartDate().isEmpty()) {
-            queryString += " and tanggalJamSpk >= ?" + paramIndex;
-            countQueryString += " and tanggalJamSpk >= ?" + paramIndex;
-            Object[] newParams = new Object[params.length + 1];
-            System.arraycopy(params, 0, newParams, 0, params.length);
-            newParams[params.length] = pageRequest.getStartDate();
-            params = newParams;
-            paramIndex++;
-        }
-        if (pageRequest.getEndDate() != null && !pageRequest.getEndDate().isEmpty()) {
-            // Append end-of-day suffix so that the entire end date is included
-            queryString += " and tanggalJamSpk <= ?" + paramIndex;
-            countQueryString += " and tanggalJamSpk <= ?" + paramIndex;
-            Object[] newParams = new Object[params.length + 1];
-            System.arraycopy(params, 0, newParams, 0, params.length);
-            newParams[params.length] = pageRequest.getEndDate() + " 23:59:59";
-            params = newParams;
-            paramIndex++;
-        }
-
-        // Create queries
-        TypedQuery<RekapPenjualanDto> query = entityManager.createQuery(queryString, RekapPenjualanDto.class);
-        Query countQuery = entityManager.createQuery(countQueryString);
-        
-        // Set parameters
         for (int i = 0; i < params.length; i++) {
             query.setParameter(i + 1, params[i]);
-            countQuery.setParameter(i + 1, params[i]);
+            countQ.setParameter(i + 1, params[i]);
         }
 
-        // Apply sorting if specified
         if (pageRequest.getSortBy() != null && !pageRequest.getSortBy().isEmpty()) {
             String sortDirection = pageRequest.isDescending() ? "desc" : "asc";
-            queryString += " order by s." + pageRequest.getSortBy() + " " + sortDirection;
-            query = entityManager.createQuery(queryString, RekapPenjualanDto.class);
-            // Re-set parameters for the new query
+            baseQuery += " order by s." + pageRequest.getSortBy() + " " + sortDirection;
+            query = entityManager.createQuery(baseQuery, RekapPenjualanDto.class);
             for (int i = 0; i < params.length; i++) {
                 query.setParameter(i + 1, params[i]);
             }
         }
 
-        // Get total count
-        long totalCount = (Long) countQuery.getSingleResult();
-
-        // Apply pagination
+        long totalCount = (Long) countQ.getSingleResult();
         int firstResult = (pageRequest.getPage() - 1) * pageRequest.getRowsPerPage();
         query.setFirstResult(firstResult);
         query.setMaxResults(pageRequest.getRowsPerPage());

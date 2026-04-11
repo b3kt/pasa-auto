@@ -1,0 +1,6 @@
+node_modules/
+dist/
+bin/pasa-auto-runner
+bin/.env
+*.log
+*.log.*
