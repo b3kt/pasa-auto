@@ -3,12 +3,14 @@ package com.github.b3kt.application.service.pazaauto;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkDetailRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkRepository;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
+import io.quarkus.panache.common.Parameters;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
@@ -74,7 +76,10 @@ class TbSpkServiceTest {
     @DisplayName("Should find SPK by ID and populate details")
     void testFindById() {
         when(repository.findByIdOptional(1L)).thenReturn(java.util.Optional.of(testSpkEntity));
-        when(detailRepository.find("id.noSpk", "SPK202401001")).thenReturn(Collections.emptyList());
+        
+        PanacheQuery<TbSpkDetailEntity> detailQuery = mock(PanacheQuery.class);
+        when(detailRepository.find("id.noSpk", "SPK202401001")).thenReturn(detailQuery);
+        when(detailQuery.list()).thenReturn(Collections.emptyList());
 
         TbSpkEntity result = spkService.findById(1L);
 
@@ -136,7 +141,8 @@ class TbSpkServiceTest {
     @Test
     @DisplayName("Should get next SPK number")
     void testGetNextSpkNumber() {
-        when(repository.find(anyString(), any())).thenReturn(panacheQuery);
+        Parameters params = Parameters.with("prefix", "SPK202401");
+        when(repository.find(anyString(), eq(params))).thenReturn(panacheQuery);
         when(panacheQuery.list()).thenReturn(Arrays.asList(testSpkEntity));
 
         String result = spkService.getNextSpkNumber("SPK202401");
@@ -148,7 +154,8 @@ class TbSpkServiceTest {
     @Test
     @DisplayName("Should return default number when no existing SPK found")
     void testGetNextSpkNumberNoExisting() {
-        when(repository.find(anyString(), any())).thenReturn(panacheQuery);
+        Parameters params = Parameters.with("prefix", "SPK202401");
+        when(repository.find(anyString(), eq(params))).thenReturn(panacheQuery);
         when(panacheQuery.list()).thenReturn(Collections.emptyList());
 
         String result = spkService.getNextSpkNumber("SPK202401");
@@ -163,7 +170,8 @@ class TbSpkServiceTest {
         PageRequest pageRequest = new PageRequest(1, 10);
         pageRequest.setSearch("B1234");
 
-        when(repository.find(anyString(), any())).thenReturn(panacheQuery);
+        Parameters params = Parameters.with("search", "%B1234%");
+        when(repository.find(anyString(), eq(params))).thenReturn(panacheQuery);
         when(panacheQuery.count()).thenReturn(1L);
         when(panacheQuery.page(any())).thenReturn(panacheQuery);
         when(panacheQuery.list()).thenReturn(Arrays.asList(testSpkEntity));
@@ -171,7 +179,7 @@ class TbSpkServiceTest {
         PageResponse<TbSpkEntity> result = spkService.findPaginated(pageRequest);
 
         assertNotNull(result);
-        assertEquals(1, result.getTotalRecords());
+        assertEquals(1, result.getRowsNumber());
         verify(repository).find(contains("B1234"));
     }
 
@@ -181,7 +189,8 @@ class TbSpkServiceTest {
         PageRequest pageRequest = new PageRequest(1, 10);
         pageRequest.setStatusFilter("MENUNGGU,PROSES");
 
-        when(repository.find(anyString(), any())).thenReturn(panacheQuery);
+        Parameters params = Parameters.with("status", "MENUNGGU,PROSES");
+        when(repository.find(anyString(), eq(params))).thenReturn(panacheQuery);
         when(panacheQuery.count()).thenReturn(1L);
         when(panacheQuery.page(any())).thenReturn(panacheQuery);
         when(panacheQuery.list()).thenReturn(Arrays.asList(testSpkEntity));
@@ -189,7 +198,7 @@ class TbSpkServiceTest {
         PageResponse<TbSpkEntity> result = spkService.findPaginated(pageRequest);
 
         assertNotNull(result);
-        assertEquals(1, result.getTotalRecords());
+        assertEquals(1, result.getRowsNumber());
     }
 
     @Test
@@ -199,7 +208,8 @@ class TbSpkServiceTest {
         pageRequest.setStartDate("2024-01-01");
         pageRequest.setEndDate("2024-01-31");
 
-        when(repository.find(anyString(), any())).thenReturn(panacheQuery);
+        Parameters params = Parameters.with("startDate", "2024-01-01").and("endDate", "2024-01-31");
+        when(repository.find(anyString(), eq(params))).thenReturn(panacheQuery);
         when(panacheQuery.count()).thenReturn(0L);
         when(panacheQuery.page(any())).thenReturn(panacheQuery);
         when(panacheQuery.list()).thenReturn(Collections.emptyList());
@@ -207,7 +217,7 @@ class TbSpkServiceTest {
         PageResponse<TbSpkEntity> result = spkService.findPaginated(pageRequest);
 
         assertNotNull(result);
-        assertEquals(0, result.getTotalRecords());
+        assertEquals(0, result.getRowsNumber());
     }
 
     @Test
@@ -216,7 +226,8 @@ class TbSpkServiceTest {
         PageRequest pageRequest = new PageRequest(1, 10);
         pageRequest.setSearch("NONEXISTENT");
 
-        when(repository.find(anyString(), any())).thenReturn(panacheQuery);
+        Parameters params = Parameters.with("search", "%NONEXISTENT%");
+        when(repository.find(anyString(), eq(params))).thenReturn(panacheQuery);
         when(panacheQuery.count()).thenReturn(0L);
         when(panacheQuery.page(any())).thenReturn(panacheQuery);
         when(panacheQuery.list()).thenReturn(Collections.emptyList());
@@ -224,7 +235,7 @@ class TbSpkServiceTest {
         PageResponse<TbSpkEntity> result = spkService.findPaginated(pageRequest);
 
         assertNotNull(result);
-        assertEquals(0, result.getTotalRecords());
+        assertEquals(0, result.getRowsNumber());
         assertTrue(result.getRows().isEmpty());
     }
 }
