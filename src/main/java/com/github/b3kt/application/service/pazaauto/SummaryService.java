@@ -168,9 +168,9 @@ public class SummaryService {
         String sql = "SELECT DATE(p.tgl_jam_penjualan) AS tanggal, " +
                 "d.id_sparepart, d.nama_jasa AS namaBarang, " +
                 "SUM(d.jumlah) AS totalQty, " +
-                "COALESCE(SUM(d.harga * d.jumlah), 0) AS totalValue, " +
-                "COALESCE(SUM(b.harga_jual * d.jumlah), 0) AS totalHargaJual, " +
-                "COALESCE(SUM(b.harga_beli * d.jumlah), 0) AS totalHargaBeli " +
+                "COALESCE(SUM(d.harga_master * d.jumlah), 0) AS totalValue, " +
+                "COALESCE(SUM(d.harga * d.jumlah), 0) AS totalNilaiAdjustment, " +
+                "COALESCE(SUM(b.harga_beli * d.jumlah), 0) AS totalModal " +
                 "FROM tb_spk_detail d " +
                 "JOIN tb_spk s ON s.no_spk = d.no_spk " +
                 "JOIN tb_penjualan p ON p.no_spk = s.no_spk " +
@@ -193,8 +193,8 @@ public class SummaryService {
             item.setNamaBarang(row[2] != null ? row[2].toString() : "");
             item.setTotalQty(((Number) row[3]).longValue());
             item.setTotalValue(new BigDecimal(row[4].toString()));
-            item.setTotalHargaJual(row[5] != null ? new BigDecimal(row[5].toString()) : BigDecimal.ZERO);
-            item.setTotalHargaBeli(row[6] != null ? new BigDecimal(row[6].toString()) : BigDecimal.ZERO);
+            item.setTotalNilaiAdjustment(new BigDecimal(row[5].toString()));
+            item.setTotalModal(row[6] != null ? new BigDecimal(row[6].toString()) : BigDecimal.ZERO);
             result.add(item);
         }
         return result;
@@ -205,11 +205,13 @@ public class SummaryService {
         String sql = "SELECT DATE(p.tgl_jam_penjualan) AS tanggal, " +
                 "d.id_jasa, d.nama_jasa AS namaJasa, " +
                 "SUM(d.jumlah) AS totalQty, " +
-                "COALESCE(SUM(d.harga * d.jumlah), 0) AS totalNilai, " +
-                "COALESCE(SUM(d.harga_master * d.jumlah), 0) AS totalModal " +
+                "COALESCE(SUM(d.harga_master * d.jumlah), 0) AS totalNilai, " +
+                "COALESCE(SUM(d.harga * d.jumlah), 0) AS totalNilaiAdjustment, " +
+                "COALESCE(SUM(j.harga_jasa * d.jumlah), 0) AS totalModal " +
                 "FROM tb_spk_detail d " +
                 "JOIN tb_spk s ON s.no_spk = d.no_spk " +
                 "JOIN tb_penjualan p ON p.no_spk = s.no_spk " +
+                "LEFT JOIN tb_jasa j ON j.id = d.id_jasa " +
                 "WHERE d.id_jasa IS NOT NULL " +
                 "AND DATE(p.tgl_jam_penjualan) BETWEEN ?1 AND ?2 " +
                 "GROUP BY DATE(p.tgl_jam_penjualan), d.id_jasa, d.nama_jasa " +
@@ -228,7 +230,8 @@ public class SummaryService {
             item.setNamaJasa(row[2] != null ? row[2].toString() : "");
             item.setTotalQty(((Number) row[3]).longValue());
             item.setTotalNilai(new BigDecimal(row[4].toString()));
-            item.setTotalModal(new BigDecimal(row[5].toString()));
+            item.setTotalNilaiAdjustment(new BigDecimal(row[5].toString()));
+            item.setTotalModal(row[6] != null ? new BigDecimal(row[6].toString()) : BigDecimal.ZERO);
             result.add(item);
         }
         return result;

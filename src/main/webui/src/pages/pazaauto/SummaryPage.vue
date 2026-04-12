@@ -101,7 +101,7 @@
       <q-card flat bordered class="q-mb-md">
         <q-card-section>
           <div class="text-subtitle1 q-mb-sm">Tren Harian</div>
-          <Bar :data="trendChartData" :options="trendChartOptions" style="max-height: 300px" />
+          <Chart type="bar" :data="trendChartData" :options="trendChartOptions" style="max-height: 300px" />
         </q-card-section>
       </q-card>
 
@@ -202,6 +202,7 @@
             :columns="mekanikDailyColumns"
             row-key="rowKey"
             flat dense
+            :rows-per-page-options="[5, 10, 25, 50]"
             :pagination="mekanikDailyPagination"
             @update:pagination="mekanikDailyPagination = $event"
           />
@@ -223,11 +224,52 @@
             :columns="soldItemsColumns"
             row-key="rowKey"
             flat dense
+            :rows-per-page-options="[5, 10, 25, 50]"
             :pagination="soldItemsPagination"
             @update:pagination="soldItemsPagination = $event"
           >
             <template v-slot:body-cell-totalValue="props">
               <q-td :props="props">{{ formatCurrency(props.row.totalValue) }}</q-td>
+            </template>
+            <template v-slot:body-cell-totalNilaiAdjustment="props">
+              <q-td :props="props">{{ formatCurrency(props.row.totalNilaiAdjustment) }}</q-td>
+            </template>
+            <template v-slot:body-cell-totalModal="props">
+              <q-td :props="props">{{ formatCurrency(props.row.totalModal) }}</q-td>
+            </template>
+            <template v-slot:body-cell-net="props">
+              <q-td :props="props" :class="(props.row.totalNilaiAdjustment - props.row.totalModal) >= 0 ? 'text-green' : 'text-red'">
+                {{ formatCurrency(props.row.totalNilaiAdjustment - props.row.totalModal) }}
+              </q-td>
+            </template>
+          </q-table>
+        </q-card-section>
+      </q-card>
+
+      <!-- Jasa Sold Table -->
+      <q-card flat bordered class="q-mb-md">
+        <q-card-section>
+          <div class="row items-center q-mb-sm">
+            <div class="text-subtitle1">Detail Jasa Terjual per Hari</div>
+            <q-space />
+            <q-input v-model="jasaSearch" placeholder="Cari jasa..." dense outlined clearable style="max-width: 250px">
+              <template v-slot:prepend><q-icon name="search" /></template>
+            </q-input>
+          </div>
+          <q-table
+            :rows="filteredJasaItems"
+            :columns="jasaSoldColumns"
+            row-key="rowKey"
+            flat dense
+            :rows-per-page-options="[5, 10, 25, 50]"
+            :pagination="jasaSoldPagination"
+            @update:pagination="jasaSoldPagination = $event"
+          >
+            <template v-slot:body-cell-totalNilai="props">
+              <q-td :props="props">{{ formatCurrency(props.row.totalNilai) }}</q-td>
+            </template>
+            <template v-slot:body-cell-totalNilaiAdjustment="props">
+              <q-td :props="props" class="text-green">{{ formatCurrency(props.row.totalNilaiAdjustment) }}</q-td>
             </template>
           </q-table>
         </q-card-section>
@@ -249,7 +291,7 @@ import {
   CategoryScale, LinearScale, BarElement, LineElement, BarController, LineController,
   PointElement, ArcElement, Title, Tooltip, Legend
 } from 'chart.js'
-import { Bar, Doughnut, Line } from 'vue-chartjs'
+import { Bar, Doughnut, Chart } from 'vue-chartjs'
 import { api } from 'boot/axios'
 import { useDateFilter } from 'src/composables/useDateFilter'
 
@@ -277,8 +319,10 @@ const summary = ref(null)
 
 const mekanikSearch = ref('')
 const itemSearch = ref('')
+const jasaSearch = ref('')
 const mekanikDailyPagination = ref({ rowsPerPage: 10, page: 1 })
 const soldItemsPagination = ref({ rowsPerPage: 10, page: 1 })
+const jasaSoldPagination = ref({ rowsPerPage: 10, page: 1 })
 
 // ── Fetch ─────────────────────────────────────────────────────────────────
 async function fetchSummary() {
@@ -448,6 +492,13 @@ const filteredSoldItems = computed(() => {
   return rows.filter(r => r.namaBarang?.toLowerCase().includes(q) || r.date?.includes(q))
 })
 
+const filteredJasaItems = computed(() => {
+  const rows = (summary.value?.jasaSummaryBreakdown ?? []).map((r, i) => ({ ...r, rowKey: i }))
+  if (!jasaSearch.value) return rows
+  const q = jasaSearch.value.toLowerCase()
+  return rows.filter(r => r.namaJasa?.toLowerCase().includes(q) || r.date?.includes(q))
+})
+
 // ── Table columns ─────────────────────────────────────────────────────────
 const dailyColumns = [
   { name: 'date', label: 'Tanggal', field: 'date', align: 'left', sortable: true },
@@ -455,7 +506,7 @@ const dailyColumns = [
   { name: 'income', label: 'Pemasukan', field: 'income', align: 'right', sortable: true },
   { name: 'outcome', label: 'Pengeluaran', field: 'outcome', align: 'right', sortable: true },
   { name: 'itemsTerjual', label: 'Item', field: 'itemsTerjual', align: 'center', sortable: true },
-  { name: 'net', label: 'Net', field: 'net', align: 'right', sortable: true }
+  { name: 'net', label: 'Gross', field: 'net', align: 'right', sortable: true }
 ]
 
 const mekanikSummaryColumns = [
@@ -475,6 +526,17 @@ const soldItemsColumns = [
   { name: 'date', label: 'Tanggal', field: 'date', align: 'left', sortable: true },
   { name: 'namaBarang', label: 'Nama Barang', field: 'namaBarang', align: 'left', sortable: true },
   { name: 'totalQty', label: 'Qty', field: 'totalQty', align: 'center', sortable: true },
-  { name: 'totalValue', label: 'Total Nilai', field: 'totalValue', align: 'right', sortable: true }
+  { name: 'totalValue', label: 'Total Nilai', field: 'totalValue', align: 'right', sortable: true },
+  { name: 'totalNilaiAdjustment', label: 'Total Nilai Adj.', field: 'totalNilaiAdjustment', align: 'right', sortable: true },
+  { name: 'totalModal', label: 'Total Modal', field: 'totalModal', align: 'right', sortable: true },
+  { name: 'net', label: 'Net', field: r => r.totalNilaiAdjustment - r.totalModal, align: 'right', sortable: true }
+]
+
+const jasaSoldColumns = [
+  { name: 'date', label: 'Tanggal', field: 'date', align: 'left', sortable: true },
+  { name: 'namaJasa', label: 'Nama Jasa', field: 'namaJasa', align: 'left', sortable: true },
+  { name: 'totalQty', label: 'Qty', field: 'totalQty', align: 'center', sortable: true },
+  { name: 'totalNilai', label: 'Total Nilai', field: 'totalNilai', align: 'right', sortable: true },
+  { name: 'totalNilaiAdjustment', label: 'Net', field: 'totalNilaiAdjustment', align: 'right', sortable: true },
 ]
 </script>

@@ -45,8 +45,8 @@ public class SummaryDto {
         private String namaBarang;
         private long totalQty;
         private BigDecimal totalValue = BigDecimal.ZERO;
-        private BigDecimal totalHargaJual = BigDecimal.ZERO;
-        private BigDecimal totalHargaBeli = BigDecimal.ZERO;
+        private BigDecimal totalNilaiAdjustment = BigDecimal.ZERO;
+        private BigDecimal totalModal = BigDecimal.ZERO;
     }
 
     @Data
@@ -57,6 +57,7 @@ public class SummaryDto {
         private String namaJasa;
         private long totalQty;
         private BigDecimal totalNilai = BigDecimal.ZERO;
+        private BigDecimal totalNilaiAdjustment = BigDecimal.ZERO;
         private BigDecimal totalModal = BigDecimal.ZERO;
     }
 

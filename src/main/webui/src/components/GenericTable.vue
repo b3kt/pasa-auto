@@ -29,6 +29,7 @@
              :columns="filteredColumns" :row-key="rowKey" :loading="loading" v-model:pagination="internalPagination"
              @request="onRequest" @row-click="onRowClick" binary-state-sort :selected="selectedRows"
              @keydown="handleKeydown" tabindex="0" ref="tableRef"
+             :rows-per-page-options="[5, 10, 25, 50]"
              style="outline: none"
     >
       <!-- Pass through all slots -->
