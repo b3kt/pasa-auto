@@ -183,7 +183,8 @@ const {
   openEditDialog: baseOpenEditDialog,
   isDirty
 } = useCrud({
-  baseApiUrl: '/api/pazaauto/barang'
+  baseApiUrl: '/api/pazaauto/barang',
+  enableCache: true
 })
 
 const splitterModel = ref(70)

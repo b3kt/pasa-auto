@@ -128,6 +128,10 @@ export default {
         role: {
           title: 'Roles',
           caption: 'Master Roles'
+        },
+        clearCache: {
+          title: 'Browser Cache',
+          caption: 'Reset cached data'
         }
       }
     }
