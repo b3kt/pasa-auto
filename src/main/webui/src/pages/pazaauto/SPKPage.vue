@@ -601,7 +601,8 @@ const filterPelanggan = (val, update) => {
     } else {
       const needle = val.toLowerCase()
       filteredPelangganOptions.value = pelangganOptions.value.filter(
-        v => v.nopol.toLowerCase().indexOf(needle) > -1
+        v => v.nopol.toLowerCase().indexOf(needle) > -1 ||
+             (v.namaPelanggan && v.namaPelanggan.toLowerCase().indexOf(needle) > -1)
       )
     }
   })

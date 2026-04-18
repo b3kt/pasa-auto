@@ -365,6 +365,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null)
         // Refresh failed, redirect to login
+        delete api.defaults.headers.common['Authorization']
         localStorage.removeItem('auth_token')
         localStorage.removeItem('refresh_token')
         localStorage.removeItem('auth_user')
@@ -379,6 +380,7 @@ api.interceptors.response.use(
       }
       
       // If no refresh token, redirect to login
+      delete api.defaults.headers.common['Authorization']
       localStorage.removeItem('auth_token')
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('auth_user')
