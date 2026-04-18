@@ -3,6 +3,49 @@ import axios from 'axios'
 import { Notify } from 'quasar'
 import syncService from '../services/syncService.js'
 import browserCache from '../utils/browserCache.js'
+import masterDataCache from '../utils/masterDataCache.js'
+
+// ── Lookup cache config ────────────────────────────────────────────────────
+// Exact GET URLs that should be transparently cached in IndexedDB
+const LOOKUP_CACHE_URLS = new Set([
+  '/api/pazaauto/supplier',
+  '/api/pazaauto/pelanggan',
+  '/api/pazaauto/karyawan-posisi',
+  '/api/roles',
+  '/api/pazaauto/jasa',
+  '/api/pazaauto/barang',
+  '/api/pazaauto/kendaraan',
+  '/api/pazaauto/kendaraan/merk/distinct',
+  '/api/pazaauto/kendaraan/jenis/distinct'
+])
+
+// When a write (POST/PUT/DELETE/PATCH) succeeds on a URL under a given prefix,
+// all cache entries with those prefixes are invalidated.
+const WRITE_INVALIDATION_MAP = [
+  { prefix: '/api/pazaauto/jasa',          invalidate: ['/api/pazaauto/jasa'] },
+  { prefix: '/api/pazaauto/barang',        invalidate: ['/api/pazaauto/barang'] },
+  { prefix: '/api/pazaauto/supplier',      invalidate: ['/api/pazaauto/supplier'] },
+  { prefix: '/api/pazaauto/pelanggan',     invalidate: ['/api/pazaauto/pelanggan'] },
+  { prefix: '/api/pazaauto/karyawan-posisi', invalidate: ['/api/pazaauto/karyawan-posisi'] },
+  { prefix: '/api/roles',                  invalidate: ['/api/roles'] },
+  {
+    prefix: '/api/pazaauto/kendaraan',
+    invalidate: [
+      '/api/pazaauto/kendaraan',
+      '/api/pazaauto/kendaraan/merk/distinct',
+      '/api/pazaauto/kendaraan/jenis/distinct'
+    ]
+  }
+]
+
+function getLookupInvalidationUrls(writeUrl) {
+  for (const { prefix, invalidate } of WRITE_INVALIDATION_MAP) {
+    if (writeUrl === prefix || writeUrl.startsWith(prefix + '/')) {
+      return invalidate
+    }
+  }
+  return []
+}
 
 // Be careful when using SSR for cross-request state pollution
 // due to creating a Singleton instance here;
@@ -34,6 +77,26 @@ api.interceptors.request.use(
     const token = localStorage.getItem('auth_token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+
+    // Check IndexedDB lookup cache for specific GET endpoints
+    if (config.method?.toUpperCase() === 'GET' && LOOKUP_CACHE_URLS.has(config.url)) {
+      try {
+        const cached = await masterDataCache.get(config.url)
+        if (cached) {
+          config.adapter = () => Promise.resolve({
+            data: cached,
+            status: 200,
+            statusText: 'OK (Cached)',
+            headers: {},
+            config: { ...config, _fromLookupCache: true },
+            request: {}
+          })
+          return config
+        }
+      } catch (e) {
+        console.warn('[axios] lookup cache read error:', e)
+      }
     }
 
     // Check browser cache first for GET requests
@@ -133,20 +196,46 @@ const processQueue = (error, token = null) => {
 // Add response interceptor to handle 401 errors, caching, and offline responses
 api.interceptors.response.use(
   async (response) => {
+    const method = response.config?.method?.toUpperCase()
+
+    // Store successful GET responses for cacheable lookup endpoints
+    if (method === 'GET' && response.status === 200
+        && !response.config?._fromLookupCache
+        && LOOKUP_CACHE_URLS.has(response.config?.url)) {
+      try {
+        await masterDataCache.set(response.config.url, response.data, response.config.url)
+      } catch (e) {
+        console.warn('[axios] lookup cache write error:', e)
+      }
+    }
+
+    // Invalidate lookup + paginated caches on successful writes
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)
+        && response.status >= 200 && response.status < 300) {
+      try {
+        const toInvalidate = getLookupInvalidationUrls(response.config?.url)
+        if (toInvalidate.length > 0) {
+          await Promise.all(toInvalidate.map(url => masterDataCache.invalidatePrefix(url)))
+        }
+      } catch (e) {
+        console.warn('[axios] lookup cache invalidation error:', e)
+      }
+    }
+
     // Cache successful GET responses in both service worker and browser cache
-    if (response.config.method?.toUpperCase() === 'GET' && response.status === 200) {
+    if (method === 'GET' && response.status === 200) {
       try {
         // Cache in service worker storage
         const cacheKey = btoa(`${response.config.method}:${response.config.url}`).replace(/[+/=]/g, '')
         await syncService.storage.storeData(cacheKey, response.data, response.config.url)
-        
+
         // Cache in browser localStorage with longer TTL
         await browserCache.cacheApiResponse(response.config.url, response, 60 * 60 * 1000) // 1 hour
       } catch (error) {
         console.warn('Failed to cache response:', error)
       }
     }
-    
+
     return response
   },
   async (error) => {
@@ -276,6 +365,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null)
         // Refresh failed, redirect to login
+        delete api.defaults.headers.common['Authorization']
         localStorage.removeItem('auth_token')
         localStorage.removeItem('refresh_token')
         localStorage.removeItem('auth_user')
@@ -290,6 +380,7 @@ api.interceptors.response.use(
       }
       
       // If no refresh token, redirect to login
+      delete api.defaults.headers.common['Authorization']
       localStorage.removeItem('auth_token')
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('auth_user')

@@ -30,8 +30,10 @@ const routes = [
       { path: 'pazaauto/penjualan', component: () => import('pages/pazaauto/PenjualanPage.vue') },
       { path: 'pazaauto/rekap-pembelian', component: () => import('pages/pazaauto/RekapPembelianPage.vue') },
       { path: 'pazaauto/rekap-penjualan', component: () => import('pages/pazaauto/RekapPenjualanPage.vue') },
+      { path: 'pazaauto/summary', component: () => import('pages/pazaauto/SummaryPage.vue') },
       { path: 'pazaauto/absensi', component: () => import('pages/pazaauto/AbsensiPage.vue') },
-      { path: 'offline-status', component: () => import('pages/OfflineStatusPage.vue') }
+      { path: 'offline-status', component: () => import('pages/OfflineStatusPage.vue') },
+      { path: 'admin/clear-cache', component: () => import('pages/admin/ClearCachePage.vue') }
 
     ]
   },

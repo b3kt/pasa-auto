@@ -114,6 +114,10 @@ export default {
         title: 'Laporan',
         caption: 'Laporan'
       },
+      summary: {
+        title: 'Ringkasan',
+        caption: 'Income & Outcome Overview'
+      },
       admin: {
         title: 'Admin',
         caption: 'Admin',
@@ -124,6 +128,10 @@ export default {
         role: {
           title: 'Roles',
           caption: 'Master Roles'
+        },
+        clearCache: {
+          title: 'Browser Cache',
+          caption: 'Reset cached data'
         }
       }
     }

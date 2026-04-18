@@ -7,6 +7,8 @@ import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkDetailRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbBarangRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbJasaRepository;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.panache.common.Parameters;
 import jakarta.persistence.EntityManager;
@@ -46,6 +48,12 @@ class TbSpkServiceTest {
     private TbSpkDetailRepository detailRepository;
 
     @Mock
+    private TbBarangRepository barangRepository;
+
+    @Mock
+    private TbJasaRepository jasaRepository;
+
+    @Mock
     private EntityManager entityManager;
 
     @Mock
@@ -62,6 +70,8 @@ class TbSpkServiceTest {
                 karyawanRepository,
                 pelangganService,
                 detailRepository,
+                barangRepository,
+                jasaRepository,
                 entityManager
         );
 

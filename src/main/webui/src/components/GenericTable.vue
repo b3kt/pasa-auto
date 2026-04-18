@@ -29,6 +29,7 @@
              :columns="filteredColumns" :row-key="rowKey" :loading="loading" v-model:pagination="internalPagination"
              @request="onRequest" @row-click="onRowClick" binary-state-sort :selected="selectedRows"
              @keydown="handleKeydown" tabindex="0" ref="tableRef"
+             :rows-per-page-options="[5, 10, 25, 50]"
              style="outline: none"
     >
       <!-- Pass through all slots -->
@@ -173,6 +174,9 @@ const onRowClick = (evt, row, index) => {
 }
 
 const filteredColumns = computed(() => {
+  if (!props.columns || !Array.isArray(props.columns)) {
+    return []
+  }
   if (hasActions.value) {
     return props.columns
   }
@@ -180,6 +184,9 @@ const filteredColumns = computed(() => {
 })
 
 const hasActions = computed(() => {
+  if (!props.columns || !Array.isArray(props.columns)) {
+    return false
+  }
   return props.columns.some(col => col.name === 'actions') && (
     !!props.onDelete ||
     !!props.onEdit ||
@@ -191,6 +198,24 @@ const hasActions = computed(() => {
 const selectedRowIndex = ref(-1)
 const selectedRows = ref([])
 const tableRef = ref(null)
+
+// Select a row by index (must be defined before watch and handleKeydown)
+const selectRow = async (index) => {
+  if (index < 0 || !props.rows || index >= props.rows.length) return
+
+  selectedRowIndex.value = index
+  selectedRows.value = [props.rows[index]]
+
+  // Scroll the selected row into view
+  await nextTick()
+  const tableElement = tableRef.value?.$el
+  if (tableElement) {
+    const rows = tableElement.querySelectorAll('tbody tr')
+    if (rows[index]) {
+      rows[index].scrollIntoView({behavior: 'auto', block: 'nearest'})
+    }
+  }
+}
 
 // Check if a row is selected
 const isRowSelected = (row) => {
@@ -252,24 +277,6 @@ onMounted(() => {
     tableRef.value.$el.focus()
   }
 })
-
-// Select a row by index
-const selectRow = async (index) => {
-  if (index < 0 || !props.rows || index >= props.rows.length) return
-
-  selectedRowIndex.value = index
-  selectedRows.value = [props.rows[index]]
-
-  // Scroll the selected row into view
-  await nextTick()
-  const tableElement = tableRef.value?.$el
-  if (tableElement) {
-    const rows = tableElement.querySelectorAll('tbody tr')
-    if (rows[index]) {
-      rows[index].scrollIntoView({behavior: 'auto', block: 'nearest'})
-    }
-  }
-}
 
 // Select a row by item object (matching rowKey)
 const selectRowByItem = (item) => {

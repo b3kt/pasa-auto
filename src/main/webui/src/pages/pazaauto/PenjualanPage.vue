@@ -227,9 +227,10 @@
 <script setup>
 import { ref, onMounted, watch, computed, nextTick } from 'vue'
 import { api } from 'boot/axios'
-import { useQuasar, date } from 'quasar'
+import { useQuasar } from 'quasar'
 import GenericDialog from 'components/GenericDialog.vue'
 import { useKeyboardShortcuts } from 'src/composables/useKeyboardShortcuts'
+import { useDateFilter } from 'src/composables/useDateFilter'
 import GenericTable from "components/GenericTable.vue";
 import SPKDetailsEditor from 'components/SPKDetailsEditor.vue'
 import SPKCustomerInfo from 'components/SPKCustomerInfo.vue'
@@ -271,29 +272,7 @@ const isNewCustomer = ref(false)
 const searchText = ref('')
 const filterStatus = ref(loadFilterFromStorage())
 const filterToday = ref(false)
-const todayVal = new Date()
-const yesterdayVal = date.subtractFromDate(todayVal, { days: 1 })
-const dateRange = ref({
-    from: date.formatDate(yesterdayVal, 'YYYY/MM/DD'),
-    to: date.formatDate(todayVal, 'YYYY/MM/DD')
-})
-
-// Computed property for date range display text
-const dateRangeText = computed(() => {
-    if (!dateRange.value || (!dateRange.value.from && !dateRange.value.to)) {
-        return ''
-    }
-    if (dateRange.value.from && dateRange.value.to) {
-        return `${dateRange.value.from} - ${dateRange.value.to}`
-    }
-    if (dateRange.value.from) {
-        return `From: ${dateRange.value.from}`
-    }
-    if (dateRange.value.to) {
-        return `To: ${dateRange.value.to}`
-    }
-    return ''
-})
+const { dateRange, dateRangeText, clearDateRange } = useDateFilter('penjualan')
 const rows = ref([])
 const pelangganOptions = ref([])
 const filteredPelangganOptions = ref([])
@@ -695,10 +674,6 @@ const onSearch = (val) => {
   searchText.value = val
   pagination.value.page = 1
   fetchSpk()
-}
-
-const clearDateRange = () => {
-  dateRange.value = { from: '', to: '' }
 }
 
 const openCreateDialog = async () => {

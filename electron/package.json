@@ -16,12 +16,21 @@
     "productName": "PazaAutoApp",
     "files": [
       "main.js",
+      "preload.js",
+      "manager.html",
+      "manager.js",
+      "manager.css",
       "resources/**/*"
     ],
     "extraResources": [
       {
         "from": "resources/",
         "to": "."
+      },
+      {
+        "from": "bin/pasa-auto-runner",
+        "to": "pasa-auto-runner",
+        "mode": "0755"
       }
     ],
     "directories": {

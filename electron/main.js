@@ -1,190 +1,392 @@
-const { app, BrowserWindow, Menu, Tray, nativeImage, dialog } = require('electron');
+const {
+  app, BrowserWindow, Menu, Tray, nativeImage,
+  dialog, ipcMain,
+} = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const net = require('net');
 
-let backendProcess;
-let mainWindow;
-let tray;
+// ──────────────── State ────────────────
+let backendProcess = null;
+let mainWindow = null;
+let managerWindow = null;
+let tray = null;
+let backendState = 'stopped'; // 'stopped' | 'starting' | 'running' | 'stopping'
+let backendPid = null;
+let backendStartTime = null;
+let healthCheckTimer = null;
+let logBuffer = [];
+let logFileStream = null;
 
-function findJava() {
-  const candidates = [
-    process.env.JAVA_HOME ? path.join(process.env.JAVA_HOME, 'bin', 'java') : null,
-    '/usr/bin/java',
-    '/usr/local/bin/java',
-  ].filter(Boolean);
+const QUARKUS_PORT = 8080;
+const MAX_LOG_LINES = 2000;
+const HEALTH_CHECK_INTERVAL_MS = 1500;
+const HEALTH_CHECK_TIMEOUT_MS = 60000;
 
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
-  }
-  return 'java'; // fallback to PATH
+// ──────────────── Config ────────────────
+const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json');
+let config = { logToFile: false, logFilePath: '' };
+
+function loadConfig() {
+  try {
+    if (fs.existsSync(CONFIG_PATH)) {
+      Object.assign(config, JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')));
+    }
+  } catch { /* ignore */ }
 }
 
-function findBackendJar() {
-  // Packaged app: jar is in extraResources
-  const packaged = path.join(process.resourcesPath, 'backend.jar');
+function saveConfig() {
+  try {
+    fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+  } catch (e) {
+    console.error('Failed to save config:', e.message);
+  }
+}
+
+// ──────────────── Binary ────────────────
+function findBackendBinary() {
+  const packaged = path.join(process.resourcesPath, 'pasa-auto-runner');
   if (fs.existsSync(packaged)) return packaged;
-
-  // Development: look for the built jar in target/
-  const devJar = path.join(__dirname, '..', 'target', 'pasa-auto-0.0.14.jar');
-  if (fs.existsSync(devJar)) return devJar;
-
+  const dev = path.join(__dirname, 'bin', 'pasa-auto-runner');
+  if (fs.existsSync(dev)) return dev;
   return null;
 }
 
-function startBackend() {
-  if (backendProcess) {
-    console.log('Backend already running');
-    return;
+// ──────────────── Port check ────────────────
+// Returns true if something is already bound to the port (conflict).
+function checkPortInUse(port) {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once('error', () => resolve(true));
+    server.once('listening', () => server.close(() => resolve(false)));
+    server.listen(port, '127.0.0.1');
+  });
+}
+
+// ──────────────── Health check ────────────────
+// Returns true if the port is accepting connections (Quarkus is up).
+function checkServerReady() {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    socket.setTimeout(500);
+    socket.once('connect', () => { socket.destroy(); resolve(true); });
+    socket.once('error', () => { socket.destroy(); resolve(false); });
+    socket.once('timeout', () => { socket.destroy(); resolve(false); });
+    socket.connect(QUARKUS_PORT, '127.0.0.1');
+  });
+}
+
+function startHealthCheck() {
+  let elapsed = 0;
+
+  function schedule() {
+    healthCheckTimer = setTimeout(async () => {
+      elapsed += HEALTH_CHECK_INTERVAL_MS;
+      if (elapsed >= HEALTH_CHECK_TIMEOUT_MS) {
+        appendLog('[manager] Health check timed out after 60 s — stopping backend');
+        stopHealthCheck();
+        stopBackend();
+        return;
+      }
+      const ready = await checkServerReady();
+      if (ready) {
+        stopHealthCheck();
+        setBackendState('running');
+        appendLog(`[manager] Backend is ready on port ${QUARKUS_PORT}`);
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.reload();
+      } else {
+        schedule();
+      }
+    }, HEALTH_CHECK_INTERVAL_MS);
   }
 
-  const jarPath = findBackendJar();
-  if (!jarPath) {
-    dialog.showErrorBox('Backend Not Found', 'Could not find pasa-auto JAR. Please build the project first with: mvn clean package -DskipTests');
-    return;
+  schedule();
+}
+
+function stopHealthCheck() {
+  if (healthCheckTimer) { clearTimeout(healthCheckTimer); healthCheckTimer = null; }
+}
+
+// ──────────────── Logging ────────────────
+function openLogFileStream() {
+  if (logFileStream) {
+    try { logFileStream.end(); } catch {}
+    logFileStream = null;
+  }
+  if (config.logToFile && config.logFilePath) {
+    try {
+      fs.mkdirSync(path.dirname(config.logFilePath), { recursive: true });
+      logFileStream = fs.createWriteStream(config.logFilePath, { flags: 'a' });
+    } catch (e) {
+      console.error('Failed to open log file stream:', e.message);
+    }
+  }
+}
+
+function appendLog(text) {
+  const entry = { time: new Date().toISOString(), text };
+  logBuffer.push(entry);
+  if (logBuffer.length > MAX_LOG_LINES) logBuffer.shift();
+  if (logFileStream) {
+    try { logFileStream.write(`[${entry.time}] ${entry.text}\n`); } catch {}
+  }
+  if (managerWindow && !managerWindow.isDestroyed()) {
+    managerWindow.webContents.send('backend:log-line', entry);
+  }
+}
+
+// ──────────────── Backend state ────────────────
+function getStatus() {
+  return { state: backendState, pid: backendPid, startTime: backendStartTime };
+}
+
+function setBackendState(state) {
+  backendState = state;
+  updateTray();
+  if (managerWindow && !managerWindow.isDestroyed()) {
+    managerWindow.webContents.send('backend:status-changed', getStatus());
+  }
+}
+
+async function startBackend() {
+  if (backendState !== 'stopped') {
+    return { success: false, error: 'Backend is not stopped' };
   }
 
-  const java = findJava();
-  console.log('Starting backend:', java, '-jar', jarPath);
+  const portInUse = await checkPortInUse(QUARKUS_PORT);
+  if (portInUse) {
+    const msg = `Port ${QUARKUS_PORT} is already in use by another process.\nStop it before starting PazaAuto.`;
+    dialog.showErrorBox('Port Conflict', msg);
+    return { success: false, error: msg };
+  }
 
-  backendProcess = spawn(java, ['-jar', jarPath], {
-    stdio: 'ignore',
+  const binaryPath = findBackendBinary();
+  if (!binaryPath) {
+    const msg = 'Native binary not found at bin/pasa-auto-runner.\nPlease build the project first.';
+    dialog.showErrorBox('Binary Not Found', msg);
+    return { success: false, error: msg };
+  }
+
+  try { fs.chmodSync(binaryPath, 0o755); } catch {}
+
+  openLogFileStream();
+
+  const proc = spawn(binaryPath, [], {
+    stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
   });
 
-  updateTray();
+  backendProcess = proc;
+  backendPid = proc.pid;
+  backendStartTime = Date.now();
+  setBackendState('starting');
+  appendLog(`[manager] Starting backend: ${binaryPath} (PID ${proc.pid})`);
 
-  backendProcess.on('exit', (code) => {
-    console.log('Backend exited with code:', code);
+  proc.stdout.on('data', (data) => {
+    data.toString().split('\n').filter((l) => l.trim()).forEach(appendLog);
+  });
+  proc.stderr.on('data', (data) => {
+    data.toString().split('\n').filter((l) => l.trim()).forEach(appendLog);
+  });
+  proc.once('exit', (code) => {
+    appendLog(`[manager] Process exited (code ${code ?? 'null'})`);
     backendProcess = null;
-    updateMenu();
-    updateTray();
+    backendPid = null;
+    backendStartTime = null;
+    stopHealthCheck();
+    setBackendState('stopped');
+    if (logFileStream) { try { logFileStream.end(); } catch {} logFileStream = null; }
+  });
+  proc.once('error', (err) => {
+    appendLog(`[manager] Process error: ${err.message}`);
+    backendProcess = null;
+    backendPid = null;
+    backendStartTime = null;
+    stopHealthCheck();
+    setBackendState('stopped');
   });
 
-  backendProcess.on('error', (err) => {
-    console.error('Failed to start backend:', err);
-    backendProcess = null;
-    updateMenu();
-    updateTray();
-  });
-
-  updateMenu();
-
-  // Reload page after backend starts
-  if (mainWindow) {
-    setTimeout(() => mainWindow.reload(), 3000);
-  }
+  startHealthCheck();
+  return { success: true };
 }
 
 function stopBackend() {
-  if (backendProcess) {
-    backendProcess.kill();
-    backendProcess = null;
-    updateMenu();
-    updateTray();
-    console.log('Backend stopped');
-  }
+  if (!backendProcess || backendState === 'stopped' || backendState === 'stopping') return;
+  stopHealthCheck();
+  setBackendState('stopping');
+  appendLog('[manager] Sending SIGTERM to backend…');
+  backendProcess.kill('SIGTERM');
+  const forceKill = setTimeout(() => {
+    if (backendProcess) {
+      appendLog('[manager] Force killing backend (SIGKILL)…');
+      backendProcess.kill('SIGKILL');
+    }
+  }, 5000);
+  backendProcess.once('exit', () => clearTimeout(forceKill));
 }
 
-function createMenu() {
-  const template = [
+// ──────────────── IPC ────────────────
+function setupIPC() {
+  ipcMain.handle('backend:status', () => getStatus());
+  ipcMain.handle('backend:get-logs', () => logBuffer);
+  ipcMain.handle('backend:start', () => startBackend());
+  ipcMain.handle('backend:stop', () => { stopBackend(); return { success: true }; });
+
+  ipcMain.handle('config:get', () => config);
+  ipcMain.handle('config:set', (_, newConfig) => {
+    Object.assign(config, newConfig);
+    saveConfig();
+    openLogFileStream();
+    return config;
+  });
+  ipcMain.handle('config:get-default-log-path', () =>
+    path.join(app.getPath('logs'), 'pasa-auto-backend.log'),
+  );
+
+  ipcMain.handle('dialog:pick-log-file', async () => {
+    const result = await dialog.showSaveDialog(managerWindow, {
+      title: 'Choose Log File Location',
+      defaultPath: path.join(app.getPath('logs'), 'pasa-auto-backend.log'),
+      filters: [
+        { name: 'Log Files', extensions: ['log', 'txt'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+    });
+    return result.canceled ? null : result.filePath;
+  });
+
+  ipcMain.handle('log:save-to-file', async (_, content) => {
+    const result = await dialog.showSaveDialog(managerWindow, {
+      title: 'Save Console Log',
+      defaultPath: path.join(app.getPath('downloads'), `pasa-auto-${Date.now()}.log`),
+      filters: [{ name: 'Log Files', extensions: ['log', 'txt'] }],
+    });
+    if (result.canceled) return { success: false };
+    try {
+      fs.writeFileSync(result.filePath, content);
+      return { success: true, path: result.filePath };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+}
+
+// ──────────────── Tray ────────────────
+function getStateIcon(state) {
+  const icons = {
+    running: 'icon-green.png',
+    starting: 'icon-yellow.png',
+    stopping: 'icon-yellow.png',
+    stopped: 'icon-red.png',
+  };
+  const name = icons[state] || 'icon-red.png';
+  const iconPath = path.join(__dirname, 'resources', name);
+  const fallback = path.join(__dirname, 'resources', 'icon-red.png');
+  return nativeImage
+    .createFromPath(fs.existsSync(iconPath) ? iconPath : fallback)
+    .resize({ width: 16, height: 16 });
+}
+
+function updateTray() {
+  if (!tray) return;
+  tray.setImage(getStateIcon(backendState));
+  const labels = {
+    stopped: 'Stopped', starting: 'Starting…', running: 'Running', stopping: 'Stopping…',
+  };
+  tray.setToolTip(`PazaAuto: ${labels[backendState] || backendState}`);
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Open Manager', click: () => createManagerWindow() },
+    { type: 'separator' },
+    { label: 'Start Backend', enabled: backendState === 'stopped', click: () => startBackend() },
+    { label: 'Stop Backend', enabled: backendState === 'running', click: () => stopBackend() },
+    { type: 'separator' },
+    { label: 'Quit', role: 'quit' },
+  ]));
+}
+
+function createTray() {
+  tray = new Tray(getStateIcon('stopped'));
+  tray.on('double-click', () => createManagerWindow());
+  updateTray();
+}
+
+// ──────────────── App menu ────────────────
+function createAppMenu() {
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
     {
       label: 'Service',
       submenu: [
-        {
-          label: 'Start Backend',
-          click: startBackend,
-          enabled: !backendProcess,
-        },
-        {
-          label: 'Stop Backend',
-          click: stopBackend,
-          enabled: !!backendProcess,
-        },
+        { label: 'Open Manager', click: () => createManagerWindow() },
+        { type: 'separator' },
+        { label: 'Start Backend', click: () => startBackend() },
+        { label: 'Stop Backend', click: () => stopBackend() },
         { type: 'separator' },
         { role: 'quit' },
       ],
     },
     {
       label: 'View',
-      submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
-      ],
+      submenu: [{ role: 'reload' }, { role: 'forceReload' }, { role: 'toggleDevTools' }],
     },
-  ];
-
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
+  ]));
 }
 
-function updateMenu() {
-  createMenu();
-}
-
-function updateTray() {
-  if (!tray) return;
-
-  const iconName = backendProcess ? 'icon-green.png' : 'icon-red.png';
-  const iconPath = path.join(__dirname, 'resources', iconName);
-  const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
-
-  tray.setImage(icon);
-  tray.setToolTip(backendProcess ? 'Backend: Running' : 'Backend: Stopped');
-
-  const contextMenu = Menu.buildFromTemplate([
-    { label: 'Start Backend', click: startBackend, enabled: !backendProcess },
-    { label: 'Stop Backend', click: stopBackend, enabled: !!backendProcess },
-    { type: 'separator' },
-    { label: 'Quit', role: 'quit' },
-  ]);
-
-  tray.setContextMenu(contextMenu);
-}
-
-function createTray() {
-  const iconPath = path.join(__dirname, 'resources', 'icon-red.png');
-  const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
-  tray = new Tray(icon);
-  updateTray();
-}
-
-function createWindow() {
-  mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 900,
+// ──────────────── Windows ────────────────
+function createManagerWindow() {
+  if (managerWindow && !managerWindow.isDestroyed()) {
+    managerWindow.focus();
+    return;
+  }
+  managerWindow = new BrowserWindow({
+    width: 900,
+    height: 650,
+    minWidth: 700,
+    minHeight: 500,
+    title: 'PazaAuto Manager',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
     },
   });
-
-  mainWindow.loadURL('http://localhost:8080/');
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
+  managerWindow.loadFile(path.join(__dirname, 'manager.html'));
+  managerWindow.on('closed', () => { managerWindow = null; });
 }
 
+function createMainWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1280,
+    height: 900,
+    title: 'PazaAuto',
+    webPreferences: { nodeIntegration: false, contextIsolation: true },
+  });
+  mainWindow.loadURL(`http://localhost:${QUARKUS_PORT}/`);
+  mainWindow.on('closed', () => { mainWindow = null; });
+}
+
+// ──────────────── App lifecycle ────────────────
 app.whenReady().then(() => {
-  createMenu();
+  loadConfig();
+  setupIPC();
+  createAppMenu();
   createTray();
-  createWindow();
-  startBackend(); // auto-start backend on launch
+  createManagerWindow();
+  createMainWindow();
+  startBackend();
 });
 
 app.on('before-quit', () => {
+  stopHealthCheck();
   if (backendProcess) backendProcess.kill();
+  if (logFileStream) { try { logFileStream.end(); } catch {} }
 });
 
 app.on('window-all-closed', () => {
-  // Keep app alive in tray on macOS
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('activate', () => {
-  if (mainWindow === null) createWindow();
+  if (!mainWindow) createMainWindow();
 });

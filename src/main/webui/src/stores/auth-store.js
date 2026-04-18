@@ -71,12 +71,16 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async logout() {
+      let api
       try {
-        const { api } = await import('boot/axios')
+        ({ api } = await import('boot/axios'))
         await api.post('/api/auth/logout')
       } catch (error) {
         console.error('Logout error:', error)
       } finally {
+        if (api) {
+          delete api.defaults.headers.common['Authorization']
+        }
         this.token = null
         this.refreshToken = null
         this.user = null
@@ -84,10 +88,6 @@ export const useAuthStore = defineStore('auth', {
         localStorage.removeItem('auth_token')
         localStorage.removeItem('refresh_token')
         localStorage.removeItem('auth_user')
-        
-        // Remove authorization header
-        const { api } = await import('boot/axios')
-        delete api.defaults.headers.common['Authorization']
       }
     },
     

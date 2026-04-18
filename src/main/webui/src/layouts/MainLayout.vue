@@ -195,6 +195,13 @@ const linksList = computed(() => [
     visible: hasRole('Admin') || hasRole('Owner'),
     children: [
       {
+        title: t('app.menu.summary.title'),
+        caption: t('app.menu.summary.caption'),
+        icon: 'assessment',
+        visible: hasRole('Owner'),
+        link: '/pazaauto/summary'
+      },
+      {
         title: t('app.menu.recap.buy.title'),
         caption: t('app.menu.recap.buy.caption'),
         icon: 'warehouse',
@@ -220,15 +227,22 @@ const linksList = computed(() => [
         title: t('app.menu.admin.user.title'),
         caption: t('app.menu.admin.user.caption'),
         icon: 'user',
-        visible: hasRole('Admin') || hasRole('Owner'),
+        visible: hasRole('Owner'),
         link: '/users'
       },
       {
         title: t('app.menu.admin.role.title'),
         caption: t('app.menu.admin.role.caption'),
         icon: 'group',
-        visible: hasRole('Admin') || hasRole('Owner'),
+        visible: hasRole('Owner'),
         link: '/roles'
+      },
+      {
+        title: t('app.menu.admin.clearCache.title'),
+        caption: t('app.menu.admin.clearCache.caption'),
+        icon: 'cleaning_services',
+        visible: hasRole('Admin') || hasRole('Owner'),
+        link: '/admin/clear-cache'
       },
     ]
   }

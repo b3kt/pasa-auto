@@ -193,7 +193,7 @@ class BrowserCache {
       url: url,
       data: response,
       status: response.status,
-      headers: Object.fromEntries(response.headers.entries())
+      headers: { ...response.headers }
     }, ttl)
   }
 
