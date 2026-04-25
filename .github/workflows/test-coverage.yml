@@ -1,10 +1,9 @@
 name: Test Coverage Check
 
 on:
-  push:
-    branches: [ main, develop ]
+  workflow_dispatch:
   pull_request:
-    branches: [ main ]
+    branches: [ release ]
 
 jobs:
   test:
@@ -54,12 +53,12 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         
-    - name: Upload test results
-      uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: test-results
-        path: |
-          target/surefire-reports/
-          target/failsafe-reports/
-          target/site/jacoco/
+    # - name: Upload test results
+    #   uses: actions/upload-artifact
+    #   if: always()
+    #   with:
+    #     name: test-results
+    #     path: |
+    #       target/surefire-reports/
+    #       target/failsafe-reports/
+    #       target/site/jacoco/
