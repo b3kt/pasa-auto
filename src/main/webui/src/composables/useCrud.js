@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
+import masterDataCache from 'src/utils/masterDataCache'
 
 export function useCrud(config) {
     const {
@@ -15,7 +16,8 @@ export function useCrud(config) {
         },
         transformPayload = (data) => data,
         onSuccess = () => { },
-        onError = () => { }
+        onError = () => { },
+        enableCache = false
     } = config
 
     const $q = useQuasar()
@@ -53,6 +55,19 @@ export function useCrud(config) {
                 params.search = searchText.value
             }
 
+            if (enableCache) {
+                const cacheKey = `${baseApiUrl}::${JSON.stringify(params)}`
+                const cached = await masterDataCache.get(cacheKey)
+                if (cached) {
+                    rows.value = cached.rows || []
+                    pagination.value.rowsNumber = cached.rowsNumber
+                    pagination.value.page = cached.page
+                    pagination.value.rowsPerPage = cached.rowsPerPage
+                    loading.value = false
+                    return
+                }
+            }
+
             const response = await api.get(`${baseApiUrl}/paginated`, { params })
             if (response.data.success) {
                 const pageData = response.data.data
@@ -60,6 +75,11 @@ export function useCrud(config) {
                 pagination.value.rowsNumber = pageData.rowsNumber
                 pagination.value.page = pageData.page
                 pagination.value.rowsPerPage = pageData.rowsPerPage
+
+                if (enableCache) {
+                    const cacheKey = `${baseApiUrl}::${JSON.stringify(params)}`
+                    await masterDataCache.set(cacheKey, pageData, baseApiUrl)
+                }
 
                 // Update initialData if we are in edit mode and the currently edited item is in the fetched rows
                 if (isEditMode.value && initialData.value) {
@@ -117,6 +137,7 @@ export function useCrud(config) {
                     message: isEditMode.value ? 'Item updated successfully' : 'Item created successfully'
                 })
                 showDialog.value = false
+                if (enableCache) await masterDataCache.invalidatePrefix(baseApiUrl)
                 await fetchData()
                 const result = response.data.data
                 if (result) {
@@ -172,6 +193,7 @@ export function useCrud(config) {
                 })
                 showDeleteDialog.value = false
                 itemToDelete.value = null
+                if (enableCache) await masterDataCache.invalidatePrefix(baseApiUrl)
                 await fetchData()
                 onSuccess('delete')
                 return true

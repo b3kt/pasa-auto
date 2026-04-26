@@ -1,4 +1,25 @@
--- FIX EMPTY VERSION
+-- FIX EMPTY VERSION (first add column if not exists, then update)
+-- Add version column to tables that might not have it
+ALTER TABLE tb_absensi ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_absensi_config ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_barang ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_jasa ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_karyawan ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_karyawan_posisi ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_kendaraan ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_pelanggan ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_pembelian ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_pembelian_barang_detail ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_pembelian_detail ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_penjualan ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_penjualan_detail ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_sparepart ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_spk ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_spk_detail ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE tb_supplier ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS version integer DEFAULT 0;
+
+-- Set version to 0 where null
 UPDATE tb_absensi set version = 0 WHERE version IS null;
 UPDATE tb_absensi_config set version = 0 WHERE version IS null;
 UPDATE tb_barang set version = 0 WHERE version IS null;
@@ -66,5 +87,5 @@ BEGIN
 END $$;
 
 -- FIX CONSTRAINTS
-ALTER TABLE public.tb_pembelian DROP CONSTRAINT chk_jenis_pembelian;
+ALTER TABLE public.tb_pembelian DROP CONSTRAINT IF EXISTS chk_jenis_pembelian;
 ALTER TABLE public.tb_pembelian ADD CONSTRAINT chk_jenis_pembelian CHECK (((jenis_pembelian)::text = ANY (ARRAY[('SPAREPART'::character varying)::text, ('OPERASIONAL'::character varying)::text, ('BARANG'::character varying)::text])))

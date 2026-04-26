@@ -91,7 +91,8 @@ const {
   onSuccess: () => {
     // If we just saved a new item, we might want to stay in edit mode for it or reset
     // For now, let's keep it simple
-  }
+  },
+  enableCache: true
 })
 
 const splitterModel = ref(60)

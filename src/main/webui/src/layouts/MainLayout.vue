@@ -8,16 +8,20 @@
 
         <q-separator vertical inset dark class="q-mx-md" />
 
-        <div class="row no-wrap">
+        <div class="q-pa-sm q-pl-md row items-center xs-hide" >
           <template v-for="menu in linksList" :key="menu.title">
             <q-btn-dropdown
               v-if="menu.visible"
               flat
               stretch
               no-caps
-              :label="menu.title"
+              :title="menu.title"
               :icon="menu.icon"
             >
+              <template v-slot:label>
+                <span class="q-px-sm" v-if="$q.screen.gt.sm">{{menu.title}}</span>
+              </template>
+
               <q-list dense>
                 <q-item
                   v-for="child in menu.children"
@@ -40,6 +44,7 @@
         <q-space />
 
         <div class="q-gutter-sm row items-center no-wrap">
+          <span v-if="appVersion" class="text-caption q-mr-sm">v{{ appVersion }}</span>
           <q-btn flat no-caps v-if="authStore.isLoggedIn">
             <div class="row items-center no-wrap">
               <q-icon name="person" class="q-mr-xs" />
@@ -66,7 +71,7 @@
               </q-list>
             </q-menu>
           </q-btn>
-          <span v-else>Quasar v{{ $q.version }}</span>
+          <span v-else>v{{ $q.version }}</span>
         </div>
       </q-toolbar>
     </q-header>
@@ -78,11 +83,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useAuthStore } from 'stores/auth-store'
 import { useI18n } from 'vue-i18n'
+import { api } from 'boot/axios'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -90,6 +96,18 @@ const { t } = useI18n()
 const authStore = useAuthStore()
 
 const user = computed(() => authStore.user)
+const appVersion = ref('')
+
+onMounted(async () => {
+  try {
+    const response = await api.get('/health')
+    if (response.data && response.data.data) {
+      appVersion.value = response.data.data.version || ''
+    }
+  } catch (e) {
+    console.error('Failed to fetch version:', e)
+  }
+})
 
 const hasRole = (role) => {
   return user.value?.roles?.includes(role) || false
@@ -151,7 +169,6 @@ const linksList = computed(() => [
     title: t('app.menu.process.title'),
     caption: t('app.menu.process.caption'),
     icon: 'conveyor_belt',
-    link: 'https://quasar.dev',
     visible: hasRole('Admin') || hasRole('Karyawan'),
     children: [
       {
@@ -181,7 +198,7 @@ const linksList = computed(() => [
         caption: t('app.menu.sales.sell.caption'),
         icon: 'warehouse',
         visible: hasRole('Admin') || hasRole('Owner'),
-        link: '/pazaauto/penjualan-barang'
+        link: '/pazaauto/penjualan'
       },
     ]
   },
@@ -192,18 +209,25 @@ const linksList = computed(() => [
     visible: hasRole('Admin') || hasRole('Owner'),
     children: [
       {
+        title: t('app.menu.summary.title'),
+        caption: t('app.menu.summary.caption'),
+        icon: 'assessment',
+        visible: hasRole('Owner'),
+        link: '/pazaauto/summary'
+      },
+      {
         title: t('app.menu.recap.buy.title'),
         caption: t('app.menu.recap.buy.caption'),
         icon: 'warehouse',
         visible: hasRole('Admin') || hasRole('Owner'),
-        link: '/pazaauto/pembelian'
+        link: '/pazaauto/rekap-pembelian'
       },
       {
         title: t('app.menu.recap.sell.title'),
         caption: t('app.menu.recap.sell.caption'),
         icon: 'warehouse',
         visible: hasRole('Admin') || hasRole('Owner'),
-        link: '/pazaauto/penjualan-barang'
+        link: '/pazaauto/rekap-penjualan'
       },
     ]
   },
@@ -217,16 +241,30 @@ const linksList = computed(() => [
         title: t('app.menu.admin.user.title'),
         caption: t('app.menu.admin.user.caption'),
         icon: 'user',
-        visible: hasRole('Admin') || hasRole('Owner'),
+        visible: hasRole('Owner'),
         link: '/users'
       },
       {
         title: t('app.menu.admin.role.title'),
         caption: t('app.menu.admin.role.caption'),
         icon: 'group',
-        visible: hasRole('Admin') || hasRole('Owner'),
+        visible: hasRole('Owner'),
         link: '/roles'
       },
+      {
+        title: t('app.menu.admin.clearCache.title'),
+        caption: t('app.menu.admin.clearCache.caption'),
+        icon: 'cleaning_services',
+        visible: hasRole('Admin') || hasRole('Owner'),
+        link: '/admin/clear-cache'
+      },
+      {
+        title: t('app.menu.admin.auditTrail.title'),
+        caption: t('app.menu.admin.auditTrail.caption'),
+        icon: 'history',
+        visible: hasRole('Admin') || hasRole('Owner'),
+        link: '/admin/audit-trail'
+      }
     ]
   }
 ])

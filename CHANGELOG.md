@@ -8,11 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
-- **Fixed**: Replaced hardcoded security salt `1234567890` with environment variable `APP_SECURITY_SALT`
-- **Fixed**: Removed hardcoded SSL certificate paths `/etc/letsencrypt/live/pasa-auto.web.id/` 
-- **Fixed**: Updated JWT configuration to require explicit environment variables instead of classpath defaults
-- **Added**: Created `.env.example` template with safe placeholders for all sensitive configuration
-- **Changed**: Default SSL ports changed from 80/443 to 8080/8443 for development safety
+- **Fixed**: Password verification in `AuthServiceImpl` now uses `PasswordEncoder.matches()` with backward compatibility for plain-text passwords
+- **Enhanced**: `PasswordEncoderImpl` supports both bcrypt-hashed and plain-text passwords for seamless migration
+- **Fixed**: `SecurityProperties` interface properly configured as SmallRye ConfigMapping (removed stub method)
+
+### Code Quality
+- **Improved**: Standardized dependency injection in `TbSpkService` (removed inconsistent `@Inject` alongside `@RequiredArgsConstructor`)
+- **Improved**: Added `@Min`/`@Max` validation annotations to `PageRequest` DTO for pagination limits
+- **Added**: `@NotBlank` validation to `RefreshTokenRequest` DTO
+- **Fixed**: Made `DateTimeFormatter` static and final in `AbstractCrudResource` (was incorrectly as instance field)
+- **Renamed**: Changed `spkNoformatter` to `SPK_DATE_FORMATTER` with proper static constant naming
+
+### Refactoring
+- **Added**: New `QueryFilterBuilder` helper class to reduce duplicate query filter logic
+- **Refactored**: `TbSpkService.findPaginated()` now uses `QueryFilterBuilder` (reduced from ~90 to ~30 lines)
+- **Refactored**: `TbSpkService.findPaginatedWithPenjualan()` now uses `QueryFilterBuilder` (reduced from ~110 to ~50 lines)
+
+### Testing
+- **Added**: `TbSpkServiceTest` with comprehensive unit tests covering:
+  - Find by ID with details population
+  - Find unprocessed SPK
+  - Find by noSpk number
+  - Get next SPK number
+  - Paginated queries with search, status, and date filters
 
 ### Documentation
 - **Added**: Comprehensive project-specific README.md replacing generic Quarkus template
@@ -22,24 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Added**: Development setup guide in `/docs/development.md` with local development instructions
 - **Added**: Project-level CHANGELOG.md for tracking all changes
 
-### Testing
-- **Added**: JaCoCo Maven plugin for code coverage reporting
-- **Added**: Coverage threshold enforcement (≥80% instruction coverage)
-- **Added**: Testcontainers dependencies for integration testing with PostgreSQL
-- **Added**: GitHub Actions workflow for automated test coverage checks
-- **Added**: Test configuration for Testcontainers integration
-- **Added**: Integration test base classes for consistent test setup
-- **Added**: Comprehensive unit tests for all major packages:
-  - `application.service.impl` - AuthServiceImpl, RbacServiceImpl
-  - `application.service.pazaauto` - AbstractCrudService and concrete implementations
-  - `infrastructure.persistence.listener` - AuditListener
-  - `infrastructure.persistence.repository` - UserRepository and related repositories
-  - `infrastructure.security` - PasswordEncoder, JWT services
-- **Added**: Integration tests for REST endpoints:
-  - `presentation.rest` - AuthResource with full HTTP testing
-- **Added**: Test coverage for authentication, authorization, CRUD operations, and security features
-
 ### Changed
+- **Fixed**: Replaced hardcoded security salt `1234567890` with environment variable `APP_SECURITY_SALT`
+- **Fixed**: Removed hardcoded SSL certificate paths `/etc/letsencrypt/live/pasa-auto.web.id/` 
+- **Fixed**: Updated JWT configuration to require explicit environment variables instead of classpath defaults
+- **Added**: Created `.env.example` template with safe placeholders for all sensitive configuration
+- **Changed**: Default SSL ports changed from 80/443 to 8080/8443 for development safety
 - Improved security posture by eliminating hardcoded secrets in configuration files
 - Enhanced environment variable handling for better deployment flexibility
 - Established comprehensive documentation structure following ACTION_RULES.md requirements
@@ -49,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Database migration files contain legitimate `admin` user references (created_by/updated_by fields)
 - No hardcoded passwords, API keys, or tokens found in source code
 - JWT private key reference updated to require explicit environment variable
+- Plain-text password compatibility maintained for seamless migration to bcrypt hashing
 
 ---
 

@@ -1,6 +1,7 @@
 import { defineRouter } from '#q-app/wrappers'
 import { createRouter, createMemoryHistory, createWebHistory, createWebHashHistory } from 'vue-router'
 import routes from './routes'
+import { useAuthStore } from 'stores/auth-store'
 
 /*
  * If not building with SSR mode, you can
@@ -10,6 +11,11 @@ import routes from './routes'
  * async/await or return a Promise which resolves
  * with the Router instance.
  */
+
+const ROLE_ROUTES = {
+  'owner': ['/pazaauto/summary'],
+  'admin': []
+}
 
 export default defineRouter(function (/* { store, ssrContext } */) {
   const createHistory = process.env.SERVER
@@ -37,6 +43,28 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     } else if (to.path === '/login' && token) {
       // Redirect to home if user is already logged in
       next('/')
+    } else if (requiresAuth && token) {
+      // Check role-based access
+      const userJson = localStorage.getItem('auth_user')
+      if (userJson) {
+        try {
+          const user = JSON.parse(userJson)
+          const userRoles = user.roles || []
+          
+          // Check if route has role restrictions
+          const allowedRoutes = Object.entries(ROLE_ROUTES).flatMap(([role, paths]) => 
+            userRoles.includes(role) ? paths : []
+          )
+          
+          if (to.path.startsWith('/pazaauto/summary') && !userRoles.includes('owner')) {
+            next('/')
+            return
+          }
+        } catch (e) {
+          console.error('Failed to parse user data', e)
+        }
+      }
+      next()
     } else {
       next()
     }

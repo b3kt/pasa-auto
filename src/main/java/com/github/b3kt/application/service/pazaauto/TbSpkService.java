@@ -2,9 +2,14 @@ package com.github.b3kt.application.service.pazaauto;
 
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
+import com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto;
+import com.github.b3kt.application.helper.QueryFilterBuilder;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbBarangRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbJasaRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawanRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkDetailRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkRepository;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
@@ -13,6 +18,10 @@ import io.quarkus.panache.common.Parameters;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
+import jakarta.persistence.TypedQuery;
+import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,19 +29,16 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
 
-    @Inject
-    TbSpkRepository repository;
-
-    @Inject
-    TbKaryawanRepository karyawanRepository;
-
-    @Inject
-    TbPelangganService pelangganService;
-
-    @Inject
-    com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkDetailRepository detailRepository;
+    private final TbSpkRepository repository;
+    private final TbKaryawanRepository karyawanRepository;
+    private final TbPelangganService pelangganService;
+    private final TbSpkDetailRepository detailRepository;
+    private final TbBarangRepository barangRepository;
+    private final TbJasaRepository jasaRepository;
+    private final EntityManager entityManager;
 
     @Override
     protected PanacheRepositoryBase<TbSpkEntity, Long> getRepository() {
@@ -93,6 +99,23 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
         return entity;
     }
 
+    public RekapPenjualanDto findByIdWithPenjualan(Long id) {
+        String queryString = "SELECT new com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto(s, p) " +
+                " FROM com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity s " +
+                " LEFT JOIN com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity p " +
+                "   ON s.noSpk = p.noSpk " +
+                " WHERE s.id = ?1 ";
+        Query query = entityManager.createQuery(queryString)
+                .setParameter(1, id);
+        RekapPenjualanDto entity = (RekapPenjualanDto) query.getSingleResult();
+        if (entity != null) {
+            List<com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity> details = detailRepository
+                    .find("id.noSpk", entity.getNoSpk()).list();
+            entity.setDetails(details);
+        }
+        return entity;
+    }
+
     private void saveDetails(TbSpkEntity entity) {
         if (entity.getDetails() != null) {
             for (com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity detail : entity
@@ -101,14 +124,23 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
                     detail.setId(new com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailId());
                 }
                 detail.getId().setNoSpk(entity.getNoSpk());
-                // Ensure namaJasa is set from frontend or logic
-                if (detail.getId().getNamaJasa() == null || detail.getId().getNamaJasa().isEmpty()) {
-                    // Fallback or error? Assuming frontend sends it.
-                    // If it's a Barang, we might need to use namaBarang as namaJasa for the key?
-                    // The requirement says "Detail SPK can be TbJasaEntity / TbBarangEntity"
-                    // But TbSpkDetailId has 'namaJasa'.
-                    // We'll assume the frontend puts the item name in 'namaJasa' of the ID.
+
+                // Ensure hargaMaster is populated from master data if not set
+                if (detail.getHargaMaster() == null) {
+                    if (detail.getSparepartId() != null) {
+                        barangRepository.findByIdOptional(detail.getSparepartId())
+                            .ifPresent(barang -> detail.setHargaMaster(barang.getHargaJual()));
+                    } else if (detail.getJasaId() != null) {
+                        jasaRepository.findByIdOptional(detail.getJasaId())
+                            .ifPresent(jasa -> detail.setHargaMaster(
+                                jasa.getHargaJasa() != null ? java.math.BigDecimal.valueOf(jasa.getHargaJasa()) : null));
+                    }
                 }
+                // If no custom price set, harga equals hargaMaster
+                if (detail.getHarga() == null && detail.getHargaMaster() != null) {
+                    detail.setHarga(detail.getHargaMaster());
+                }
+
                 detailRepository.persist(detail);
             }
         }
@@ -116,83 +148,81 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
 
     @Override
     public PageResponse<TbSpkEntity> findPaginated(PageRequest pageRequest) {
+        QueryFilterBuilder filterBuilder = QueryFilterBuilder.create()
+                .withSearch(pageRequest.getSearch())
+                .withStatusFilter(pageRequest.getStatusFilter(), "statusSpk")
+                .withDateRange(pageRequest.getStartDate(), pageRequest.getEndDate(), "tanggalJamSpk");
+
+        String queryString = filterBuilder.getQueryString();
+        Object[] params = filterBuilder.getParams();
+
         PanacheQuery<TbSpkEntity> query;
-
-        // Build query with filters
-        String queryString = "1=1";
-        Object[] params = new Object[0];
-        int paramIndex = 1;
-
-        // Apply search filter if specified
-        if (pageRequest.getSearch() != null && !pageRequest.getSearch().isEmpty()) {
-            String searchPattern = "%" + pageRequest.getSearch().toLowerCase() + "%";
-            queryString += " and (lower(noSpk) like ?" + paramIndex + " or lower(nopol) like ?" + paramIndex
-                    + " or lower(namaKaryawan) like ?" + paramIndex + ")";
-            params = new Object[] { searchPattern };
-            paramIndex++;
-        }
-
-        // Apply status filter if specified
-        if (pageRequest.getStatusFilter() != null && !pageRequest.getStatusFilter().isEmpty()) {
-            String[] statuses = pageRequest.getStatusFilter().split(",");
-            StringBuilder statusQuery = new StringBuilder(" and (");
-            Object[] newParams = new Object[params.length + statuses.length];
-            System.arraycopy(params, 0, newParams, 0, params.length);
-
-            for (int i = 0; i < statuses.length; i++) {
-                if (i > 0) {
-                    statusQuery.append(" or ");
-                }
-                statusQuery.append("statusSpk = ?").append(paramIndex);
-                newParams[params.length + i] = statuses[i].trim().toUpperCase();
-                paramIndex++;
-            }
-            statusQuery.append(")");
-            queryString += statusQuery.toString();
-            params = newParams;
-        }
-
-        // Apply today filter if specified
-        if (pageRequest.isFilterToday()) {
-            queryString += " and tanggalJamSpk like ?" + paramIndex;
-            Object[] newParams = new Object[params.length + 1];
-            System.arraycopy(params, 0, newParams, 0, params.length);
-            newParams[params.length] = java.time.LocalDate.now().toString() + "%";
-            params = newParams;
-            paramIndex++;
-        }
-
-        // Create query
         if (params.length > 0) {
             query = repository.find(queryString, params);
         } else {
             query = repository.find(queryString);
         }
 
-        // Apply sorting if specified
         if (pageRequest.getSortBy() != null && !pageRequest.getSortBy().isEmpty()) {
             Sort sort = pageRequest.isDescending()
                     ? Sort.descending(pageRequest.getSortBy())
                     : Sort.ascending(pageRequest.getSortBy());
-
-            // Re-apply query with sorting
-            if (params.length > 0) {
-                query = repository.find(queryString, sort, params);
-            } else {
-                query = repository.find(queryString, sort);
-            }
+            query = repository.find(queryString, sort, params);
         }
 
-        // Get total count
         long totalCount = query.count();
-
-        // Apply pagination
         List<TbSpkEntity> rows = query.page(Page.of(pageRequest.getPage() - 1, pageRequest.getRowsPerPage())).list();
-
         fillRequiredFields(rows);
 
         return new PageResponse<>(rows, pageRequest.getPage(), pageRequest.getRowsPerPage(), totalCount);
     }
+
+    public PageResponse<RekapPenjualanDto> findPaginatedWithPenjualan(PageRequest pageRequest) {
+        String baseQuery = "SELECT new com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto(s, p) " +
+                " FROM com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity s " +
+                " LEFT JOIN com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity p " +
+                "   ON s.noSpk = p.noSpk " +
+                " WHERE 1=1";
+        String countQuery = "SELECT COUNT(s) FROM com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity s " +
+                " LEFT JOIN com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity p " +
+                "   ON s.noSpk = p.noSpk WHERE 1=1";
+
+        QueryFilterBuilder filterBuilder = QueryFilterBuilder.create()
+                .withSearch(pageRequest.getSearch())
+                .withStatusFilter(pageRequest.getStatusFilter(), "statusSpk")
+                .withDateRange(pageRequest.getStartDate(), pageRequest.getEndDate(), "tanggalJamSpk");
+
+        String filterClause = filterBuilder.getQueryString().replace("1=1", "");
+        baseQuery += filterClause;
+        countQuery += filterClause;
+
+        Object[] params = filterBuilder.getParams();
+        TypedQuery<RekapPenjualanDto> query = entityManager.createQuery(baseQuery, RekapPenjualanDto.class);
+        Query countQ = entityManager.createQuery(countQuery);
+
+        for (int i = 0; i < params.length; i++) {
+            query.setParameter(i + 1, params[i]);
+            countQ.setParameter(i + 1, params[i]);
+        }
+
+        if (pageRequest.getSortBy() != null && !pageRequest.getSortBy().isEmpty()) {
+            String sortDirection = pageRequest.isDescending() ? "desc" : "asc";
+            baseQuery += " order by s." + pageRequest.getSortBy() + " " + sortDirection;
+            query = entityManager.createQuery(baseQuery, RekapPenjualanDto.class);
+            for (int i = 0; i < params.length; i++) {
+                query.setParameter(i + 1, params[i]);
+            }
+        }
+
+        long totalCount = (Long) countQ.getSingleResult();
+        int firstResult = (pageRequest.getPage() - 1) * pageRequest.getRowsPerPage();
+        query.setFirstResult(firstResult);
+        query.setMaxResults(pageRequest.getRowsPerPage());
+        List<RekapPenjualanDto> rows = query.getResultList();
+
+        return new PageResponse<>(rows, pageRequest.getPage(), pageRequest.getRowsPerPage(), totalCount);
+    }
+
 
     private void fillRequiredFields(List<TbSpkEntity> entities) {
 
@@ -214,6 +244,9 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
                                 .ifPresent(pelanggan -> {
                                     entity.setPelangganId(pelanggan.getId());
                                     entity.setNamaPelanggan(pelanggan.getNamaPelanggan());
+                                    entity.setAlamatPelanggan(pelanggan.getAlamat());
+                                    entity.setMerkKendaraan(pelanggan.getMerk());
+                                    entity.setJenisKendaraan(pelanggan.getJenis());
                                 });
                     }
                 });
@@ -229,5 +262,25 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
                 .map(TbSpkEntity::getNoSpk)
                 .findFirst()
                 .orElse(spkNumber + "00");
+    }
+
+    public List<TbSpkEntity> findUnprocessedSpk() {
+        List<TbSpkEntity> list = repository.find("statusSpk in ('PROSES', 'SELESAI') and noSpk not in (select noSpk from TbPenjualanEntity where noSpk is not null)").list();
+        fillRequiredFields(list);
+        return list;
+    }
+
+    public TbSpkEntity findByNoSpk(String noSpk) {
+        TbSpkEntity entity = repository.find("noSpk", noSpk).firstResult();
+        if (entity != null) {
+            fillRequiredFields(List.of(entity));
+        }
+        return entity;
+    }
+
+    @jakarta.transaction.Transactional
+    public void deleteByNoSpk(String noSpk) {
+        detailRepository.delete("id.noSpk", noSpk);
+        repository.delete("noSpk", noSpk);
     }
 }

@@ -30,8 +30,8 @@ export default {
         },
       },
       transaction: {
-        title: 'Transaction',
-        caption: 'Transaction'
+        title: 'Transaksi',
+        caption: 'Transaksi'
       },
       master: {
         title: 'Master',
@@ -78,7 +78,7 @@ export default {
         }
       },
       process: {
-        title: 'Proses',
+        title: 'Proses SPK',
         caption: 'Proses',
         order: {
           title: 'Surat Perintah Kerja (SPK)',
@@ -98,21 +98,25 @@ export default {
         }
       },
       recap: {
-        title: 'Rekap Penjualan',
+        title: 'Rekap Penjualan & Pemasukan',
         caption: 'Penjualan & Pemasukan',
         buy: {
-          title: 'Rekap Pembelian',
-          caption: 'Pembelian & Pengeluaran'
+          title: 'Riwayat Pengeluaran',
+          caption: 'Riwayat Pengeluaran'
         },
         sell: {
-          title: 'Rekap Penjualan',
-          caption: 'Penjualan & Pemasukan'
+          title: 'Riwayat Penjualan',
+          caption: 'Riwayat Penjualan'
         }
       },
 
       report: {
         title: 'Laporan',
         caption: 'Laporan'
+      },
+      summary: {
+        title: 'Ringkasan',
+        caption: 'Income & Outcome Overview'
       },
       admin: {
         title: 'Admin',
@@ -124,6 +128,14 @@ export default {
         role: {
           title: 'Roles',
           caption: 'Master Roles'
+        },
+        clearCache: {
+          title: 'Browser Cache',
+          caption: 'Reset cached data'
+        },
+        auditTrail: {
+          title: 'Activity Log',
+          caption: 'Data change history'
         }
       }
     }

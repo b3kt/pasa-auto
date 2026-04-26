@@ -50,38 +50,14 @@ public class TbSpkEntity extends BaseEntity {
     @Column(name = "finished_at")
     private LocalDateTime finishedAt;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @Column(name = "created_by")
-    private String createdBy;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    @Column(name = "updated_by")
-    private String updatedBy;
-
-    @Column(name = "diskon", precision = 18, scale = 2)
-    private BigDecimal diskon;
-
-    @Column(name = "keluhan", length = 1000)
-    private String keluhan;
-
     @Column(name = "keterangan", length = 1000)
     private String keterangan;
 
     @Column(name = "km_saat_ini")
     private Integer kmSaatIni;
 
-    @Column(name = "ppn", precision = 18, scale = 2)
-    private BigDecimal ppn;
-
     @Column(name = "status", length = 20)
     private String status;
-
-    @Column(name = "id_cs")
-    private Long csId;
 
     @Column(name = "id_mekanik")
     private Long mekanikId;
@@ -96,7 +72,19 @@ public class TbSpkEntity extends BaseEntity {
     @Transient
     private boolean startProcess;
 
-    @Transient
+    @Column(name = "nama_pelanggan")
     private String namaPelanggan;
+
+    @Transient
+    private String alamatPelanggan;
+
+    @Transient
+    private String merkKendaraan;
+
+    @Transient
+    private String jenisKendaraan;
+
+    @Transient
+    private BigDecimal grandTotal;
 
 }

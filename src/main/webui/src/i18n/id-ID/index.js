@@ -83,6 +83,10 @@ export default {
         title: 'Laporan',
         caption: 'Laporan'
       },
+      summary: {
+        title: 'Ringkasan',
+        caption: 'Ringkasan Pemasukan & Pengeluaran'
+      },
       admin: {
         title: 'Admin',
         caption: 'Admin',
@@ -93,6 +97,14 @@ export default {
         role: {
           title: 'Roles',
           caption: 'Master Roles'
+        },
+        clearCache: {
+          title: 'Browser Cache',
+          caption: 'Reset data cache'
+        },
+        auditTrail: {
+          title: 'Log Aktivitas',
+          caption: 'Riwayat perubahan data'
         }
       }
     }

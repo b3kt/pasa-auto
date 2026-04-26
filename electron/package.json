@@ -1,11 +1,15 @@
 {
   "name": "pazaauto-electron",
   "version": "1.0.0",
+  "description": "PazaAuto Desktop Application",
+  "author": "B3KT",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "dist:linux": "electron-builder --linux",
+    "dist:windows": "electron-builder --win"
   },
   "devDependencies": {
     "electron": "^28.0.0",
@@ -16,12 +20,20 @@
     "productName": "PazaAutoApp",
     "files": [
       "main.js",
+      "preload.js",
+      "manager.html",
+      "manager.js",
+      "manager.css",
       "resources/**/*"
     ],
     "extraResources": [
       {
         "from": "resources/",
         "to": "."
+      },
+      {
+        "from": "bin/pasa-auto-runner",
+        "to": "pasa-auto-runner"
       }
     ],
     "directories": {

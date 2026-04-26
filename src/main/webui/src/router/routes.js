@@ -27,8 +27,14 @@ const routes = [
       { path: 'pazaauto/sparepart', component: () => import('pages/pazaauto/SparepartPage.vue') },
       { path: 'pazaauto/spk', component: () => import('pages/pazaauto/SPKPage.vue') },
       { path: 'pazaauto/pembelian', component: () => import('pages/pazaauto/PembelianPage.vue') },
-      { path: 'pazaauto/penjualan-barang', component: () => import('pages/pazaauto/PenjualanBarangPage.vue') },
-      { path: 'pazaauto/absensi', component: () => import('pages/pazaauto/AbsensiPage.vue') }
+      { path: 'pazaauto/penjualan', component: () => import('pages/pazaauto/PenjualanPage.vue') },
+      { path: 'pazaauto/rekap-pembelian', component: () => import('pages/pazaauto/RekapPembelianPage.vue') },
+      { path: 'pazaauto/rekap-penjualan', component: () => import('pages/pazaauto/RekapPenjualanPage.vue') },
+      { path: 'pazaauto/summary', component: () => import('pages/pazaauto/SummaryPage.vue') },
+      { path: 'pazaauto/absensi', component: () => import('pages/pazaauto/AbsensiPage.vue') },
+      { path: 'offline-status', component: () => import('pages/OfflineStatusPage.vue') },
+      { path: 'admin/clear-cache', component: () => import('pages/admin/ClearCachePage.vue') },
+      { path: 'admin/audit-trail', component: () => import('pages/admin/AuditTrailPage.vue') }
 
     ]
   },

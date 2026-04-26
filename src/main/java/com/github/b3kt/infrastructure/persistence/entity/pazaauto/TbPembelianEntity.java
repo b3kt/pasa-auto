@@ -1,10 +1,13 @@
 package com.github.b3kt.infrastructure.persistence.entity.pazaauto;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.github.b3kt.infrastructure.persistence.entity.BaseEntity;
 
@@ -12,6 +15,7 @@ import com.github.b3kt.infrastructure.persistence.entity.BaseEntity;
 @Table(name = "tb_pembelian")
 @Getter
 @Setter
+@NoArgsConstructor
 public class TbPembelianEntity extends BaseEntity {
 
     @Column(name = "no_pembelian", length = 15, nullable = false, unique = true)
@@ -50,29 +54,11 @@ public class TbPembelianEntity extends BaseEntity {
     @Column(name = "diskon", precision = 18, scale = 2)
     private BigDecimal diskon;
 
-    @Column(name = "ppn", precision = 18, scale = 2)
-    private BigDecimal ppn;
-
     @Column(name = "keterangan", length = 500)
     private String keterangan;
 
     @Column(name = "id_karyawan")
     private Long karyawanId;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @Column(name = "created_by")
-    private String createdBy;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    @Column(name = "updated_by")
-    private String updatedBy;
-
-    @Column(name = "version")
-    private Integer version;
 
     @PrePersist
     public void prePersist() {
@@ -86,4 +72,26 @@ public class TbPembelianEntity extends BaseEntity {
         updatedAt = LocalDateTime.now();
     }
 
+    private transient String namaSupplier;
+
+    private transient List<TbPembelianDetailEntity> details;
+
+    public TbPembelianEntity(TbPembelianEntity entity, String namaSupplier){
+        this.id = entity.getId();
+        this.noPembelian = entity.getNoPembelian();
+        this.noUrut = entity.getNoUrut();
+        this.tanggalPembelian = entity.getTanggalPembelian();
+        this.jenisPembelian = entity.getJenisPembelian();
+        this.jenisOperasional = entity.getJenisOperasional();
+        this.kategoriOperasional = entity.getKategoriOperasional();
+        this.supplierId = entity.getSupplierId();
+        this.grandTotal = entity.getGrandTotal();
+        this.jenisPembayaran = entity.getJenisPembayaran();
+        this.statusPembayaran = entity.getStatusPembayaran();
+        this.metodePembayaran = entity.getMetodePembayaran();
+        this.diskon = entity.getDiskon();
+        this.keterangan = entity.getKeterangan();
+        this.karyawanId = entity.getKaryawanId();
+        this.namaSupplier = namaSupplier;
+    }
 }
