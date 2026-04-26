@@ -3,18 +3,20 @@ package com.github.b3kt.infrastructure.persistence.listener;
 import com.github.b3kt.infrastructure.persistence.entity.BaseEntity;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
 
+@Slf4j
 @ApplicationScoped
-@RequiredArgsConstructor
 public class AuditListener {
 
-    private final SecurityIdentity securityIdentity;
+    @Inject
+    SecurityIdentity securityIdentity;
 
     @PrePersist
     public void prePersist(Object entity) {
