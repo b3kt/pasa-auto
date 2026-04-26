@@ -18,6 +18,13 @@ public class AuditListener {
     @Inject
     SecurityIdentity securityIdentity;
 
+    public AuditListener() {
+    }
+
+    public AuditListener(SecurityIdentity securityIdentity) {
+        this.securityIdentity = securityIdentity;
+    }
+
     @PrePersist
     public void prePersist(Object entity) {
         if (entity instanceof BaseEntity baseEntity) {
