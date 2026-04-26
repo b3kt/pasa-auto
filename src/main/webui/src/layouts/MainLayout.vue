@@ -258,6 +258,13 @@ const linksList = computed(() => [
         visible: hasRole('Admin') || hasRole('Owner'),
         link: '/admin/clear-cache'
       },
+      {
+        title: t('app.menu.admin.auditTrail.title'),
+        caption: t('app.menu.admin.auditTrail.caption'),
+        icon: 'history',
+        visible: hasRole('Admin') || hasRole('Owner'),
+        link: '/admin/audit-trail'
+      }
     ]
   }
 ])

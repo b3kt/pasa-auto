@@ -33,7 +33,8 @@ const routes = [
       { path: 'pazaauto/summary', component: () => import('pages/pazaauto/SummaryPage.vue') },
       { path: 'pazaauto/absensi', component: () => import('pages/pazaauto/AbsensiPage.vue') },
       { path: 'offline-status', component: () => import('pages/OfflineStatusPage.vue') },
-      { path: 'admin/clear-cache', component: () => import('pages/admin/ClearCachePage.vue') }
+      { path: 'admin/clear-cache', component: () => import('pages/admin/ClearCachePage.vue') },
+      { path: 'admin/audit-trail', component: () => import('pages/admin/AuditTrailPage.vue') }
 
     ]
   },

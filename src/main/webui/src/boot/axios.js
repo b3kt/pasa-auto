@@ -16,26 +16,30 @@ const LOOKUP_CACHE_URLS = new Set([
   '/api/pazaauto/barang',
   '/api/pazaauto/kendaraan',
   '/api/pazaauto/kendaraan/merk/distinct',
-  '/api/pazaauto/kendaraan/jenis/distinct'
+  '/api/pazaauto/kendaraan/jenis/distinct',
+  '/api/pazaauto/sparepart',
+  '/api/pazaauto/karyawan',
+  '/api/system-parameters'
 ])
 
 // When a write (POST/PUT/DELETE/PATCH) succeeds on a URL under a given prefix,
 // all cache entries with those prefixes are invalidated.
 const WRITE_INVALIDATION_MAP = [
   { prefix: '/api/pazaauto/jasa',          invalidate: ['/api/pazaauto/jasa'] },
-  { prefix: '/api/pazaauto/barang',        invalidate: ['/api/pazaauto/barang'] },
+  { prefix: '/api/pazaauto/barang',        invalidate: ['/api/pazaauto/barang', '/api/pazaauto/sparepart'] },
   { prefix: '/api/pazaauto/supplier',      invalidate: ['/api/pazaauto/supplier'] },
   { prefix: '/api/pazaauto/pelanggan',     invalidate: ['/api/pazaauto/pelanggan'] },
+  { prefix: '/api/pazaauto/karyawan',      invalidate: ['/api/pazaauto/karyawan', '/api/pazaauto/karyawan-posisi'] },
   { prefix: '/api/pazaauto/karyawan-posisi', invalidate: ['/api/pazaauto/karyawan-posisi'] },
-  { prefix: '/api/roles',                  invalidate: ['/api/roles'] },
-  {
-    prefix: '/api/pazaauto/kendaraan',
-    invalidate: [
-      '/api/pazaauto/kendaraan',
-      '/api/pazaauto/kendaraan/merk/distinct',
-      '/api/pazaauto/kendaraan/jenis/distinct'
-    ]
-  }
+  { prefix: '/api/pazaauto/kendaraan',     invalidate: ['/api/pazaauto/kendaraan', '/api/pazaauto/kendaraan/merk/distinct', '/api/pazaauto/kendaraan/jenis/distinct'] },
+  { prefix: '/api/pazaauto/spk',          invalidate: ['/api/pazaauto/spk', '/api/pazaauto/spk_detail'] },
+  { prefix: '/api/pazaauto/penjualan',    invalidate: ['/api/pazaauto/penjualan', '/api/pazaauto/penjualan_detail'] },
+  { prefix: '/api/pazaauto/pembelian',   invalidate: ['/api/pazaauto/pembelian', '/api/pazaauto/pembelian_detail', '/api/pazaauto/pembelian_barang_detail'] },
+  { prefix: '/api/pazaauto/absensi',      invalidate: ['/api/pazaauto/absensi', '/api/pazaauto/absensi_config'] },
+  { prefix: '/api/pazaauto/sparepart', invalidate: ['/api/pazaauto/sparepart'] },
+  { prefix: '/api/roles',              invalidate: ['/api/roles', '/api/permissions'] },
+  { prefix: '/api/users',              invalidate: ['/api/users'] },
+  { prefix: '/api/system-parameters', invalidate: ['/api/system-parameters'] }
 ]
 
 function getLookupInvalidationUrls(writeUrl) {
@@ -74,6 +78,13 @@ const api = axios.create({
 // Add request interceptor to include auth token and handle offline mode
 api.interceptors.request.use(
   async (config) => {
+    const url = config.url || ''
+
+    // Skip caching for auth endpoints
+    if (url.startsWith('/api/auth')) {
+      return config
+    }
+
     const token = localStorage.getItem('auth_token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
@@ -197,11 +208,17 @@ const processQueue = (error, token = null) => {
 api.interceptors.response.use(
   async (response) => {
     const method = response.config?.method?.toUpperCase()
+    const url = response.config?.url || ''
+
+    // Skip caching for auth endpoints
+    if (url.startsWith('/api/auth')) {
+      return response
+    }
 
     // Store successful GET responses for cacheable lookup endpoints
     if (method === 'GET' && response.status === 200
         && !response.config?._fromLookupCache
-        && LOOKUP_CACHE_URLS.has(response.config?.url)) {
+        && LOOKUP_CACHE_URLS.has(url)) {
       try {
         await masterDataCache.set(response.config.url, response.data, response.config.url)
       } catch (e) {

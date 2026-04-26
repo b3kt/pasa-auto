@@ -132,6 +132,10 @@ export default {
         clearCache: {
           title: 'Browser Cache',
           caption: 'Reset cached data'
+        },
+        auditTrail: {
+          title: 'Activity Log',
+          caption: 'Data change history'
         }
       }
     }
