@@ -1,0 +1,107 @@
+{
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "devPath": "../dist",
+    "distDir": "../dist"
+  },
+  "package": {
+    "productName": "PazaAuto",
+    "version": "0.0.21"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "shell": {
+        "all": false,
+        "open": true,
+        "scope": [
+          {
+            "name": "pasa-auto-runner",
+            "cmd": "pasa-auto-runner",
+            "args": true
+          }
+        ]
+      },
+      "dialog": {
+        "all": true,
+        "ask": true,
+        "confirm": true,
+        "message": true,
+        "open": true,
+        "save": true
+      },
+      "fs": {
+        "all": false,
+        "readFile": true,
+        "writeFile": true,
+        "readDir": true,
+        "createDir": true,
+        "removeDir": true,
+        "removeFile": true,
+        "renameFile": true,
+        "exists": true,
+        "scope": ["$APPDATA/*", "$RESOURCE/*", "$HOME/Downloads/*", "$TEMP/*"]
+      },
+      "path": {
+        "all": true
+      },
+      "os": {
+        "all": true
+      },
+      "window": {
+        "all": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "category": "Utility",
+      "copyright": "Copyright (c) 2026 B3KT",
+      "deb": {
+        "depends": []
+      },
+      "externalBin": ["bin/pasa-auto-runner"],
+      "icon": [],
+      "identifier": "com.github.b3kt.pazaauto",
+      "longDescription": "PazaAuto Desktop Application with backend management",
+      "macOS": {
+        "entitlements": null,
+        "exceptionDomain": "",
+        "frameworks": [],
+        "providerShortName": null,
+        "signingIdentity": null
+      },
+      "resources": ["resources/*"],
+      "shortDescription": "PazaAuto Desktop App",
+      "targets": "all",
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": ""
+      }
+    },
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    },
+    "systemTray": {
+      "iconPath": "resources/icon-red.png",
+      "iconAsTemplate": false,
+      "menuOnLeftClick": false
+    },
+    "updater": {
+      "active": false
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "height": 650,
+        "resizable": true,
+        "title": "PazaAuto Manager",
+        "width": 900,
+        "minWidth": 700,
+        "minHeight": 500,
+        "center": true
+      }
+    ]
+  }
+}
