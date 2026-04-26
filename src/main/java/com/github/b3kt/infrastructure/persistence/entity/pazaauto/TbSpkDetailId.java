@@ -21,7 +21,7 @@ public class TbSpkDetailId implements Serializable {
     @Column(name = "no_spk", length = 11)
     private String noSpk;
 
-    @Column(name = "nama_jasa", length = 40)
+    @Column(name = "nama_jasa", length = 100)
     private String namaJasa;
 }
 

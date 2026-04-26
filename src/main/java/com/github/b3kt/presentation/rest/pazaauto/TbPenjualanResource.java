@@ -228,4 +228,11 @@ public class TbPenjualanResource extends AbstractCrudResource<TbPenjualanEntity,
         TbPenjualanEntity updated = service.updateWithNoSpkValidation(entity);
         return Response.ok(ApiResponse.success(getEntityName() + " updated", updated)).build();
     }
+
+    @DELETE
+    @Path("/cancel-by-no-spk/{noSpk}")
+    public Response cancelByNoSpk(@PathParam("noSpk") String noSpk) {
+        service.cancelPenjualanBySpk(noSpk);
+        return Response.ok(ApiResponse.success("Penjualan cancelled, SPK status reverted to OPEN")).build();
+    }
 }

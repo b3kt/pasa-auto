@@ -30,8 +30,8 @@ export default {
         },
       },
       transaction: {
-        title: 'Transaction',
-        caption: 'Transaction'
+        title: 'Transaksi',
+        caption: 'Transaksi'
       },
       master: {
         title: 'Master',

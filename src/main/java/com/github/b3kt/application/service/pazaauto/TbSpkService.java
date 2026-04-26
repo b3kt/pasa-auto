@@ -277,4 +277,10 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
         }
         return entity;
     }
+
+    @jakarta.transaction.Transactional
+    public void deleteByNoSpk(String noSpk) {
+        detailRepository.delete("id.noSpk", noSpk);
+        repository.delete("noSpk", noSpk);
+    }
 }

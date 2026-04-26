@@ -1,7 +1,10 @@
 package com.github.b3kt.application.service.pazaauto;
 
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPenjualanRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPenjualanDetailRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkRepository;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -101,6 +104,31 @@ public class TbPenjualanService extends AbstractCrudService<TbPenjualanEntity, S
         java.util.List<TbPenjualanEntity> rows = query.page(io.quarkus.panache.common.Page.of(pageRequest.getPage() - 1, pageRequest.getRowsPerPage())).list();
 
         return new com.github.b3kt.application.dto.PageResponse<>(rows, pageRequest.getPage(), pageRequest.getRowsPerPage(), totalCount);
+    }
+
+    @Inject
+    TbPenjualanDetailRepository penjualanDetailRepository;
+
+    @Inject
+    TbSpkRepository spkRepository;
+
+    @Transactional
+    public void cancelPenjualanBySpk(String noSpk) {
+        TbPenjualanEntity penjualan = repository.find("noSpk", noSpk).firstResult();
+        if (penjualan == null) {
+            throw new IllegalArgumentException("Penjualan not found for SPK: " + noSpk);
+        }
+
+        penjualanDetailRepository.delete("noPenjualan", penjualan.getNoPenjualan());
+
+        repository.delete(penjualan);
+
+        TbSpkEntity spk = spkRepository.find("noSpk", noSpk).firstResult();
+        if (spk != null) {
+            spk.setStatusSpk("OPEN");
+            spk.setFinishedAt(null);
+            spkRepository.getEntityManager().merge(spk);
+        }
     }
 }
 
