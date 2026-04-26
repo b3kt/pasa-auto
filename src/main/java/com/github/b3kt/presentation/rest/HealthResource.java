@@ -9,6 +9,8 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -43,11 +45,14 @@ public class HealthResource {
         )
     )
     public Response health() {
+        Config config = ConfigProvider.getConfig();
+        String version = config.getValue("app.version", String.class);
+
         Map<String, Object> healthData = new HashMap<>();
         healthData.put("status", "UP");
         healthData.put("timestamp", LocalDateTime.now());
         healthData.put("application", "pasa-auto");
-        healthData.put("version", "0.0.14");
+        healthData.put("version", version);
         
         return Response.ok(ApiResponse.success("Application is healthy", healthData)).build();
     }

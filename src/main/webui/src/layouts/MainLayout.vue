@@ -44,6 +44,7 @@
         <q-space />
 
         <div class="q-gutter-sm row items-center no-wrap">
+          <span v-if="appVersion" class="text-caption q-mr-sm">v{{ appVersion }}</span>
           <q-btn flat no-caps v-if="authStore.isLoggedIn">
             <div class="row items-center no-wrap">
               <q-icon name="person" class="q-mr-xs" />
@@ -82,11 +83,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useAuthStore } from 'stores/auth-store'
 import { useI18n } from 'vue-i18n'
+import { api } from 'boot/axios'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -94,6 +96,18 @@ const { t } = useI18n()
 const authStore = useAuthStore()
 
 const user = computed(() => authStore.user)
+const appVersion = ref('')
+
+onMounted(async () => {
+  try {
+    const response = await api.get('/health')
+    if (response.data && response.data.data) {
+      appVersion.value = response.data.data.version || ''
+    }
+  } catch (e) {
+    console.error('Failed to fetch version:', e)
+  }
+})
 
 const hasRole = (role) => {
   return user.value?.roles?.includes(role) || false
@@ -244,6 +258,13 @@ const linksList = computed(() => [
         visible: hasRole('Admin') || hasRole('Owner'),
         link: '/admin/clear-cache'
       },
+      {
+        title: t('app.menu.admin.auditTrail.title'),
+        caption: t('app.menu.admin.auditTrail.caption'),
+        icon: 'history',
+        visible: hasRole('Admin') || hasRole('Owner'),
+        link: '/admin/audit-trail'
+      }
     ]
   }
 ])

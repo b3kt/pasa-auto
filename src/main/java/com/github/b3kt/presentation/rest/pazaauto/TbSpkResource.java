@@ -129,6 +129,13 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
         return Response.ok(ApiResponse.success(getEntityName() + " cancelled", updated)).build();
     }
 
+    @DELETE
+    @Path("/delete-by-no-spk/{noSpk}")
+    public Response deleteByNoSpk(@PathParam("noSpk") String noSpk) {
+        service.deleteByNoSpk(noSpk);
+        return Response.ok(ApiResponse.success(getEntityName() + " deleted permanently")).build();
+    }
+
     private void fillPelangganDetail(TbSpkEntity entity) {
 
         TbPelangganEntity pelanggan;

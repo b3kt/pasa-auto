@@ -38,6 +38,9 @@
           <div class="row items-center q-mb-md">
             <div class="text-h6 q-mb-md">Detail SPK dan Penjualan</div>
             <q-space/>
+            <q-btn flat round dense icon="add" @click="openCreateDialog">
+              <q-tooltip>New</q-tooltip>
+            </q-btn>
           </div>
           <q-form @submit="handleSave" id="karyawan-form" class="q-gutter-md">
             <q-card flat bordered>
@@ -53,14 +56,14 @@
                   <q-input v-model.number="formData.noAntrian" label="No Antrian" outlined dense type="number"
                            :disable="(formData.statusSpk === 'SELESAI' || formData.statusSpk === 'BATAL')"/>
 
-                  <q-select v-model="formData.nopol" label="No Polisi *" outlined dense
-                            :options="filteredPelangganOptions"
-                            :option-label="constructNopolOptions" option-value="nopol" emit-value map-options use-input
-                            input-debounce="300" @filter="filterPelanggan" @update:model-value="onNopolChange"
-                            :loading="loadingPelanggan" :disable="(formData.statusSpk !== 'OPEN')"
-                            new-value-mode="add-unique"
-                            :rules="[val => !!val || 'No Polisi harus diisi']"
-                            hide-bottom-space>
+<q-select v-model="formData.nopol" label="No Polisi *" outlined dense
+                             :options="filteredPelangganOptions"
+                             :option-label="constructNopolOptions" option-value="nopol" emit-value map-options use-input
+                             input-debounce="300" @filter="filterPelanggan" @update:model-value="onNopolChange"
+                             :loading="loadingPelanggan"
+                             new-value-mode="add-unique"
+                             :rules="[val => !!val || 'No Polisi harus diisi']"
+                             hide-bottom-space>
                     <template v-slot:option="scope">
                       <q-item v-bind="scope.itemProps" class="row">
                         <q-item-section class="col">
@@ -116,14 +119,21 @@
                            :disable="!isEditable" autogrow/>
                 </q-card-section>
                 <q-card-section>
-                  <SPKCustomerInfo
-                    v-model:namaPelanggan="formData.namaPelanggan"
-                    v-model:alamat="formData.alamat"
-                    v-model:merk="formData.merk"
-                    v-model:jenis="formData.jenis"
-                    :nopol="formData.nopol"
-                    :isNewCustomer="isNewCustomer"
-                  />
+<SPKCustomerInfo
+                     v-model:namaPelanggan="formData.namaPelanggan"
+                     v-model:alamat="formData.alamat"
+                     v-model:merk="formData.merk"
+                     v-model:jenis="formData.jenis"
+                     :nopol="formData.nopol"
+                     :isNewCustomer="isNewCustomer"
+                     :merkOptions="merkOptions"
+                     :filteredJenisOptions="filteredJenisOptions"
+                     :loadingMerk="loadingMerk"
+                     :loadingJenis="loadingJenis"
+                     @filter:merk="filterMerk"
+                     @filter:jenis="filterJenis"
+                     @check:vehicle="checkAndShowVehicleDialog"
+                   />
                 </q-card-section>
               </q-card-section>
             </q-card>
@@ -144,6 +154,8 @@
               <div v-if="formData.statusSpk === 'SELESAI'">
                 <q-btn label="Print" type="button" @click="printSpk" style="width: 100px;"
                        :loading="saving" class="q-mr-sm"/>
+                <q-btn label="Batal" type="button" color="negative" @click="cancelPenjualanFromBtn" style="width: 100px;"
+                       :loading="deleting"/>
               </div>
               <div v-if="formData.statusSpk === 'PROSES'">
                 <q-btn label="Print" type="button" @click="printSpk" style="width: 100px;"
@@ -157,6 +169,8 @@
               <q-space/>
               <q-btn v-if="isEditMode && formData.statusSpk === 'OPEN'"
                      label="Hapus" color="negative" flat @click="confirmDelete(formData)" :loading="deleting"/>
+              <q-btn v-if="isEditMode && formData.statusSpk === 'PROSES'"
+                     label="Hapus" color="negative" flat @click="deleteSpkPermanently" :loading="deleting"/>
               <q-btn label="Simpan" type="submit" color="primary" :loading="saving"
                      v-if="formData.statusSpk != 'SELESAI' && formData.statusSpk != 'BATAL'"
                      :disable="isEditMode && !isDirty(formData)"/>
@@ -169,10 +183,10 @@
 
     <!-- Delete Confirmation Dialog -->
     <GenericDialog v-model="showDeleteDialog" title="Konfirmasi hapus data" min-width="400px" position="standard">
-      Are you sure you want to delete SPK <strong>{{ itemToDelete?.noSpk }}</strong>?
+      Are you sure you want to cancel penjualan for SPK <strong>{{ itemToDelete?.noSpk }}</strong>? This will delete penjualan data but keep the SPK.
       <template #actions>
         <q-btn flat label="Batalkan" color="primary" @click="showDeleteDialog = false"/>
-        <q-btn flat label="Hapus saja" color="negative" @click="deleteSpk" :loading="deleting"/>
+        <q-btn flat label="Hapus saja" color="negative" @click="cancelPenjualan" :loading="deleting"/>
       </template>
     </GenericDialog>
 
@@ -219,6 +233,34 @@
       <template #actions>
         <q-btn flat label="Batal" color="primary" @click="showPaymentDialog = false" />
         <q-btn label="Konfirmasi & Selesai" color="green" @click="confirmPayment" :loading="saving" />
+      </template>
+    </GenericDialog>
+
+    <!-- Vehicle Confirmation Dialog -->
+    <GenericDialog v-model="showVehicleDialog" title="Tambah Data Kendaraan Baru?" min-width="500px">
+      <div class="q-pa-md">
+        <p class="text-body1 q-mb-md">
+          Data kendaraan dengan merk <strong>{{ newVehicleData.merk }}</strong> dan jenis <strong>{{ newVehicleData.jenis }}</strong> tidak ditemukan.
+        </p>
+        <p class="text-body2 q-mb-lg">
+          Apakah Anda ingin menambahkan data kendaraan baru ke database?
+        </p>
+
+        <div class="row q-col-gutter-md">
+          <div class="col-12">
+            <q-input v-model="newVehicleData.merk" label="Merk" outlined dense readonly />
+          </div>
+          <div class="col-12">
+            <q-input v-model="newVehicleData.jenis" label="Jenis" outlined dense readonly />
+          </div>
+          <div class="col-12">
+            <q-input v-model="newVehicleData.keterangan" label="Keterangan" outlined dense type="textarea" rows="3" />
+          </div>
+        </div>
+      </div>
+      <template #actions>
+        <q-btn flat label="Tidak" color="primary" @click="showVehicleDialog = false" />
+        <q-btn label="Ya, Tambah" color="green" @click="confirmAddVehicle" :loading="saving" />
       </template>
     </GenericDialog>
   </q-page>
@@ -288,6 +330,12 @@ const initialData = ref(null)
 const tableRef = ref(null)
 const showPrintDialog = ref(false)
 const printPreviewContent = ref('')
+const showVehicleDialog = ref(false)
+const newVehicleData = ref({
+  merk: '',
+  jenis: '',
+  keterangan: ''
+})
 const isDirty = (current) => {
   if (!initialData.value) return true
   return JSON.stringify(current) !== JSON.stringify(initialData.value)
@@ -303,6 +351,13 @@ const paymentData = ref({
 // Detail SPK State
 const allJasaOptions = ref([])
 const allBarangOptions = ref([])
+
+// Vehicle dropdown state
+const merkOptions = ref([])
+const allJenisOptions = ref([])
+const filteredJenisOptions = ref([])
+const loadingMerk = ref(false)
+const loadingJenis = ref(false)
 
 // Computed
 const jasaRows = computed(() => {
@@ -549,7 +604,8 @@ const filterPelanggan = (val, update) => {
     } else {
       const needle = val.toLowerCase()
       filteredPelangganOptions.value = pelangganOptions.value.filter(
-        v => v.nopol.toLowerCase().indexOf(needle) > -1
+        v => v.nopol.toLowerCase().indexOf(needle) > -1 ||
+             (v.namaPelanggan && v.namaPelanggan.toLowerCase().indexOf(needle) > -1)
       )
     }
   })
@@ -683,15 +739,15 @@ const openCreateDialog = async () => {
   initNoSpk()
   initialData.value = null
   showDialog.value = true
-  // Fetch options for inline add
-  await Promise.all([fetchJasa(), fetchBarang()])
+  // Fetch options for inline add and vehicle dropdowns
+  await Promise.all([fetchPelanggan(), fetchJasa(), fetchBarang(), fetchMerkOptions(), fetchJenisOptions()])
 }
 
 const openEditDialog = async (row) => {
   isEditMode.value = true
 
-  // Fetch options first so we can map prices
-  await Promise.all([fetchJasa(), fetchBarang()])
+  // Fetch options first so we can map prices and populate vehicle dropdowns
+  await Promise.all([fetchPelanggan(), fetchJasa(), fetchBarang(), fetchMerkOptions(), fetchJenisOptions()])
 
   // Fetch full details including details list
   try {
@@ -771,6 +827,31 @@ const initNoSpk = () => {
   const gmt7Iso = gmt7.toISOString().replace("T", " ").replace("Z", "").substring(0, 16);
   formData.value.tanggalJamSpk = gmt7Iso;
   fetchNextSpkNumber()
+}
+
+const createNewSpkProcess = async () => {
+  isEditMode.value = false
+  isEditable.value = true
+  resetForm()
+
+  const offsetMs = 7 * 60 * 60 * 1000;
+  const gmt7 = new Date(new Date().getTime() + offsetMs);
+  const gmt7Iso = gmt7.toISOString().replace("T", " ").replace("Z", "").substring(0, 16);
+  formData.value.tanggalJamSpk = gmt7Iso
+  formData.value.statusSpk = 'PROSES'
+  formData.value.startedAt = new Date().toISOString()
+
+await fetchNextSpkNumber()
+  await Promise.all([fetchPelanggan(), fetchJasa(), fetchBarang(), fetchMerkOptions(), fetchJenisOptions()])
+
+  initialData.value = null
+  showDialog.value = true
+
+  $q.notify({
+    type: 'info',
+    message: 'SPK baru dibuat dan siap proses',
+    timeout: 2000
+  })
 }
 
 const startProcess = () => {
@@ -1115,7 +1196,7 @@ useKeyboardShortcuts({
     }
   },
   onDelete: () => {
-    if (isEditMode.value && !deleting.value && formData.value.statusSpk !== 'SELESAI' && formData.value.statusSpk !== 'BATAL') {
+    if (isEditMode.value && !deleting.value && formData.value.statusSpk === 'OPEN') {
       confirmDelete(formData.value)
     }
   },
@@ -1132,14 +1213,66 @@ const confirmDelete = (row) => {
 const deleteSpk = async () => {
   deleting.value = true
   try {
-    const response = await api.delete(`/api/pazaauto/spk/${itemToDelete.value.id}`)
+    const response = await api.delete(`/api/pazaauto/penjualan/cancel-by-no-spk/${itemToDelete.value.noSpk}`)
     if (response.data.success) {
       $q.notify({
         type: 'positive',
-        message: 'SPK deleted successfully'
+        message: 'Penjualan cancelled, SPK status reverted to OPEN'
       })
       showDeleteDialog.value = false
       itemToDelete.value = null
+      await fetchSpk()
+      resetForm()
+      isEditMode.value = false
+    }
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to cancel penjualan',
+      caption: error.response?.data?.message || error.message
+    })
+  } finally {
+    deleting.value = false
+  }
+}
+
+const cancelPenjualan = async () => {
+  await deleteSpk()
+}
+
+const cancelPenjualanFromBtn = async () => {
+  deleting.value = true
+  try {
+    const response = await api.delete(`/api/pazaauto/penjualan/cancel-by-no-spk/${formData.value.noSpk}`)
+    if (response.data.success) {
+      $q.notify({
+        type: 'positive',
+        message: 'Penjualan cancelled, SPK status reverted to OPEN'
+      })
+      await fetchSpk()
+      resetForm()
+      isEditMode.value = false
+    }
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to cancel penjualan',
+      caption: error.response?.data?.message || error.message
+    })
+  } finally {
+    deleting.value = false
+  }
+}
+
+const deleteSpkPermanently = async () => {
+  deleting.value = true
+  try {
+    const response = await api.delete(`/api/pazaauto/spk/delete-by-no-spk/${formData.value.noSpk}`)
+    if (response.data.success) {
+      $q.notify({
+        type: 'positive',
+        message: 'SPK and related data deleted permanently'
+      })
       await fetchSpk()
       resetForm()
       isEditMode.value = false
@@ -1249,6 +1382,163 @@ const handleUpdateMasterBarang = async (payload) => {
       message: 'Failed to update master data Barang',
       caption: error.response?.data?.message || error.message
     })
+  }
+}
+
+// Vehicle data fetching functions
+const fetchMerkOptions = async () => {
+  loadingMerk.value = true
+  try {
+    const response = await api.get('/api/pazaauto/kendaraan/merk/distinct')
+    if (response.data.success) {
+      merkOptions.value = response.data.data || []
+    }
+  } catch (error) {
+    console.error('Failed to fetch merk options', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to fetch vehicle merk options',
+      caption: error.response?.data?.message || error.message
+    })
+  } finally {
+    loadingMerk.value = false
+  }
+}
+
+const fetchJenisOptions = async (merk = null) => {
+  loadingJenis.value = true
+  try {
+    const url = merk
+      ? `/api/pazaauto/kendaraan/jenis/by-merk?merk=${encodeURIComponent(merk)}`
+      : '/api/pazaauto/kendaraan/jenis/distinct'
+
+    const response = await api.get(url)
+    if (response.data.success) {
+      if (merk) {
+        filteredJenisOptions.value = response.data.data || []
+      } else {
+        allJenisOptions.value = response.data.data || []
+        filteredJenisOptions.value = allJenisOptions.value
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch jenis options', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to fetch vehicle jenis options',
+      caption: error.response?.data?.message || error.message
+    })
+  } finally {
+    loadingJenis.value = false
+  }
+}
+
+// Filter functions for dropdowns
+const filterMerk = (val, update, _abort) => {
+  update(() => {
+    if (val === '') {
+      return
+    }
+    const needle = val.toLowerCase()
+    merkOptions.value = merkOptions.value.filter(v =>
+      v.toLowerCase().indexOf(needle) > -1
+    )
+  })
+}
+
+const filterJenis = (val, update, _abort) => {
+  update(() => {
+    if (val === '') {
+      return
+    }
+    const needle = val.toLowerCase()
+    filteredJenisOptions.value = filteredJenisOptions.value.filter(v =>
+      v.toLowerCase().indexOf(needle) > -1
+    )
+  })
+}
+
+// Watch for merk changes to filter jenis
+watch(() => formData.value.merk, async (newMerk, oldMerk) => {
+  if (newMerk && isNewCustomer.value) {
+    if (oldMerk && oldMerk !== newMerk) {
+      formData.value.jenis = ''
+    }
+    await fetchJenisOptions(newMerk)
+  } else if (!newMerk) {
+    filteredJenisOptions.value = allJenisOptions.value
+    formData.value.jenis = ''
+  }
+})
+
+// Watch for jenis changes to auto-select merk if needed
+watch(() => formData.value.jenis, async (newJenis) => {
+  if (newJenis && isNewCustomer.value && !formData.value.merk) {
+    await findMerkByJenis(newJenis)
+  }
+})
+
+const findMerkByJenis = async (jenis) => {
+  try {
+    const response = await api.get('/api/pazaauto/kendaraan', {
+      params: { search: jenis }
+    })
+    if (response.data.success && response.data.data.length > 0) {
+      const firstMatch = response.data.data[0]
+      if (firstMatch.merk) {
+        formData.value.merk = firstMatch.merk
+      }
+    }
+  } catch (error) {
+    console.error('Failed to find merk by jenis', error)
+  }
+}
+
+// Vehicle creation functions
+const checkAndShowVehicleDialog = (merk, jenis) => {
+  if (!merk || !jenis) return
+
+  const merkExists = merkOptions.value.includes(merk)
+  const jenisExists = filteredJenisOptions.value.includes(jenis)
+
+  if (!merkExists || !jenisExists) {
+    newVehicleData.value = { merk, jenis, keterangan: '' }
+    showVehicleDialog.value = true
+  }
+}
+
+const confirmAddVehicle = async () => {
+  saving.value = true
+  try {
+    const vehicleData = {
+      merk: newVehicleData.value.merk,
+      jenis: newVehicleData.value.jenis,
+      keterangan: newVehicleData.value.keterangan
+    }
+
+    const response = await api.post('/api/pazaauto/kendaraan', vehicleData)
+    if (response.data.success) {
+      $q.notify({
+        type: 'positive',
+        message: 'Vehicle data added successfully'
+      })
+
+      await Promise.all([fetchMerkOptions(), fetchJenisOptions()])
+
+      if (formData.value.merk) {
+        await fetchJenisOptions(formData.value.merk)
+      }
+
+      showVehicleDialog.value = false
+    }
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to add vehicle data',
+      caption: error.response?.data?.message || error.message
+    })
+  } finally {
+    saving.value = false
   }
 }
 

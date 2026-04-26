@@ -2,8 +2,8 @@
   <q-page class="flex flex-center">
     <q-card class="login-card" style="min-width: 350px">
       <q-card-section>
-        <div class="text-h6 text-center q-mb-md">Login</div>
-        <q-form @submit="onSubmit" class="q-gutter-md">
+<div class="text-h6 text-center q-mb-md">Login</div>
+         <q-form @submit="onSubmit" class="q-gutter-md">
           <q-input v-model="username" label="Username" :rules="[val => !!val || 'Username harus diisi']" outlined dense
           hide-bottom-space>
             <template v-slot:prepend>
@@ -71,7 +71,7 @@ const clearAuthData = () => {
 }
 
 // Check for expired token on mount
-onMounted(() => {
+onMounted(async () => {
   const urlParams = new URLSearchParams(window.location.search)
   const expired = urlParams.get('expired')
   const logoutMessage = urlParams.get('message')

@@ -30,8 +30,8 @@ export default {
         },
       },
       transaction: {
-        title: 'Transaction',
-        caption: 'Transaction'
+        title: 'Transaksi',
+        caption: 'Transaksi'
       },
       master: {
         title: 'Master',
@@ -132,6 +132,10 @@ export default {
         clearCache: {
           title: 'Browser Cache',
           caption: 'Reset cached data'
+        },
+        auditTrail: {
+          title: 'Activity Log',
+          caption: 'Data change history'
         }
       }
     }

@@ -101,6 +101,10 @@ export default {
         clearCache: {
           title: 'Browser Cache',
           caption: 'Reset data cache'
+        },
+        auditTrail: {
+          title: 'Log Aktivitas',
+          caption: 'Riwayat perubahan data'
         }
       }
     }
