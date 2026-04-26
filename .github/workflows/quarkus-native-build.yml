@@ -156,8 +156,9 @@ jobs:
 
       - name: Install Tauri dependencies
         working-directory: tauri
+        shell: pwsh
         run: |
-          rm -f package-lock.json
+          if (Test-Path package-lock.json) { Remove-Item -Force package-lock.json }
           npm install
 
       - name: Build Tauri App (Windows)
