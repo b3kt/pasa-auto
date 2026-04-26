@@ -3,6 +3,7 @@
     <q-card class="login-card" style="min-width: 350px">
       <q-card-section>
         <div class="text-h6 text-center q-mb-md">Login</div>
+        <div class="text-caption text-center text-grey q-mb-md">v{{ appVersion }}</div>
         <q-form @submit="onSubmit" class="q-gutter-md">
           <q-input v-model="username" label="Username" :rules="[val => !!val || 'Username harus diisi']" outlined dense
           hide-bottom-space>
@@ -37,6 +38,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from 'stores/auth-store'
 import { useQuasar } from 'quasar'
+import { api } from 'boot/axios'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -46,6 +48,7 @@ const username = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
+const appVersion = ref('')
 
 // Clear all authentication data and cookies on mount
 const clearAuthData = () => {
@@ -71,7 +74,16 @@ const clearAuthData = () => {
 }
 
 // Check for expired token on mount
-onMounted(() => {
+onMounted(async () => {
+  try {
+    const response = await api.get('/health')
+    if (response.data && response.data.data) {
+      appVersion.value = response.data.data.version || ''
+    }
+  } catch (e) {
+    console.error('Failed to fetch version:', e)
+  }
+
   const urlParams = new URLSearchParams(window.location.search)
   const expired = urlParams.get('expired')
   const logoutMessage = urlParams.get('message')
