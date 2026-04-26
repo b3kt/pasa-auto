@@ -10,49 +10,6 @@
     "version": "0.0.21"
   },
   "tauri": {
-    "allowlist": {
-      "all": false,
-      "shell": {
-        "all": false,
-        "open": true,
-        "scope": [
-          {
-            "name": "pasa-auto-runner",
-            "cmd": "pasa-auto-runner",
-            "args": true
-          }
-        ]
-      },
-      "dialog": {
-        "all": true,
-        "ask": true,
-        "confirm": true,
-        "message": true,
-        "open": true,
-        "save": true
-      },
-      "fs": {
-        "all": false,
-        "readFile": true,
-        "writeFile": true,
-        "readDir": true,
-        "createDir": true,
-        "removeDir": true,
-        "removeFile": true,
-        "renameFile": true,
-        "exists": true,
-        "scope": ["$APPDATA/*", "$RESOURCE/*", "$HOME/Downloads/*", "$TEMP/*"]
-      },
-      "path": {
-        "all": true
-      },
-      "os": {
-        "all": true
-      },
-      "window": {
-        "all": true
-      }
-    },
     "bundle": {
       "active": true,
       "category": "Utility",
@@ -83,7 +40,7 @@
     "security": {
       "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
     },
-    "systemTray": {
+    "trayIcon": {
       "iconPath": "resources/icon-red.png",
       "iconAsTemplate": false,
       "menuOnLeftClick": false

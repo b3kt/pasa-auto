@@ -1,21 +1,10 @@
 (function () {
   'use strict';
 
-  const api = window.__TAURI__ || {};
-
-  async function invoke(cmd, args) {
-    return api.invoke(cmd, args);
-  }
-
-  async function listen(event, cb) {
-    return api.event.listen(event, cb);
-  }
-
-  async function Unlisten(event) {
-    if (api.event && api.event.unlisten) {
-      await api.event.unlisten(event);
-    }
-  }
+  const { invoke } = window.__TAURI__.core || {};
+  const { listen } = window.__TAURI__.event || {};
+  const { save, open } = window.__TAURI__.dialog || {};
+  const { writeTextFile } = window.__TAURI__.fs || {};
 
   const DOM = {
     statusDot: document.getElementById('statusDot'),
@@ -136,14 +125,16 @@
   DOM.clearBtn.addEventListener('click', () => { DOM.console.innerHTML = ''; });
 
   DOM.saveBtn.addEventListener('click', async () => {
-    const { save } = await import('@tauri-apps/api/dialog');
-    const { writeTextFile } = await import('@tauri-apps/api/fs');
-    const lines = Array.from(DOM.console.querySelectorAll('.log-line')).map(el => el.textContent).join('\n');
-    const filePath = await save({
-      defaultPath: 'pasa-auto-' + Date.now() + '.log',
-      filters: [{ name: 'Log', extensions: ['log', 'txt'] }]
-    });
-    if (filePath) await writeTextFile(filePath, lines);
+    try {
+      const filePath = await save({
+        defaultPath: 'pasa-auto-' + Date.now() + '.log',
+        filters: [{ name: 'Log', extensions: ['log', 'txt'] }]
+      });
+      if (filePath) {
+        const lines = Array.from(DOM.console.querySelectorAll('.log-line')).map(el => el.textContent).join('\n');
+        await writeTextFile(filePath, lines);
+      }
+    } catch (e) { console.error(e); }
   });
 
   async function applyLogToFileToggle(checked) {
@@ -155,16 +146,16 @@
   DOM.logToFileCheck.addEventListener('change', () => applyLogToFileToggle(DOM.logToFileCheck.checked));
 
   DOM.browseBtn.addEventListener('click', async () => {
-    const { open } = await import('@tauri-apps/api/dialog');
-    const filePath = await open({
-      title: 'Choose Log File',
-      defaultPath: await invoke('get_default_log_path'),
-      filters: [{ name: 'Log', extensions: ['log', 'txt'] }]
-    });
-    if (filePath) {
-      DOM.logFilePathInput.value = filePath;
-      await invoke('set_config', { config: { log_to_file: DOM.logToFileCheck.checked, log_file_path: filePath } });
-    }
+    try {
+      const filePath = await open({
+        title: 'Choose Log File',
+        filters: [{ name: 'Log', extensions: ['log', 'txt'] }]
+      });
+      if (filePath) {
+        DOM.logFilePathInput.value = filePath;
+        await invoke('set_config', { config: { log_to_file: DOM.logToFileCheck.checked, log_file_path: filePath } });
+      }
+    } catch (e) { console.error(e); }
   });
 
   async function init() {
