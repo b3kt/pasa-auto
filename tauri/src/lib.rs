@@ -1,12 +1,12 @@
 use std::sync::Mutex;
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
 
 use tauri::{
-    AppHandle, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, 
-    CustomMenuItem, WindowBuilder, WindowUrl,
+    AppHandle, Manager, TrayIconBuilder, TrayIconEvent, TrayIconMenu, MenuItem,
+    WindowBuilder, WindowUrl, Emitter,
 };
 use serde::{Deserialize, Serialize};
 
@@ -43,16 +43,11 @@ impl Default for AppConfig {
 }
 
 struct AppState {
-    backend: Mutex<Option<Child>>,
+    backend: Mutex<Option<std::process::Child>>,
     status: Mutex<BackendStatus>,
     logs: Mutex<Vec<LogEntry>>,
     config: Mutex<AppConfig>,
     app_data_dir: Mutex<Option<PathBuf>>,
-}
-
-fn get_app_data_dir(state: &tauri::State<AppState>) -> PathBuf {
-    state.app_data_dir.lock().unwrap().clone()
-        .unwrap_or_else(|| PathBuf::from("."))
 }
 
 fn find_backend_binary() -> Option<String> {
@@ -99,7 +94,7 @@ fn append_log(app: &AppHandle, text: &str) {
         }
     }
     
-    if let Some(window) = app.get_window("main") {
+    if let Some(window) = app.get_webview_window("main") {
         let _ = window.emit("backend:log-line", entry);
     }
 }
@@ -129,8 +124,8 @@ fn start_backend(app: &AppHandle) -> Result<BackendStatus, String> {
     }
     
     let mut child = Command::new(&binary_path)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
         .spawn()
         .map_err(|e| format!("Failed to start: {}", e))?;
     
@@ -170,7 +165,7 @@ fn start_health_check(app: &AppHandle) {
                 let mut status = app_clone.state::<AppState>().status.lock().unwrap();
                 status.state = "running".to_string();
                 
-                if let Some(window) = app_clone.get_window("main") {
+                if let Some(window) = app_clone.get_webview_window("main") {
                     let _ = window.emit("backend:status-changed", status.clone());
                 }
                 
@@ -232,26 +227,19 @@ fn set_config(state: tauri::State<AppState>, config: AppConfig) -> AppConfig {
 
 #[tauri::command]
 fn get_default_log_path(app: AppHandle) -> String {
-    app.path_resolver()
+    app.path()
         .app_data_dir()
         .map(|p| p.join("pasa-auto-backend.log").to_string_lossy().to_string())
         .unwrap_or_default()
 }
 
 pub fn run() {
-    let quit = CustomMenuItem::new("quit".to_string(), "Quit");
-    let show = CustomMenuItem::new("show".to_string(), "Show Manager");
-    let start = CustomMenuItem::new("start".to_string(), "Start Backend");
-    let stop = CustomMenuItem::new("stop".to_string(), "Stop Backend");
+    let quit = MenuItem::with_id("quit", "Quit", true, None::<&str>);
+    let show = MenuItem::with_id("show", "Show Manager", true, None::<&str>);
+    let start = MenuItem::with_id("start", "Start Backend", true, None::<&str>);
+    let stop = MenuItem::with_id("stop", "Stop Backend", true, None::<&str>);
     
-    let tray_menu = SystemTrayMenu::new()
-        .add_item(show)
-        .add_item(start)
-        .add_item(stop)
-        .add_native_item(tauri::SystemTrayMenuItem::Separator)
-        .add_item(quit);
-    
-    let system_tray = SystemTray::new().with_menu(tray_menu);
+    let tray_menu = TrayIconMenu::with_items(&[&show, &start, &stop, &quit]);
     
     tauri::Builder::default()
         .manage(AppState {
@@ -266,12 +254,12 @@ pub fn run() {
             app_data_dir: Mutex::new(None),
         })
         .setup(|app| {
-            if let Some(dir) = app.path_resolver().app_data_dir().ok() {
+            if let Some(dir) = app.path().app_data_dir().ok() {
                 *app.state::<AppState>().app_data_dir.lock().unwrap() = Some(dir);
             }
             
-            let window = WindowBuilder::new(
-                &app,
+            let _window = WindowBuilder::new(
+                app,
                 "main",
                 WindowUrl::App("manager.html".into()),
             ).title("PazaAuto Manager")
@@ -283,22 +271,22 @@ pub fn run() {
             
             Ok(())
         })
-        .on_system_tray_event(|app, event| {
+        .on_tray_icon_event(|app, event| {
             match event {
-                SystemTrayEvent::LeftClick { .. } => {
-                    if let Some(window) = app.get_window("main") {
+                TrayIconEvent::Click { .. } => {
+                    if let Some(window) = app.get_webview_window("main") {
                         let _ = window.show();
                         let _ = window.set_focus();
                     }
                 }
-                SystemTrayEvent::MenuItemClick { id, .. } => {
+                TrayIconEvent::MenuItemClick { id, .. } => {
                     match id.as_str() {
                         "quit" => {
                             stop_backend(app);
                             app.exit(0);
                         }
                         "show" => {
-                            if let Some(window) = app.get_window("main") {
+                            if let Some(window) = app.get_webview_window("main") {
                                 let _ = window.show();
                                 let _ = window.set_focus();
                             }
