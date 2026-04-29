@@ -121,12 +121,11 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
     @DELETE
     @Path("/{id}")
     public Response delete(@PathParam("id") String id) {
-        TbSpkEntity entity = getService().findById(parseId(id));
-        entity.setKeterangan("SPK Dibatalkan. lastStatus: " + entity.getStatusSpk());
-        entity.setStatusSpk("BATAL");
-        TbSpkEntity updated = getService().update(parseId(id), entity);
-
-        return Response.ok(ApiResponse.success(getEntityName() + " cancelled", updated)).build();
+        TbSpkEntity cancelled = getService().cancelSpk(parseId(id));
+        if (cancelled == null) {
+            return Response.ok(ApiResponse.error(getEntityName() + " not found")).build();
+        }
+        return Response.ok(ApiResponse.success(getEntityName() + " cancelled", cancelled)).build();
     }
 
     @DELETE

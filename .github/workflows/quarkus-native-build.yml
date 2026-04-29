@@ -154,11 +154,13 @@ jobs:
         run: |
           Get-ChildItem tauri/bin/*-runner.exe | Rename-Item -NewName pasa-auto-runner.exe
 
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli@latest
+
       - name: Install Tauri dependencies
         working-directory: tauri
         shell: pwsh
         run: |
-          if (Test-Path package-lock.json) { Remove-Item -Force package-lock.json }
           npm install
 
       - name: Build Tauri App (Windows)

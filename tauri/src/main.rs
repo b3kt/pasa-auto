@@ -4,5 +4,5 @@
 fn main() {
     env_logger::init();
     log::info!("Starting PazaAuto Tauri application");
-    pasa_auto_tauri_lib::run();
+    paza_auto_tauri_lib::run();
 }

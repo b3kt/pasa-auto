@@ -1,64 +1,39 @@
 {
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "PazaAuto",
+  "version": "0.0.21",
+  "identifier": "com.github.b3kt.pasaauto",
   "build": {
-    "beforeBuildCommand": "npm run build",
-    "beforeDevCommand": "npm run dev",
-    "devPath": "../dist",
-    "distDir": "../dist"
+    "beforeBuildCommand": "echo 'no frontend build needed'",
+    "beforeDevCommand": "echo 'no dev command needed'"
   },
-  "package": {
-    "productName": "PazaAuto",
-    "version": "0.0.21"
-  },
-  "tauri": {
-    "bundle": {
-      "active": true,
-      "category": "Utility",
-      "copyright": "Copyright (c) 2026 B3KT",
-      "deb": {
-        "depends": []
-      },
-      "externalBin": ["bin/pasa-auto-runner"],
-      "icon": [],
-      "identifier": "com.github.b3kt.pazaauto",
-      "longDescription": "PazaAuto Desktop Application with backend management",
-      "macOS": {
-        "entitlements": null,
-        "exceptionDomain": "",
-        "frameworks": [],
-        "providerShortName": null,
-        "signingIdentity": null
-      },
-      "resources": ["resources/*"],
-      "shortDescription": "PazaAuto Desktop App",
-      "targets": "all",
-      "windows": {
-        "certificateThumbprint": null,
-        "digestAlgorithm": "sha256",
-        "timestampUrl": ""
-      }
-    },
-    "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
-    },
-    "trayIcon": {
-      "iconPath": "resources/icon-red.png",
-      "iconAsTemplate": false,
-      "menuOnLeftClick": false
-    },
-    "updater": {
-      "active": false
-    },
+  "app": {
     "windows": [
       {
-        "fullscreen": false,
-        "height": 650,
-        "resizable": true,
         "title": "PazaAuto Manager",
         "width": 900,
+        "height": 650,
         "minWidth": 700,
         "minHeight": 500,
-        "center": true
+        "center": true,
+        "resizable": true
       }
-    ]
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "resources": ["resources/*"],
+    "externalBin": ["bin/pasa-auto-runner"],
+    "copyright": "Copyright (c) 2026 B3KT",
+    "shortDescription": "PazaAuto Desktop App",
+    "longDescription": "PazaAuto Desktop Application with backend management",
+    "category": "Utility",
+    "windows": {
+      "digestAlgorithm": "sha256"
+    }
   }
 }

@@ -4,10 +4,7 @@ use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
 
-use tauri::{
-    AppHandle, Manager, TrayIconBuilder, TrayIconEvent, TrayIconMenu, MenuItem,
-    WindowBuilder, WindowUrl, Emitter,
-};
+use tauri::{AppHandle, Manager, Emitter, WebviewWindowBuilder, WebviewUrl};
 use serde::{Deserialize, Serialize};
 
 const QUARKUS_PORT: u16 = 8080;
@@ -47,7 +44,6 @@ struct AppState {
     status: Mutex<BackendStatus>,
     logs: Mutex<Vec<LogEntry>>,
     config: Mutex<AppConfig>,
-    app_data_dir: Mutex<Option<PathBuf>>,
 }
 
 fn find_backend_binary() -> Option<String> {
@@ -123,7 +119,7 @@ fn start_backend(app: &AppHandle) -> Result<BackendStatus, String> {
             .output();
     }
     
-    let mut child = Command::new(&binary_path)
+    let child = Command::new(&binary_path)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()
@@ -162,11 +158,17 @@ fn start_health_check(app: &AppHandle) {
             }
             
             if check_server_ready() {
-                let mut status = app_clone.state::<AppState>().status.lock().unwrap();
-                status.state = "running".to_string();
+                let state = app_clone.state::<AppState>();
+                let status = state.status.lock().unwrap();
+                let running_status = BackendStatus {
+                    state: "running".to_string(),
+                    pid: status.pid,
+                    start_time: status.start_time,
+                };
+                drop(status);
                 
                 if let Some(window) = app_clone.get_webview_window("main") {
-                    let _ = window.emit("backend:status-changed", status.clone());
+                    let _ = window.emit("backend:status-changed", running_status);
                 }
                 
                 append_log(&app_clone, &format!("Backend ready on port {}", QUARKUS_PORT));
@@ -191,7 +193,8 @@ fn stop_backend(app: &AppHandle) {
     status.pid = None;
     status.start_time = None;
     
-    let _ = app.emit("backend:status-changed", status.clone());
+    let stopped_status = status.clone();
+    let _ = app.emit("backend:status-changed", stopped_status);
 }
 
 #[tauri::command]
@@ -229,19 +232,14 @@ fn set_config(state: tauri::State<AppState>, config: AppConfig) -> AppConfig {
 fn get_default_log_path(app: AppHandle) -> String {
     app.path()
         .app_data_dir()
-        .map(|p| p.join("pasa-auto-backend.log").to_string_lossy().to_string())
+        .map(|p| p.join("paza-auto-backend.log").to_string_lossy().to_string())
         .unwrap_or_default()
 }
 
 pub fn run() {
-    let quit = MenuItem::with_id("quit", "Quit", true, None::<&str>);
-    let show = MenuItem::with_id("show", "Show Manager", true, None::<&str>);
-    let start = MenuItem::with_id("start", "Start Backend", true, None::<&str>);
-    let stop = MenuItem::with_id("stop", "Stop Backend", true, None::<&str>);
-    
-    let tray_menu = TrayIconMenu::with_items(&[&show, &start, &stop, &quit]);
-    
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState {
             backend: Mutex::new(None),
             status: Mutex::new(BackendStatus {
@@ -251,17 +249,12 @@ pub fn run() {
             }),
             logs: Mutex::new(Vec::new()),
             config: Mutex::new(AppConfig::default()),
-            app_data_dir: Mutex::new(None),
         })
         .setup(|app| {
-            if let Some(dir) = app.path().app_data_dir().ok() {
-                *app.state::<AppState>().app_data_dir.lock().unwrap() = Some(dir);
-            }
-            
-            let _window = WindowBuilder::new(
+            let _window = WebviewWindowBuilder::new(
                 app,
                 "main",
-                WindowUrl::App("manager.html".into()),
+                WebviewUrl::App("manager.html".into()),
             ).title("PazaAuto Manager")
                 .inner_size(900.0, 650.0)
                 .min_inner_size(700.0, 500.0)
@@ -270,38 +263,6 @@ pub fn run() {
                 .unwrap();
             
             Ok(())
-        })
-        .on_tray_icon_event(|app, event| {
-            match event {
-                TrayIconEvent::Click { .. } => {
-                    if let Some(window) = app.get_webview_window("main") {
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
-                }
-                TrayIconEvent::MenuItemClick { id, .. } => {
-                    match id.as_str() {
-                        "quit" => {
-                            stop_backend(app);
-                            app.exit(0);
-                        }
-                        "show" => {
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
-                        }
-                        "start" => {
-                            let _ = start_backend(app);
-                        }
-                        "stop" => {
-                            stop_backend(app);
-                        }
-                        _ => {}
-                    }
-                }
-                _ => {}
-            }
         })
         .invoke_handler(tauri::generate_handler![
             get_status,
