@@ -121,7 +121,7 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
     @DELETE
     @Path("/{id}")
     public Response delete(@PathParam("id") String id) {
-        TbSpkEntity cancelled = getService().cancelSpk(parseId(id));
+        TbSpkEntity cancelled = service.cancelSpk(parseId(id));
         if (cancelled == null) {
             return Response.ok(ApiResponse.error(getEntityName() + " not found")).build();
         }
