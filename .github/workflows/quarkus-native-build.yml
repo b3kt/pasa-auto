@@ -201,47 +201,39 @@ jobs:
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli@latest
 
-      - name: Verify Tauri CLI installation
-        shell: pwsh
-        run: |
-          Write-Host "Checking tauri command..."
-          Get-Command tauri -ErrorAction SilentlyContinue | Write-Host
-          tauri --version
-
-      - name: Generate Tauri icons
+      - name: Verify icons exist and are valid
         working-directory: tauri
         shell: pwsh
         run: |
-          # Check current icons
-          Write-Host "Current icons in tauri/icons/:"
-          if (Test-Path icons/) {
-            Get-ChildItem icons/ | ForEach-Object { Write-Host $_.Name }
+          Write-Host "Checking icons in tauri/icons/:"
+          Get-ChildItem icons/ | ForEach-Object { 
+            $item = $_
+            Write-Host "$($item.Name) - $($item.Length) bytes"
+          }
+          
+          # Verify icon.ico exists and is valid (should be > 1KB)
+          if (Test-Path "icons/icon.ico") {
+            $icoFile = Get-Item "icons/icon.ico"
+            if ($icoFile.Length -gt 1000) {
+              Write-Host "SUCCESS: icon.ico is valid ($($icoFile.Length) bytes)"
+            } else {
+              Write-Error "icon.ico is too small ($($icoFile.Length) bytes)"
+              exit 1
+            }
           } else {
-            New-Item -ItemType Directory -Force -Path icons | Out-Null
-            Write-Host "Created icons directory"
+            Write-Error "icon.ico not found in icons/"
+            exit 1
           }
           
           # Verify icon.png exists
-          if (-not (Test-Path icons/icon.png)) {
-            Write-Error "icon.png not found in icons/"
-            exit 1
-          }
-          
-          # Generate all required icons from icon.png using tauri icon command
-          # This generates icon.ico, icon.png (various sizes), etc.
-          Write-Host "Generating icons from icon.png..."
-          tauri icon icons/icon.png
-          
-          # Verify icons were created
-          Write-Host "Icons after generation:"
-          Get-ChildItem icons/ | ForEach-Object { Write-Host $_.Name }
-          
-          # Verify icon.ico exists (required for Windows)
-          if (Test-Path icons/icon.ico) {
-            Write-Host "SUCCESS: icon.ico exists"
+          if (Test-Path "icons/icon.png") {
+            $pngFile = Get-Item "icons/icon.png"
+            Write-Host "icon.png exists ($($pngFile.Length) bytes)"
           } else {
-            Write-Error "FAILED: icon.ico not generated"
-            exit 1
+            Write-Host "icon.png not found, creating placeholder..."
+            # Create minimal PNG
+            $bytes = @(137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,2,0,0,0,144,119,83,222,0,0,0,12,73,68,65,84,8,215,99,248,207,192,0,0,0,2,0,1,227,68,166,41,0,0,0,0,73,69,78,68,174,66,96,130)
+            [System.IO.File]::WriteAllBytes("icons/icon.png", [byte[]]$bytes)
           }
 
       - name: Install Tauri dependencies

@@ -25,13 +25,17 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["msi", "nsis"],
     "resources": ["resources/*"],
     "externalBin": ["bin/pasa-auto-runner"],
     "copyright": "Copyright (c) 2026 B3KT",
     "shortDescription": "PazaAuto Desktop App",
     "longDescription": "PazaAuto Desktop Application with backend management",
     "category": "Utility",
+    "icon": [
+      "icons/icon.ico",
+      "icons/icon.png"
+    ],
     "windows": {
       "digestAlgorithm": "sha256"
     }
