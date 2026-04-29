@@ -67,11 +67,24 @@ jobs:
         run: |
           mvn clean package -Pnative -Dnative -DskipTests
 
+      - name: Prepare binary for upload
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path temp-bin | Out-Null
+          $runnerExe = Get-ChildItem target/*-runner.exe | Select-Object -First 1
+          if ($runnerExe) {
+            Copy-Item -Path $runnerExe.FullName -Destination temp-bin/pasa-auto-runner.exe
+            Write-Host "Prepared binary: $($runnerExe.Name) -> temp-bin/pasa-auto-runner.exe"
+          } else {
+            Write-Error "No runner.exe found in target/"
+            exit 1
+          }
+
       - name: Upload Native Binary runner
         uses: actions/upload-artifact@v4
         with:
           name: quarkus-native-windows
-          path: target/*-runner.exe
+          path: temp-bin/pasa-auto-runner.exe
 
 #  tauri-linux:
 #    needs: native-linux
@@ -147,12 +160,43 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: quarkus-native-windows
-          path: tauri/bin/
+          path: downloaded-bin/
 
-      - name: Rename binary
+      - name: Prepare binary for Tauri
         shell: pwsh
         run: |
-          Get-ChildItem tauri/bin/*-runner.exe | Rename-Item -NewName pasa-auto-runner.exe
+          # Debug: List what was downloaded
+          Write-Host "Downloaded contents:"
+          Get-ChildItem downloaded-bin/ -Recurse | ForEach-Object { Write-Host $_.FullName }
+          
+          # Create tauri/bin directory
+          New-Item -ItemType Directory -Force -Path tauri/bin | Out-Null
+          
+          # Find the downloaded exe
+          $downloadedExe = Get-ChildItem downloaded-bin/ -Filter *.exe -Recurse | Select-Object -First 1
+          
+          if (-not $downloadedExe) {
+            Write-Error "No exe file found in downloaded-bin/"
+            exit 1
+          }
+          
+          Write-Host "Found exe: $($downloadedExe.FullName)"
+          
+          # Tauri v2 expects: pasa-auto-runner-x86_64-pc-windows-msvc.exe
+          $targetTriple = "x86_64-pc-windows-msvc"
+          $destinationPath = "tauri/bin/pasa-auto-runner-$targetTriple.exe"
+          
+          Copy-Item -Path $downloadedExe.FullName -Destination $destinationPath -Force
+          
+          Write-Host "Copied to: $destinationPath"
+          
+          # Verify
+          if (Test-Path $destinationPath) {
+            Write-Host "SUCCESS: Binary is ready at $destinationPath"
+          } else {
+            Write-Error "FAILED: Binary not found at $destinationPath"
+            exit 1
+          }
 
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli@latest
@@ -162,6 +206,12 @@ jobs:
         shell: pwsh
         run: |
           npm install
+
+      - name: Verify binary exists before build
+        shell: pwsh
+        run: |
+          Write-Host "Files in tauri/bin/ before build:"
+          Get-ChildItem tauri/bin/ | ForEach-Object { Write-Host $_.FullName }
 
       - name: Build Tauri App (Windows)
         working-directory: tauri
