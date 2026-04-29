@@ -5,6 +5,10 @@ description = "PazaAuto Desktop Application"
 authors = ["B3KT"]
 edition = "2021"
 
+[package.metadata.tauri]
+# Tauri v2 requires package.metadata.tauri section
+# This is used by tauri-build for Windows resource generation
+
 [lib]
 name = "paza_auto_tauri_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
