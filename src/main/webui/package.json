@@ -16,13 +16,13 @@
     "postinstall": "quasar prepare"
   },
   "dependencies": {
-    "@quasar/extras": "^1.17.0",
-    "@quasar/vite-plugin": "^1.11.0",
+    "@quasar/extras": "^1.16.4",
+    "@quasar/vite-plugin": "^1.10.0",
     "axios": "^1.2.1",
     "chart.js": "^4.5.1",
     "jwt-decode": "^4.0.0",
     "pinia": "^3.0.1",
-    "quasar": "^2.19.0",
+    "quasar": "^2.18.6",
     "sass": "^1.94.1",
     "sass-loader": "^16.0.6",
     "vue": "^3.5.22",
@@ -34,7 +34,7 @@
   "devDependencies": {
     "@eslint/js": "^9.14.0",
     "@intlify/unplugin-vue-i18n": "^4.0.0",
-    "@quasar/app-vite": "^2.2.0",
+    "@quasar/app-vite": "^2.1.0",
     "@vue/eslint-config-prettier": "^10.1.0",
     "autoprefixer": "^10.4.2",
     "baseline-browser-mapping": "^2.10.11",
