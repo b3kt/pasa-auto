@@ -163,7 +163,7 @@ jobs:
             electron/dist/**/*.exe
 
   release:
-    needs: [native-windows, tauri-windows, electron-windows]
+    needs: [native-windows, electron-windows]
 #    needs: [native-linux, native-windows, tauri-linux, tauri-windows, electron-windows]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/release'
