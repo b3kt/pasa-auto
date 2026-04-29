@@ -283,4 +283,15 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
         detailRepository.delete("id.noSpk", noSpk);
         repository.delete("noSpk", noSpk);
     }
+
+    @jakarta.transaction.Transactional
+    public TbSpkEntity cancelSpk(Long id) {
+        TbSpkEntity entity = repository.findById(id);
+        if (entity != null) {
+            String lastStatus = entity.getStatusSpk();
+            entity.setKeterangan("SPK Dibatalkan. lastStatus: " + lastStatus);
+            entity.setStatusSpk("BATAL");
+        }
+        return entity;
+    }
 }
