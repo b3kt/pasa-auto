@@ -87,6 +87,7 @@ jobs:
           name: quarkus-native-windows
           path: temp-bin/pasa-auto-runner.exe
 
+
   electron-windows:
     needs: native-windows
     runs-on: windows-latest
