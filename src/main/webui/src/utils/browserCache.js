@@ -17,8 +17,39 @@ class BrowserCache {
       return true
     } catch (error) {
       console.error('Failed to set cache item:', error)
-      // If localStorage is full, clear old items
-      this.clearExpired()
+      
+      // Handle quota exceeded error
+      if (error.name === 'QuotaExceededError' || error.code === 22) {
+        console.log('Storage quota exceeded, clearing cache...')
+        
+        // First try to clear expired items
+        const clearedCount = this.clearExpired()
+        
+        // If still not enough space, clear oldest items
+        if (clearedCount === 0) {
+          this.clearOldestItems(10) // Clear 10 oldest items
+        }
+        
+        // Try again
+        try {
+          localStorage.setItem(this.cachePrefix + key, JSON.stringify(item))
+          console.log('Successfully set cache item after cleanup')
+          return true
+        } catch (retryError) {
+          console.error('Still failed to set cache item after cleanup:', retryError)
+          // If still failing, clear more aggressively
+          this.clearOldestItems(50) // Clear 50 oldest items
+          try {
+            localStorage.setItem(this.cachePrefix + key, JSON.stringify(item))
+            return true
+          } catch (finalError) {
+            console.error('Final attempt failed, clearing all cache:', finalError)
+            this.clear() // Clear everything as last resort
+            return false
+          }
+        }
+      }
+      
       return false
     }
   }
@@ -88,6 +119,49 @@ class BrowserCache {
     }
   }
 
+  // Clear oldest items from localStorage
+  clearOldestItems(count = 10) {
+    try {
+      const keys = Object.keys(localStorage)
+      const cacheItems = []
+
+      keys.forEach(key => {
+        if (key.startsWith(this.cachePrefix)) {
+          try {
+            const item = JSON.parse(localStorage.getItem(key))
+            if (item && item.timestamp) {
+              cacheItems.push({
+                key: key,
+                timestamp: item.timestamp
+              })
+            }
+          } catch (error) {
+            // Remove malformed items
+            localStorage.removeItem(key)
+          }
+        }
+      })
+
+      // Sort by timestamp (oldest first)
+      cacheItems.sort((a, b) => a.timestamp - b.timestamp)
+
+      // Remove oldest items
+      let clearedCount = 0
+      const itemsToRemove = Math.min(count, cacheItems.length)
+      
+      for (let i = 0; i < itemsToRemove; i++) {
+        localStorage.removeItem(cacheItems[i].key)
+        clearedCount++
+      }
+
+      console.log(`Cleared ${clearedCount} oldest cache items`)
+      return clearedCount
+    } catch (error) {
+      console.error('Failed to clear oldest items:', error)
+      return 0
+    }
+  }
+
   // Clear all cache items
   clear() {
     try {
@@ -106,6 +180,45 @@ class BrowserCache {
     } catch (error) {
       console.error('Failed to clear cache:', error)
       return 0
+    }
+  }
+
+  // Check storage usage and manage cache proactively
+  checkStorageUsage() {
+    try {
+      // Estimate localStorage usage (rough approximation)
+      let totalSize = 0
+      const keys = Object.keys(localStorage)
+      
+      keys.forEach(key => {
+        const value = localStorage.getItem(key)
+        if (value) {
+          totalSize += key.length + value.length
+        }
+      })
+
+      // Convert to KB (each character is roughly 1 byte)
+      const sizeInKB = totalSize / 1024
+      
+      // localStorage typically has 5-10MB limit, warn at 4MB
+      if (sizeInKB > 4096) {
+        console.log(`Storage usage is high: ${sizeInKB.toFixed(2)} KB, cleaning up...`)
+        this.clearExpired()
+        
+        // If still high, clear oldest items
+        if (sizeInKB > 5120) { // 5MB
+          this.clearOldestItems(20)
+        }
+      }
+
+      return {
+        sizeInKB: sizeInKB.toFixed(2),
+        totalItems: keys.length,
+        usagePercent: ((sizeInKB / 5120) * 100).toFixed(1) // Assuming 5MB limit
+      }
+    } catch (error) {
+      console.error('Failed to check storage usage:', error)
+      return null
     }
   }
 
@@ -252,9 +365,10 @@ class BrowserCache {
 // Create singleton instance
 const browserCache = new BrowserCache()
 
-// Auto-cleanup expired items every hour
+// Auto-cleanup expired items and check storage usage every 30 minutes
 setInterval(() => {
   browserCache.clearExpired()
-}, 60 * 60 * 1000)
+  browserCache.checkStorageUsage()
+}, 30 * 60 * 1000)
 
 export default browserCache

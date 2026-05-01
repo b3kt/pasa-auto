@@ -210,6 +210,7 @@ async function loadData() {
       pagination.value.rowsNumber = response.data.data.rowsNumber || 0
     }
   } catch (e) {
+    console.error(e);
     $q.notify({ type: 'negative', message: 'Gagal memuat data audit trail' })
   } finally {
     loading.value = false

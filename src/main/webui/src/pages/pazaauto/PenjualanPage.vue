@@ -89,7 +89,7 @@
                     </template>
                   </q-select>
 
-                  <q-select v-model="selectedMekaniks" label="Select Mechanics" outlined dense multiple
+                  <q-select v-model="selectedMekaniks" label="Pilih Mekanik" outlined dense multiple
                             :options="karyawanOptions" option-label="namaKaryawan" option-value="id" use-chips use-input
                             input-debounce="300" @filter="filterKaryawan" :loading="loadingKaryawan"
                             :disable="!isEditable"
@@ -1434,7 +1434,7 @@ const fetchJenisOptions = async (merk = null) => {
 }
 
 // Filter functions for dropdowns
-const filterMerk = (val, update, _abort) => {
+const filterMerk = (val, update) => {
   update(() => {
     if (val === '') {
       return
@@ -1446,7 +1446,7 @@ const filterMerk = (val, update, _abort) => {
   })
 }
 
-const filterJenis = (val, update, _abort) => {
+const filterJenis = (val, update) => {
   update(() => {
     if (val === '') {
       return

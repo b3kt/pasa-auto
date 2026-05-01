@@ -90,7 +90,7 @@
                     </template>
                   </q-select>
 
-                  <q-select v-model="selectedMekaniks" label="Select Mechanics" outlined dense multiple
+                  <q-select v-model="selectedMekaniks" label="Pilih Mekanik" outlined dense multiple
                             :options="karyawanOptions" option-label="namaKaryawan" option-value="id" use-chips use-input
                             input-debounce="300" @filter="filterKaryawan" :loading="loadingKaryawan"
                             :disable="!isEditable"
@@ -121,6 +121,7 @@
                 </q-card-section>
                 <q-card-section>
                   <SPKCustomerInfo
+                    :key="formData.id"
                     v-model:namaPelanggan="formData.namaPelanggan"
                     v-model:alamat="formData.alamat"
                     v-model:merk="formData.merk"
@@ -134,6 +135,7 @@
                     @filter:merk="filterMerk"
                     @filter:jenis="filterJenis"
                     @check:vehicle="checkAndShowVehicleDialog"
+                    @pelanggan-updated="handlePelangganUpdated"
                   />
                 </q-card-section>
               </q-card-section>
@@ -743,6 +745,12 @@ const openCreateDialog = async () => {
 
 const openEditDialog = async (row) => {
   isEditMode.value = true
+
+  // Clear any pending inline editing state when switching to a different row
+  if (formData.value.id && formData.value.id !== row.id) {
+    // Reset inline editing state by forcing SPKCustomerInfo to clear
+    isNewCustomer.value = false
+  }
 
   // Fetch options first so we can map prices and populate vehicle dropdowns
   await Promise.all([fetchJasa(), fetchBarang(), fetchMerkOptions(), fetchJenisOptions()])
@@ -1473,6 +1481,50 @@ const handleUpdateMasterBarang = async (payload) => {
       type: 'negative',
       message: 'Failed to update master data Barang',
       caption: error.response?.data?.message || error.message
+    })
+  }
+}
+
+// Handle pelanggan data update from inline editing
+const handlePelangganUpdated = async (payload) => {
+  try {
+    // Refresh pelanggan list to update dropdown options
+    await fetchPelanggan()
+    
+    // Refresh SPK table to show updated pelanggan data
+    await fetchSpk()
+    
+    // Update the current SPK form data with the new values
+    const updatedPelanggan = pelangganOptions.value.find(p => p.nopol === payload.nopol)
+    if (updatedPelanggan) {
+      // Update the form data with the latest values from pelanggan options
+      if (payload.field === 'namaPelanggan') {
+        formData.value.namaPelanggan = payload.value
+      } else if (payload.field === 'alamat') {
+        formData.value.alamat = payload.value
+      } else if (payload.field === 'merk') {
+        formData.value.merk = payload.value
+      } else if (payload.field === 'jenis') {
+        formData.value.jenis = payload.value
+      }
+      
+      // Also update the filtered pelanggan options to reflect changes
+      const filteredIndex = filteredPelangganOptions.value.findIndex(p => p.nopol === payload.nopol)
+      if (filteredIndex !== -1) {
+        filteredPelangganOptions.value[filteredIndex] = {...updatedPelanggan}
+      }
+    }
+    
+    $q.notify({
+      type: 'positive',
+      message: 'Data pelanggan berhasil diperbarui di form SPK dan tabel'
+    })
+  } catch (error) {
+    console.error('Failed to refresh pelanggan data', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Gagal memperbarui data pelanggan di form SPK',
+      caption: error.message
     })
   }
 }
