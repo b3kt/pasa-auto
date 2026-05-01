@@ -11,8 +11,10 @@ import com.github.b3kt.application.service.pazaauto.TbSpkService;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKaryawanEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
+import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
+import io.opentelemetry.instrumentation.annotations.SpanAttribute;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import jakarta.enterprise.context.RequestScoped;
-import jakarta.inject.Inject;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -20,19 +22,16 @@ import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
 
 @RequestScoped
 @Path("/api/pazaauto/spk")
+@RequiredArgsConstructor
 public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
 
-    @Inject
-    TbSpkService service;
-
-    @Inject
-    TbPelangganService pelangganService;
-
-    @Inject
-    TbKaryawanService karyawanService;
+    final TbSpkService service;
+    final TbPelangganService pelangganService;
+    final TbKaryawanService karyawanService;
 
     @Override
     protected AbstractCrudService<TbSpkEntity, Long> getService() {
@@ -50,9 +49,38 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
     }
 
     @GET
+    @Path("/by-no-spk/{noSpk}")
+    @WithSpan("find-spk-by-no-spk")
+    public Response findByNoSpk(@PathParam("noSpk") @SpanAttribute("spk.no-spk") String noSpk) {
+        return Response.ok(ApiResponse.success(service.findByNoSpk(noSpk))).build();
+    }
+
+    @GET
+    @Path("/unprocessed")
+    @WithSpan("get-unprocessed-spk")
+    public Response getUnprocessedSpk() {
+        return Response.ok(ApiResponse.success(service.findUnprocessedSpk())).build();
+    }
+
+    @Override
+    @GET
+    @Path("/{id}")
+    public Response getById(@PathParam("id") String id) {
+        TbSpkEntity entity = getService().findById(parseId(id));
+
+        fillKaryawanDetail(entity);
+        fillPelangganDetail(entity);
+        fillKendaraanDetail(entity);
+
+        return Response.ok(ApiResponse.success(entity)).build();
+    }
+
+
+    @GET
     @Path("/get-next-spk-number")
+    @WithSpan("get-next-spk-number")
     public Response getNextSpk() {
-        String lastSpkNumber = service.getNextSpkNumber(spkNoformatter.format(LocalDateTime.now()));
+        String lastSpkNumber = service.getNextSpkNumber(SPK_DATE_FORMATTER.format(LocalDateTime.now()));
         String lastQueueNumber = lastSpkNumber.substring(lastSpkNumber.length() - 2);
         int nextQueueNumber = Integer.parseInt(lastQueueNumber) + 1;
         String nextSpkNumber = lastSpkNumber.substring(0, lastSpkNumber.length() - 2)
@@ -93,27 +121,52 @@ public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
     @DELETE
     @Path("/{id}")
     public Response delete(@PathParam("id") String id) {
-        // getService().delete(parseId(id));
-        TbSpkEntity entity = getService().findById(parseId(id));
-        entity.setKeterangan("SPK Dibatalkan. lastStatus: " + entity.getStatusSpk());
-        entity.setStatusSpk("BATAL");
-        TbSpkEntity updated = getService().update(parseId(id), entity);
+        TbSpkEntity cancelled = service.cancelSpk(parseId(id));
+        if (cancelled == null) {
+            return Response.ok(ApiResponse.error(getEntityName() + " not found")).build();
+        }
+        return Response.ok(ApiResponse.success(getEntityName() + " cancelled", cancelled)).build();
+    }
 
-        return Response.ok(ApiResponse.success(getEntityName() + " cancelled", updated)).build();
+    @DELETE
+    @Path("/delete-by-no-spk/{noSpk}")
+    public Response deleteByNoSpk(@PathParam("noSpk") String noSpk) {
+        service.deleteByNoSpk(noSpk);
+        return Response.ok(ApiResponse.success(getEntityName() + " deleted permanently")).build();
     }
 
     private void fillPelangganDetail(TbSpkEntity entity) {
+
+        TbPelangganEntity pelanggan;
         if (Objects.isNull(entity.getPelangganId())) {
-            TbPelangganEntity pelanggan = pelangganService.findByNopol(entity.getNopol());
+            pelanggan = pelangganService.findByNopol(entity.getNopol());
             if (Objects.nonNull(pelanggan)) {
                 entity.setPelangganId(pelanggan.getId());
+                entity.setNamaPelanggan(pelanggan.getNamaPelanggan());
             }
+        }else{
+            pelanggan = pelangganService.findById(entity.getPelangganId());
+        }
+
+        if(Objects.nonNull(pelanggan)){
+            entity.setAlamatPelanggan(pelanggan.getAlamat());
+            entity.setMerkKendaraan(pelanggan.getMerk());
+            entity.setJenisKendaraan(pelanggan.getJenis());
         }
     }
 
     private void fillKaryawanDetail(TbSpkEntity entity) {
         if (Objects.isNull(entity.getMekanikId())) {
-            long mekanikId = entity.getMekanikList().stream().findFirst().get().getId();
+            if (entity.getMekanikList() == null || entity.getMekanikList().isEmpty()) {
+                return;
+            }
+            Long mekanikId = entity.getMekanikList().stream()
+                    .findFirst()
+                    .map(SpkMekanik::getId)
+                    .orElse(null);
+            if (mekanikId == null) {
+                return;
+            }
             TbKaryawanEntity karyawan = karyawanService.findById(mekanikId);
             if (Objects.nonNull(karyawan)) {
                 entity.setNamaKaryawan(karyawan.getNamaKaryawan());

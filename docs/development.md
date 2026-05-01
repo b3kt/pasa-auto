@@ -171,7 +171,7 @@ npm run dev
 ### Testing the Setup
 ```bash
 # Health check
-curl http://localhost:8080/q/health
+curl http://localhost:8080/health
 
 # API documentation
 open http://localhost:8080/swagger-ui

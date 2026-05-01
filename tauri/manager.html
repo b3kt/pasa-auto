@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PazaAuto Manager</title>
+  <link rel="stylesheet" href="manager.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- Status card -->
+    <section class="card status-card">
+      <h2 class="card-title">Instance Status</h2>
+      <div class="status-row">
+        <span id="statusDot" class="status-dot stopped"></span>
+        <span id="statusLabel" class="status-label">Stopped</span>
+        <span id="pidLabel"    class="status-meta"></span>
+        <span id="uptimeLabel" class="status-meta"></span>
+      </div>
+      <div class="controls">
+        <button id="startBtn" class="btn btn-start">▶ Start</button>
+        <button id="stopBtn"  class="btn btn-stop" disabled>■ Stop</button>
+      </div>
+    </section>
+
+    <!-- Console log -->
+    <section class="card console-card">
+      <div class="console-header">
+        <h2 class="card-title">Console Output</h2>
+        <div class="console-actions">
+          <label class="auto-scroll-toggle">
+            <input type="checkbox" id="autoScrollCheck" checked /> Auto-scroll
+          </label>
+          <button id="clearBtn" class="btn btn-secondary">Clear</button>
+          <button id="saveBtn"  class="btn btn-secondary">Save</button>
+        </div>
+      </div>
+      <div id="console" class="console"></div>
+    </section>
+
+    <!-- Settings -->
+    <section class="card settings-card">
+      <h2 class="card-title">Settings</h2>
+      <div class="setting-row">
+        <label class="setting-label">
+          <input type="checkbox" id="logToFileCheck" />
+          Write logs to file
+        </label>
+      </div>
+      <div class="setting-row file-row" id="filePathRow" style="display:none">
+        <input type="text" id="logFilePathInput" class="path-input"
+               placeholder="Log file path…" readonly />
+        <button id="browseBtn" class="btn btn-secondary">Browse…</button>
+      </div>
+    </section>
+
+  </div>
+  <script src="manager.js"></script>
+</body>
+</html>

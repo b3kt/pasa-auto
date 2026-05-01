@@ -1,6 +1,6 @@
 <template>
   <q-page padding>
-    <q-splitter v-model="splitterModel" :limits="[50, 50]" style="height: calc(100vh - 100px)">
+    <q-splitter v-model="splitterModel" :limits="$q.screen.xs ? [100, 100] : [50, 50]" style="height: calc(100vh - 100px)">
       <template v-slot:before>
         <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
                       @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
@@ -8,9 +8,21 @@
                       :on-edit="openEditDialog" create-label="Tambah data Karyawan" ref="tableRef"
                       search-placeholder="Search by name or email...">
           <template v-slot:toolbar-filters>
-            <div class="col" style="min-width: 150px">
-              <q-select v-model="filterStatus" multiple :options="statusOptions" label="Status" dense options-dense flat
-                        outlined/>
+            <div class="row items-center q-gutter-sm">
+              <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly>
+                               <template v-slot:append>
+                                   <q-icon name="event" class="cursor-pointer">
+                                       <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                                           <q-date v-model="dateRange" range>
+                                               <div class="row items-center justify-end q-gutter-sm">
+                                                   <q-btn label="Clear" color="primary" flat @click="clearDateRange" />
+                                                   <q-btn label="OK" color="primary" flat v-close-popup />
+                                               </div>
+                                           </q-date>
+                                       </q-popup-proxy>
+                                   </q-icon>
+                               </template>
+                           </q-input>
             </div>
           </template>
           <template v-slot:body-cell-statusSpk="props">
@@ -18,17 +30,11 @@
               {{ props.row.statusSpk || 'N/A' }}
             </q-badge>
           </template>
-          <template v-slot:body-cell-diskon="props">-->
-            {{ formatCurrency(props.row.diskon) }}
-          </template>
-
-          <template v-slot:body-cell-ppn="props">
-            {{ formatCurrency(props.row.ppn) }}
-          </template>
         </GenericTable>
       </template>
 
-      <template v-slot:after>
+      <template v-slot:after v-if="!$q.screen.xs">
+
         <div class="q-pa-md scroll" style="height: 100%">
           <div class="row items-center q-mb-md">
             <div class="text-h6 q-mb-md">{{ isEditMode ? 'Edit SPK' : 'Tambah data SPK' }}</div>
@@ -46,8 +52,8 @@
                   </div>
                   <q-input v-model="formData.tanggalJamSpk" label="Tanggal" outlined dense
                            placeholder="YYYY-MM-DD HH:mm:ss"
-                           disable/>
-                  <q-input v-model="formData.noSpk" label="No SPK" outlined dense disable/>
+                           readonly/>
+                  <q-input v-model="formData.noSpk" label="No SPK" outlined dense readonly/>
                   <q-input v-model.number="formData.noAntrian" label="No Antrian" outlined dense type="number"
                            :disable="(formData.statusSpk === 'SELESAI' || formData.statusSpk === 'BATAL')"/>
 
@@ -84,7 +90,7 @@
                     </template>
                   </q-select>
 
-                  <q-select v-model="selectedMekaniks" label="Select Mechanics" outlined dense multiple
+                  <q-select v-model="selectedMekaniks" label="Pilih Mekanik" outlined dense multiple
                             :options="karyawanOptions" option-label="namaKaryawan" option-value="id" use-chips use-input
                             input-debounce="300" @filter="filterKaryawan" :loading="loadingKaryawan"
                             :disable="!isEditable"
@@ -115,12 +121,21 @@
                 </q-card-section>
                 <q-card-section>
                   <SPKCustomerInfo
+                    :key="formData.id"
                     v-model:namaPelanggan="formData.namaPelanggan"
                     v-model:alamat="formData.alamat"
                     v-model:merk="formData.merk"
                     v-model:jenis="formData.jenis"
                     :nopol="formData.nopol"
                     :isNewCustomer="isNewCustomer"
+                    :merkOptions="merkOptions"
+                    :filteredJenisOptions="filteredJenisOptions"
+                    :loadingMerk="loadingMerk"
+                    :loadingJenis="loadingJenis"
+                    @filter:merk="filterMerk"
+                    @filter:jenis="filterJenis"
+                    @check:vehicle="checkAndShowVehicleDialog"
+                    @pelanggan-updated="handlePelangganUpdated"
                   />
                 </q-card-section>
               </q-card-section>
@@ -139,6 +154,10 @@
             />
 
             <div class="row justify-end q-gutter-sm">
+              <div v-if="formData.statusSpk === 'SELESAI'">
+                <q-btn label="Print" type="button" @click="printSpk" style="width: 100px;"
+                       :loading="saving" class="q-mr-sm"/>
+              </div>
               <div v-if="formData.statusSpk === 'PROSES'">
                 <q-btn label="Print" type="button" @click="printSpk" style="width: 100px;"
                        :loading="saving" class="q-mr-sm"/>
@@ -215,15 +234,44 @@
         <q-btn label="Konfirmasi & Selesai" color="green" @click="confirmPayment" :loading="saving" />
       </template>
     </GenericDialog>
+
+    <!-- Vehicle Confirmation Dialog -->
+    <GenericDialog v-model="showVehicleDialog" title="Tambah Data Kendaraan Baru?" min-width="500px">
+      <div class="q-pa-md">
+        <p class="text-body1 q-mb-md">
+          Data kendaraan dengan merk <strong>{{ newVehicleData.merk }}</strong> dan jenis <strong>{{ newVehicleData.jenis }}</strong> tidak ditemukan.
+        </p>
+        <p class="text-body2 q-mb-lg">
+          Apakah Anda ingin menambahkan data kendaraan baru ke database?
+        </p>
+
+        <div class="row q-col-gutter-md">
+          <div class="col-12">
+            <q-input v-model="newVehicleData.merk" label="Merk" outlined dense readonly />
+          </div>
+          <div class="col-12">
+            <q-input v-model="newVehicleData.jenis" label="Jenis" outlined dense readonly />
+          </div>
+          <div class="col-12">
+            <q-input v-model="newVehicleData.keterangan" label="Keterangan" outlined dense type="textarea" rows="3" />
+          </div>
+        </div>
+      </div>
+      <template #actions>
+        <q-btn flat label="Tidak" color="primary" @click="showVehicleDialog = false" />
+        <q-btn label="Ya, Tambah" color="green" @click="confirmAddVehicle" :loading="saving" />
+      </template>
+    </GenericDialog>
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, nextTick } from 'vue'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
 import GenericDialog from 'components/GenericDialog.vue'
 import { useKeyboardShortcuts } from 'src/composables/useKeyboardShortcuts'
+import { useDateFilter } from 'src/composables/useDateFilter'
 import GenericTable from "components/GenericTable.vue";
 import SPKDetailsEditor from 'components/SPKDetailsEditor.vue'
 import SPKCustomerInfo from 'components/SPKCustomerInfo.vue'
@@ -255,7 +303,7 @@ const saveFilterToStorage = (filter) => {
 }
 
 // State
-const splitterModel = ref(50)
+const splitterModel = $q.screen.xs ? ref(100) : ref(50)
 const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
@@ -265,6 +313,7 @@ const isNewCustomer = ref(false)
 const searchText = ref('')
 const filterStatus = ref(loadFilterFromStorage())
 const filterToday = ref(false)
+const { dateRange, dateRangeText, clearDateRange } = useDateFilter('spk')
 const rows = ref([])
 const pelangganOptions = ref([])
 const filteredPelangganOptions = ref([])
@@ -277,8 +326,15 @@ const isEditMode = ref(false)
 const itemToDelete = ref(null)
 const isEditable = ref(false)
 const initialData = ref(null)
+const tableRef = ref(null)
 const showPrintDialog = ref(false)
 const printPreviewContent = ref('')
+const showVehicleDialog = ref(false)
+const newVehicleData = ref({
+  merk: '',
+  jenis: '',
+  keterangan: ''
+})
 const isDirty = (current) => {
   if (!initialData.value) return true
   return JSON.stringify(current) !== JSON.stringify(initialData.value)
@@ -294,6 +350,13 @@ const paymentData = ref({
 // Detail SPK State
 const allJasaOptions = ref([])
 const allBarangOptions = ref([])
+
+// Vehicle dropdown state
+const merkOptions = ref([])
+const allJenisOptions = ref([])
+const filteredJenisOptions = ref([])
+const loadingMerk = ref(false)
+const loadingJenis = ref(false)
 
 // Computed
 const jasaRows = computed(() => {
@@ -329,15 +392,6 @@ const subtotalBarang = computed(() => {
 })
 
 const grandTotal = computed(() => subtotalJasa.value + subtotalBarang.value)
-
-
-// Status options for filter
-const statusOptions = ref([
-  'OPEN',
-  'PROSES',
-  'SELESAI',
-  'BATAL'
-])
 
 const pagination = ref({
   sortBy: "noSpk",
@@ -472,14 +526,21 @@ const fetchSpk = async (paginationData = pagination.value) => {
       params.search = searchText.value
     }
 
-    // Add status filter if specified
-    if (filterStatus.value && filterStatus.value.length > 0) {
-      params.statusFilter = filterStatus.value.join(',')
-    }
+    // Add status filter - always filter for OPEN status
+    params.statusFilter = 'OPEN'
 
     // Add today filter if checked
     if (filterToday.value) {
       params.filterToday = true
+    }
+
+    // Add date range filter
+    if (dateRange.value?.from) {
+      // Quasar returns YYYY/MM/DD format by default. Backend needs YYYY-MM-DD.
+      params.startDate = dateRange.value.from.replace(/\//g, '-')
+    }
+    if (dateRange.value?.to) {
+      params.endDate = dateRange.value.to.replace(/\//g, '-')
     }
 
     const response = await api.get('/api/pazaauto/spk/paginated', {params})
@@ -542,7 +603,8 @@ const filterPelanggan = (val, update) => {
     } else {
       const needle = val.toLowerCase()
       filteredPelangganOptions.value = pelangganOptions.value.filter(
-        v => v.nopol.toLowerCase().indexOf(needle) > -1
+        v => v.nopol.toLowerCase().indexOf(needle) > -1 ||
+             (v.namaPelanggan && v.namaPelanggan.toLowerCase().indexOf(needle) > -1)
       )
     }
   })
@@ -663,6 +725,13 @@ const onRequest = (props) => {
   fetchSpk(pagination.value)
 }
 
+const onSearch = (val) => {
+  searchText.value = val
+  pagination.value.page = 1
+  fetchSpk()
+}
+
+
 const openCreateDialog = async () => {
   isEditMode.value = false
   isEditable.value = true
@@ -670,15 +739,21 @@ const openCreateDialog = async () => {
   initNoSpk()
   initialData.value = null
   showDialog.value = true
-  // Fetch options for inline add
-  await Promise.all([fetchJasa(), fetchBarang()])
+  // Fetch options for inline add and vehicle dropdowns
+  await Promise.all([fetchJasa(), fetchBarang(), fetchMerkOptions(), fetchJenisOptions()])
 }
 
 const openEditDialog = async (row) => {
   isEditMode.value = true
 
-  // Fetch options first so we can map prices
-  await Promise.all([fetchJasa(), fetchBarang()])
+  // Clear any pending inline editing state when switching to a different row
+  if (formData.value.id && formData.value.id !== row.id) {
+    // Reset inline editing state by forcing SPKCustomerInfo to clear
+    isNewCustomer.value = false
+  }
+
+  // Fetch options first so we can map prices and populate vehicle dropdowns
+  await Promise.all([fetchJasa(), fetchBarang(), fetchMerkOptions(), fetchJenisOptions()])
 
   // Fetch full details including details list
   try {
@@ -855,26 +930,24 @@ const renderTemplate = (template, context) => {
 
 const finishProcess = async () => {
   // Save current SPK data first to ensure we have latest totals
-  await saveSpk()
+  //await saveSpk()
 
   // Generate penjualan number
-  await generatePenjualanNumber()
-
-  // Reset payment data
-  paymentData.value = {
-    ...paymentData.value,
-    uangDibayar: grandTotal.value,
-    kembalian: 0,
-    metodePembayaran: 'CASH'
-  }
+  await generatePenjualanNumber(formData.value.noSpk)
 
   // Open payment dialog
   showPaymentDialog.value = true
 }
 
-const handleSave = () => {
-  saveSpk()
-  openEditDialog(initialData.value)
+const handleSave = async () => {
+  await saveSpk()
+  // Re-fetch the full SPK (with details) and update the selected row in the table
+  if (formData.value.id) {
+    await openEditDialog(formData.value)
+    nextTick(() => {
+      tableRef.value?.selectRowByItem(formData.value)
+    })
+  }
 }
 
 const saveSpk = async () => {
@@ -969,26 +1042,8 @@ const saveSpk = async () => {
 }
 
 // Payment dialog functions
-const generatePenjualanNumber = async () => {
-  try {
-    const response = await api.get('/api/pazaauto/penjualan/next-number')
-    if (response.data.success) {
-      paymentData.value.noPenjualan = response.data.data
-    } else {
-      // Fallback to manual generation if endpoint doesn't exist
-      const date = new Date()
-      const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '')
-      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
-      paymentData.value.noPenjualan = `PNJ-${dateStr}-${random}`
-    }
-  } catch (error) {
-    // Fallback to manual generation
-    const date = new Date()
-    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '')
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
-    paymentData.value.noPenjualan = `PNJ-${dateStr}-${random}`
-    console.log(error)
-  }
+const generatePenjualanNumber = async (spkNo) => {
+  paymentData.value.noPenjualan = `F${spkNo}`
 }
 
 const calculateKembalian = () => {
@@ -1031,7 +1086,10 @@ const confirmPayment = async () => {
       kembalian: paymentData.value.kembalian,
       metodePembayaran: paymentData.value.metodePembayaran,
       statusPembayaran: determinePaymentStatus(),
-      keterangan: `Payment for SPK ${formData.value.noSpk}`
+      keterangan: `Payment for SPK ${formData.value.noSpk}`,
+      kendaraanId: formData.value.idKendaraan,
+      pelangganId: formData.value.idPelanggan,
+      karyawanId: formData.value.idKaryawan
     }
 
     // Tambah data penjualan
@@ -1216,6 +1274,177 @@ const fetchBarang = async () => {
   }
 }
 
+// Vehicle data fetching functions
+const fetchMerkOptions = async () => {
+  loadingMerk.value = true
+  try {
+    const response = await api.get('/api/pazaauto/kendaraan/merk/distinct')
+    if (response.data.success) {
+      merkOptions.value = response.data.data || []
+    }
+  } catch (error) {
+    console.error('Failed to fetch merk options', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to fetch vehicle merk options',
+      caption: error.response?.data?.message || error.message
+    })
+  } finally {
+    loadingMerk.value = false
+  }
+}
+
+const fetchJenisOptions = async (merk = null) => {
+  loadingJenis.value = true
+  try {
+    const url = merk 
+      ? `/api/pazaauto/kendaraan/jenis/by-merk?merk=${encodeURIComponent(merk)}`
+      : '/api/pazaauto/kendaraan/jenis/distinct'
+    
+    const response = await api.get(url)
+    if (response.data.success) {
+      if (merk) {
+        filteredJenisOptions.value = response.data.data || []
+      } else {
+        allJenisOptions.value = response.data.data || []
+        filteredJenisOptions.value = allJenisOptions.value
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch jenis options', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to fetch vehicle jenis options',
+      caption: error.response?.data?.message || error.message
+    })
+  } finally {
+    loadingJenis.value = false
+  }
+}
+
+// Filter functions for dropdowns
+// eslint-disable-next-line no-unused-vars
+const filterMerk = (val, update, _abort) => {
+  update(() => {
+    if (val === '') {
+      // Return all merk options
+      return
+    }
+    const needle = val.toLowerCase()
+    merkOptions.value = merkOptions.value.filter(v => 
+      v.toLowerCase().indexOf(needle) > -1
+    )
+  })
+}
+
+// eslint-disable-next-line no-unused-vars
+const filterJenis = (val, update, _abort) => {
+  update(() => {
+    if (val === '') {
+      // Return filtered jenis options
+      return
+    }
+    const needle = val.toLowerCase()
+    filteredJenisOptions.value = filteredJenisOptions.value.filter(v => 
+      v.toLowerCase().indexOf(needle) > -1
+    )
+  })
+}
+
+// Watch for merk changes to filter jenis
+watch(() => formData.value.merk, async (newMerk, oldMerk) => {
+  if (newMerk && isNewCustomer.value) {
+    // Reset jenis when merk changes to prevent invalid combinations
+    if (oldMerk && oldMerk !== newMerk) {
+      formData.value.jenis = ''
+    }
+    await fetchJenisOptions(newMerk)
+  } else if (!newMerk) {
+    // Reset jenis options when merk is cleared
+    filteredJenisOptions.value = allJenisOptions.value
+    formData.value.jenis = ''
+  }
+})
+
+// Watch for jenis changes to auto-select merk if needed
+watch(() => formData.value.jenis, async (newJenis) => {
+  if (newJenis && isNewCustomer.value && !formData.value.merk) {
+    // If jenis is selected but merk is not, try to find the merk
+    // This requires an additional API call or we can use the existing data
+    // For now, we'll need to implement a function to find merk by jenis
+    await findMerkByJenis(newJenis)
+  }
+})
+
+const findMerkByJenis = async (jenis) => {
+  try {
+    // This would need a new endpoint or we can fetch all vehicles and filter
+    // For now, let's assume we need to create a new endpoint
+    const response = await api.get('/api/pazaauto/kendaraan', {
+      params: { search: jenis }
+    })
+    if (response.data.success && response.data.data.length > 0) {
+      // Get the first matching merk
+      const firstMatch = response.data.data[0]
+      if (firstMatch.merk) {
+        formData.value.merk = firstMatch.merk
+      }
+    }
+  } catch (error) {
+    console.error('Failed to find merk by jenis', error)
+  }
+}
+
+// Vehicle creation functions
+const checkAndShowVehicleDialog = (merk, jenis) => {
+  if (!merk || !jenis) return
+  
+  const merkExists = merkOptions.value.includes(merk)
+  const jenisExists = filteredJenisOptions.value.includes(jenis)
+  
+  if (!merkExists || !jenisExists) {
+    newVehicleData.value = { merk, jenis, keterangan: '' }
+    showVehicleDialog.value = true
+  }
+}
+
+const confirmAddVehicle = async () => {
+  saving.value = true
+  try {
+    const vehicleData = {
+      merk: newVehicleData.value.merk,
+      jenis: newVehicleData.value.jenis,
+      keterangan: newVehicleData.value.keterangan
+    }
+    
+    const response = await api.post('/api/pazaauto/kendaraan', vehicleData)
+    if (response.data.success) {
+      $q.notify({
+        type: 'positive',
+        message: 'Vehicle data added successfully'
+      })
+      
+      // Refresh vehicle options
+      await Promise.all([fetchMerkOptions(), fetchJenisOptions()])
+      
+      // If merk was selected, refresh filtered jenis
+      if (formData.value.merk) {
+        await fetchJenisOptions(formData.value.merk)
+      }
+      
+      showVehicleDialog.value = false
+    }
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to add vehicle data',
+      caption: error.response?.data?.message || error.message
+    })
+  } finally {
+    saving.value = false
+  }
+}
+
 const handleUpdateMasterJasa = async (payload) => {
   try {
     const response = await api.put(`/api/pazaauto/jasa/${payload.id}`, payload)
@@ -1256,6 +1485,50 @@ const handleUpdateMasterBarang = async (payload) => {
   }
 }
 
+// Handle pelanggan data update from inline editing
+const handlePelangganUpdated = async (payload) => {
+  try {
+    // Refresh pelanggan list to update dropdown options
+    await fetchPelanggan()
+    
+    // Refresh SPK table to show updated pelanggan data
+    await fetchSpk()
+    
+    // Update the current SPK form data with the new values
+    const updatedPelanggan = pelangganOptions.value.find(p => p.nopol === payload.nopol)
+    if (updatedPelanggan) {
+      // Update the form data with the latest values from pelanggan options
+      if (payload.field === 'namaPelanggan') {
+        formData.value.namaPelanggan = payload.value
+      } else if (payload.field === 'alamat') {
+        formData.value.alamat = payload.value
+      } else if (payload.field === 'merk') {
+        formData.value.merk = payload.value
+      } else if (payload.field === 'jenis') {
+        formData.value.jenis = payload.value
+      }
+      
+      // Also update the filtered pelanggan options to reflect changes
+      const filteredIndex = filteredPelangganOptions.value.findIndex(p => p.nopol === payload.nopol)
+      if (filteredIndex !== -1) {
+        filteredPelangganOptions.value[filteredIndex] = {...updatedPelanggan}
+      }
+    }
+    
+    $q.notify({
+      type: 'positive',
+      message: 'Data pelanggan berhasil diperbarui di form SPK dan tabel'
+    })
+  } catch (error) {
+    console.error('Failed to refresh pelanggan data', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Gagal memperbarui data pelanggan di form SPK',
+      caption: error.message
+    })
+  }
+}
+
 // Watchers
 let searchTimeout = null
 watch(searchText, (newVal) => {
@@ -1282,6 +1555,12 @@ watch(filterStatus, (newVal) => {
 })
 
 // Watch today filter changes
+// Watch date range changes
+watch(dateRange, () => {
+  pagination.value.page = 1
+  fetchSpk()
+}, { deep: true })
+
 watch(filterToday, (newVal) => {
   console.log('filterToday changed to:', newVal)
   // Reset to page 1 when filtering

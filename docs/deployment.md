@@ -109,7 +109,7 @@ services:
       - redis
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/q/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -246,13 +246,13 @@ spec:
             cpu: "500m"
         livenessProbe:
           httpGet:
-            path: /q/health
+            path: /health
             port: 8080
           initialDelaySeconds: 60
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /q/health/ready
+            path: /health/ready
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 5
@@ -444,9 +444,9 @@ quarkus.log.category."com.github.b3kt".level=DEBUG
 
 ### Health Checks
 The application exposes health endpoints:
-- `/q/health` - Basic health check
-- `/q/health/ready` - Readiness probe
-- `/q/health/live` - Liveness probe
+- `/health` - Basic health check
+- `/health/ready` - Readiness probe
+- `/health/live` - Liveness probe
 
 ### Metrics
 Enable metrics in `application.properties`:
@@ -577,7 +577,7 @@ SELECT * FROM pg_stat_activity WHERE state = 'active';
 SELECT * FROM pg_stat_statements ORDER BY total_time DESC LIMIT 10;
 
 # Application performance
-curl -w "@curl-format.txt" -o /dev/null -s http://localhost:8080/q/health
+curl -w "@curl-format.txt" -o /dev/null -s http://localhost:8080/health
 ```
 
 ## Rollback Procedures

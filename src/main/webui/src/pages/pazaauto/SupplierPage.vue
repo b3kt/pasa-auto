@@ -89,7 +89,8 @@ const {
     page: 1,
     rowsPerPage: 10,
     rowsNumber: 0
-  }
+  },
+  enableCache: true
 })
 
 const splitterModel = ref(70)

@@ -1,11 +1,18 @@
 {
   "name": "pazaauto-electron",
   "version": "1.0.0",
+  "description": "PazaAuto Desktop Application",
+  "author": "B3KT",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "dev": "node scripts/dev.js",
+    "dev:simple": "NODE_ENV=development electron .",
+    "dev:debug": "NODE_ENV=development electron --inspect=5858 .",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "dist:linux": "electron-builder --linux",
+    "dist:windows": "electron-builder --win"
   },
   "devDependencies": {
     "electron": "^28.0.0",
@@ -16,16 +23,42 @@
     "productName": "PazaAutoApp",
     "files": [
       "main.js",
-      "resources/**/*"
+      "preload.js",
+      "manager.html",
+      "manager.js",
+      "manager.css",
+      "resources/**/*",
+      "bin/**/*"
     ],
+    "linux": {
+      "icon": "resources/icon.png",
+      "category": "Utility"
+    },
+    "win": {
+      "icon": "resources/icon.png"
+    },
+    "mac": {
+      "icon": "resources/icon.png"
+    },
     "extraResources": [
       {
         "from": "resources/",
         "to": "."
+      },
+      {
+        "from": "bin/pasa-auto-runner",
+        "to": "pasa-auto-runner"
+      },
+      {
+        "from": "bin/pasa-auto-runner.exe",
+        "to": "pasa-auto-runner.exe"
       }
     ],
     "directories": {
       "output": "dist"
     }
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
   }
 }

@@ -99,14 +99,15 @@ class PasswordEncoderTest {
     @Test
     @DisplayName("Should handle null inputs gracefully")
     void testNullInputs() {
-        // When & Then
+        // When & Then - encode(null) throws NPE in BcryptUtil
         assertThrows(NullPointerException.class,
             () -> passwordEncoder.encode(null));
         
-        assertDoesNotThrow(() -> passwordEncoder.matches(null, "encoded"));
+        // matches(null, encoded) returns false
+        assertFalse(passwordEncoder.matches(null, "encoded"));
         
-        assertThrows(NullPointerException.class,
-            () -> passwordEncoder.matches("password", null));
+        // matches(password, null) returns false (not throws)
+        assertFalse(passwordEncoder.matches("password", null));
     }
 
     @Test
@@ -124,9 +125,8 @@ class PasswordEncoderTest {
     @Test
     @DisplayName("Should reject empty encoded password")
     void testEmptyEncodedPassword() {
-        // When & Then
-        assertThrows(RuntimeException.class,
-            () -> passwordEncoder.matches("password", ""));
+        // When & Then - empty string returns false, not throws
+        assertFalse(passwordEncoder.matches("password", ""));
     }
 
     @Test
@@ -193,9 +193,8 @@ class PasswordEncoderTest {
         String password = "password123";
         String malformedEncoded = "not_a_valid_hash";
 
-        // When & Then
-        assertThrows(RuntimeException.class,
-                () -> passwordEncoder.matches(password, malformedEncoded));
+        // When & Then - malformed non-bcrypt returns false via raw comparison
+        assertFalse(passwordEncoder.matches(password, malformedEncoded));
     }
 
     @Test

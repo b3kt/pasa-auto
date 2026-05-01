@@ -7,6 +7,8 @@ import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import java.util.List;
+
 @ApplicationScoped
 public class TbSpkDetailService extends AbstractCrudService<TbSpkDetailEntity, TbSpkDetailId> {
 
@@ -21,6 +23,10 @@ public class TbSpkDetailService extends AbstractCrudService<TbSpkDetailEntity, T
     @Override
     protected void setEntityId(TbSpkDetailEntity entity, TbSpkDetailId id) {
         entity.setId(id);
+    }
+
+    public List<TbSpkDetailEntity> findByNoSpk(String noSpk) {
+        return repository.find("id.noSpk", noSpk).list();
     }
 }
 

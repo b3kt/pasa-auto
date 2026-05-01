@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia'
-import { api } from 'boot/axios'
 import { jwtDecode } from 'jwt-decode'
 
 export const useAuthStore = defineStore('auth', {
@@ -31,6 +30,8 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async login(username, password) {
       try {
+        // Import api dynamically to avoid circular dependency
+        const { api } = await import('boot/axios')
         const response = await api.post('/api/auth/login', {
           username,
           password
@@ -70,11 +71,16 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async logout() {
+      let api
       try {
+        ({ api } = await import('boot/axios'))
         await api.post('/api/auth/logout')
       } catch (error) {
         console.error('Logout error:', error)
       } finally {
+        if (api) {
+          delete api.defaults.headers.common['Authorization']
+        }
         this.token = null
         this.refreshToken = null
         this.user = null
@@ -82,7 +88,6 @@ export const useAuthStore = defineStore('auth', {
         localStorage.removeItem('auth_token')
         localStorage.removeItem('refresh_token')
         localStorage.removeItem('auth_user')
-        delete api.defaults.headers.common['Authorization']
       }
     },
     
@@ -93,6 +98,7 @@ export const useAuthStore = defineStore('auth', {
       }
       
       try {
+        const { api } = await import('boot/axios')
         const response = await api.post('/api/auth/refresh', { refreshToken })
         const tokenObject = response.data
         
@@ -118,6 +124,7 @@ export const useAuthStore = defineStore('auth', {
 
     async fetchUserInfo() {
       try {
+        const { api } = await import('boot/axios')
         const response = await api.get('/api/auth/me')
         this.user = response.data
         this.isAuthenticated = true
@@ -132,18 +139,24 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    initializeAuth() {
+    async initializeAuth() {
       // Restore token from localStorage on app initialization
       if (this.token) {
-        api.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
+        try {
+          const { api } = await import('boot/axios')
+          api.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
 
-        // If we don't have user info, fetch it to verify token is still valid
-        if (!this.user) {
-          this.fetchUserInfo().catch(() => {
-            // Token is invalid, clear it
-            console.warn('Token is invalid or expired, logging out')
-            this.logout()
-          })
+          // If we don't have user info, fetch it to verify token is still valid
+          if (!this.user) {
+            this.fetchUserInfo().catch(() => {
+              // Token is invalid, clear it
+              console.warn('Token is invalid or expired, logging out')
+              this.logout()
+            })
+          }
+        } catch (error) {
+          console.error('Failed to initialize auth:', error)
+          this.logout()
         }
       }
     }

@@ -90,6 +90,37 @@ const {
   baseApiUrl: '/api/roles'
 })
 
+const columns = [
+  {
+    name: 'name',
+    required: true,
+    label: 'Name',
+    align: 'left',
+    field: 'name',
+    sortable: true
+  },
+  {
+    name: 'description',
+    label: 'Description',
+    align: 'left',
+    field: 'description',
+    sortable: true
+  },
+  {
+    name: 'active',
+    label: 'Status',
+    align: 'center',
+    field: 'active',
+    sortable: true
+  },
+  {
+    name: 'actions',
+    label: 'Actions',
+    align: 'center',
+    field: 'actions'
+  }
+]
+
 const splitterModel = ref(70)
 const tableRef = ref(null)
 
