@@ -82,7 +82,7 @@
                   <q-input v-model.number="formData.nopol" label="No Polisi *" outlined dense
                            readonly/>
 
-                  <q-select v-model="selectedMekaniks" label="Select Mechanics" outlined dense multiple
+                  <q-select v-model="selectedMekaniks" label="Pilih Mekanik" outlined dense multiple
                             :options="karyawanOptions" option-label="namaKaryawan" option-value="id" use-chips use-input
                             input-debounce="300" @filter="filterKaryawan" :loading="loadingKaryawan"
                             readonly

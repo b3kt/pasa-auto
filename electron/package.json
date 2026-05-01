@@ -6,6 +6,9 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "dev": "node scripts/dev.js",
+    "dev:simple": "NODE_ENV=development electron .",
+    "dev:debug": "NODE_ENV=development electron --inspect=5858 .",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "dist:linux": "electron-builder --linux",
@@ -26,6 +29,16 @@
       "manager.css",
       "resources/**/*"
     ],
+    "linux": {
+      "icon": "resources/icon.png",
+      "category": "Utility"
+    },
+    "win": {
+      "icon": "resources/icon.png"
+    },
+    "mac": {
+      "icon": "resources/icon.png"
+    },
     "extraResources": [
       {
         "from": "resources/",

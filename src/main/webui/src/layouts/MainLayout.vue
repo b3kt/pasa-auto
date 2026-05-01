@@ -15,6 +15,9 @@
               flat
               stretch
               no-caps
+              :menu-offset="[0, 8]"
+              :menu-anchor="'bottom left'"
+              :menu-self="'top left'"
               :title="menu.title"
               :icon="menu.icon"
             >

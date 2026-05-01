@@ -134,7 +134,7 @@ export default {
           caption: 'Reset cached data'
         },
         auditTrail: {
-          title: 'Activity Log',
+          title: 'Audit Log',
           caption: 'Data change history'
         }
       }

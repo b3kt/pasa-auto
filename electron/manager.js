@@ -1,7 +1,16 @@
 (function () {
   'use strict';
 
-  const api = window.electronAPI;
+  // Wait for electronAPI to be available
+  let api;
+  function waitForAPI() {
+    if (window.electronAPI) {
+      api = window.electronAPI;
+      init();
+    } else {
+      setTimeout(waitForAPI, 50);
+    }
+  }
 
   // ── DOM refs ──────────────────────────────────────────────────────────────
   const statusDot      = document.getElementById('statusDot');
@@ -116,27 +125,43 @@
     if (autoScroll) consoleEl.scrollTop = consoleEl.scrollHeight;
   });
 
-  // ── Controls ──────────────────────────────────────────────────────────────
-  startBtn.addEventListener('click', async () => {
-    startBtn.disabled = true;
-    await api.startBackend();
-  });
+  // ── Initialize Event Listeners ──────────────────────────────────────────────────────────────
+  function initializeEventListeners() {
+    // Controls
+    startBtn.addEventListener('click', async () => {
+      startBtn.disabled = true;
+      await api.startBackend();
+    });
 
-  stopBtn.addEventListener('click', async () => {
-    stopBtn.disabled = true;
-    await api.stopBackend();
-  });
+    stopBtn.addEventListener('click', async () => {
+      stopBtn.disabled = true;
+      await api.stopBackend();
+    });
 
-  clearBtn.addEventListener('click', () => {
-    consoleEl.innerHTML = '';
-  });
+    clearBtn.addEventListener('click', () => {
+      consoleEl.innerHTML = '';
+    });
 
-  saveBtn.addEventListener('click', async () => {
-    const content = Array.from(consoleEl.querySelectorAll('.log-line'))
-      .map((el) => el.textContent)
-      .join('\n');
-    await api.saveLogToFile(content);
-  });
+    saveBtn.addEventListener('click', async () => {
+      const content = Array.from(consoleEl.querySelectorAll('.log-line'))
+        .map((el) => el.textContent)
+        .join('\n');
+      await api.saveLogToFile(content);
+    });
+
+    // Settings
+    logToFileCheck.addEventListener('change', () =>
+      applyLogToFileToggle(logToFileCheck.checked),
+    );
+
+    browseBtn.addEventListener('click', async () => {
+      const filePath = await api.pickLogFile();
+      if (filePath) {
+        logFilePathInput.value = filePath;
+        await api.setConfig({ logToFile: logToFileCheck.checked, logFilePath: filePath });
+      }
+    });
+  }
 
   // ── Settings ──────────────────────────────────────────────────────────────
   async function applyLogToFileToggle(checked) {
@@ -145,20 +170,11 @@
     await api.setConfig({ logToFile: checked, logFilePath });
   }
 
-  logToFileCheck.addEventListener('change', () =>
-    applyLogToFileToggle(logToFileCheck.checked),
-  );
-
-  browseBtn.addEventListener('click', async () => {
-    const filePath = await api.pickLogFile();
-    if (filePath) {
-      logFilePathInput.value = filePath;
-      await api.setConfig({ logToFile: logToFileCheck.checked, logFilePath: filePath });
-    }
-  });
-
   // ── Initialise ────────────────────────────────────────────────────────────
   async function init() {
+    // Initialize event listeners first
+    initializeEventListeners();
+
     const [status, logs, cfg] = await Promise.all([
       api.getStatus(),
       api.getLogs(),
@@ -180,6 +196,12 @@
     api.onStatusChanged(applyStatus);
   }
 
-  window.addEventListener('beforeunload', () => api.removeAllListeners());
-  init().catch(console.error);
+  window.addEventListener('beforeunload', () => api && api.removeAllListeners());
+  
+  // Start the initialization process
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', waitForAPI);
+  } else {
+    waitForAPI();
+  }
 })();

@@ -215,7 +215,7 @@ const jasaColumns = [
 ]
 
 const barangColumns = [
-  {name: 'no', label: 'NO', align: 'left', field: 'no', autoWidth: true},
+  {name: 'no', label: 'No', align: 'left', field: 'no', autoWidth: true},
   {name: 'namaBarang', label: 'Barang', align: 'left', field: 'namaItem'},
   {name: 'harga', label: 'Harga', align: 'right', field: 'harga'},
   {name: 'jumlah', label: 'Jumlah', align: 'center', field: 'jumlah'},

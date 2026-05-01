@@ -18,8 +18,9 @@ let backendStartTime = null;
 let healthCheckTimer = null;
 let logBuffer = [];
 let logFileStream = null;
+const isDev = process.env.NODE_ENV === 'development' || process.env.ELECTRON_IS_DEV === '1';
 
-const QUARKUS_PORT = 8080;
+const QUARKUS_PORT = process.env.HTTP_PORT || 8080;
 const MAX_LOG_LINES = 2000;
 const HEALTH_CHECK_INTERVAL_MS = 1500;
 const HEALTH_CHECK_TIMEOUT_MS = 60000;
@@ -95,7 +96,9 @@ function startHealthCheck() {
         stopHealthCheck();
         setBackendState('running');
         appendLog(`[manager] Backend is ready on port ${QUARKUS_PORT}`);
-        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.reload();
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.loadURL(`http://localhost:${QUARKUS_PORT}/#/`);
+        }
       } else {
         schedule();
       }
@@ -345,13 +348,29 @@ function createManagerWindow() {
     minWidth: 700,
     minHeight: 500,
     title: 'PazaAuto Manager',
+    icon: path.join(__dirname, 'resources', 'icon.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
     },
+    frame: true,
+    autoHideMenuBar: true,
   });
   managerWindow.loadFile(path.join(__dirname, 'manager.html'));
+  
+  if (isDev) {
+    // Suppress non-critical console errors in development
+    managerWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+      if (message.includes('dragEvent is not defined') || 
+          message.includes('interface_endpoint_client.cc')) {
+        return; // Suppress these known non-critical errors
+      }
+      // Log other messages normally
+      console.log(`[Manager] ${message}`);
+    });
+  }
+  
   managerWindow.on('closed', () => { managerWindow = null; });
 }
 
@@ -360,14 +379,53 @@ function createMainWindow() {
     width: 1280,
     height: 900,
     title: 'PazaAuto',
-    webPreferences: { nodeIntegration: false, contextIsolation: true },
+    icon: path.join(__dirname, 'resources', 'icon.png'),
+    webPreferences: { 
+      nodeIntegration: false, 
+      contextIsolation: true,
+    },
   });
-  mainWindow.loadURL(`http://localhost:${QUARKUS_PORT}/`);
+  
+  // Try to load the Quasar frontend URL first, show blank page if not ready
+  mainWindow.loadURL(`http://localhost:${QUARKUS_PORT}/#/`).catch((error) => {
+    if (isDev) {
+      console.log('Backend not ready yet, showing blank page');
+    }
+    // Load a blank page instead of manager window
+    mainWindow.loadURL('about:blank');
+  });
+  
+  // Suppress non-critical console errors in development
+  if (isDev) {
+    mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+      if (message.includes('dragEvent is not defined') || 
+          message.includes('interface_endpoint_client.cc')) {
+        return; // Suppress these known non-critical errors
+      }
+      // Log other messages normally
+      console.log(`[Renderer] ${message}`);
+    });
+  }
+  
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
 // ──────────────── App lifecycle ────────────────
 app.whenReady().then(() => {
+  if (isDev) {
+    console.log('🚀 Starting PazaAuto in development mode');
+    // Suppress expected connection refused warnings
+    console.error = ((originalError) => {
+      return function(...args) {
+        const message = args.join(' ');
+        if (message.includes('ERR_CONNECTION_REFUSED') || 
+            message.includes('Failed to load URL')) {
+          return; // Suppress these expected warnings
+        }
+        return originalError.apply(console, args);
+      };
+    })(console.error);
+  }
   loadConfig();
   setupIPC();
   createAppMenu();
