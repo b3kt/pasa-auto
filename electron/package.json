@@ -27,7 +27,8 @@
       "manager.html",
       "manager.js",
       "manager.css",
-      "resources/**/*"
+      "resources/**/*",
+      "bin/**/*"
     ],
     "linux": {
       "icon": "resources/icon.png",
@@ -47,10 +48,17 @@
       {
         "from": "bin/pasa-auto-runner",
         "to": "pasa-auto-runner"
+      },
+      {
+        "from": "bin/pasa-auto-runner.exe",
+        "to": "pasa-auto-runner.exe"
       }
     ],
     "directories": {
       "output": "dist"
     }
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
   }
 }

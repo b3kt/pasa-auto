@@ -11,7 +11,7 @@
 <body>
   <div class="app">
 
-    <!-- ── Status card ── -->
+    <!-- ── Status card (always visible) ── -->
     <section class="card status-card">
       <h2 class="card-title">Instance Status</h2>
       <div class="status-row">
@@ -26,36 +26,100 @@
       </div>
     </section>
 
-    <!-- ── Console log ── -->
-    <section class="card console-card">
-      <div class="console-header">
-        <h2 class="card-title">Console Output</h2>
-        <div class="console-actions">
-          <label class="auto-scroll-toggle">
-            <input type="checkbox" id="autoScrollCheck" checked /> Auto-scroll
-          </label>
-          <button id="clearBtn" class="btn btn-secondary">Clear</button>
-          <button id="saveBtn"  class="btn btn-secondary">Save</button>
-        </div>
+    <!-- ── Tab Navigation ── -->
+    <div class="tab-container">
+      <div class="tab-nav">
+        <button class="tab-btn active" data-tab="console">Console</button>
+        <button class="tab-btn" data-tab="config">Configuration</button>
+        <button class="tab-btn" data-tab="settings">Settings</button>
       </div>
-      <div id="console" class="console"></div>
-    </section>
 
-    <!-- ── Settings ── -->
-    <section class="card settings-card">
-      <h2 class="card-title">Settings</h2>
-      <div class="setting-row">
-        <label class="setting-label">
-          <input type="checkbox" id="logToFileCheck" />
-          Write logs to file
-        </label>
+      <!-- ── Tab Content ── -->
+      <div class="tab-content">
+
+        <!-- Console Tab -->
+        <div class="tab-pane active" id="console-tab">
+          <div class="card console-card">
+            <div class="console-header">
+              <h2 class="card-title">Console Output</h2>
+              <div class="console-actions">
+                <label class="auto-scroll-toggle">
+                  <input type="checkbox" id="autoScrollCheck" checked /> Auto-scroll
+                </label>
+                <button id="clearBtn" class="btn btn-secondary">Clear</button>
+                <button id="saveBtn"  class="btn btn-secondary">Save</button>
+              </div>
+            </div>
+            <div id="console" class="console"></div>
+          </div>
+        </div>
+
+        <!-- Configuration Tab -->
+        <div class="tab-pane" id="config-tab">
+          <div class="card config-card">
+            <h2 class="card-title">Backend Configuration</h2>
+            
+            <!-- Executable Selection -->
+            <div class="setting-row">
+              <label class="setting-label">Executable Path:</label>
+              <div class="file-row">
+                <input type="text" id="executablePathInput" class="path-input"
+                       placeholder="Path to pasa-auto-runner executable…" />
+                <button id="browseExecutableBtn" class="btn btn-secondary">Browse…</button>
+              </div>
+            </div>
+
+            <!-- Additional Properties -->
+            <div class="setting-row">
+              <label class="setting-label">Additional Properties:</label>
+              <div class="properties-container">
+                <div id="propertiesList" class="properties-list"></div>
+                <div class="property-input-row">
+                  <input type="text" id="newPropertyKey" class="property-input" placeholder="Property key…" />
+                  <input type="text" id="newPropertyValue" class="property-input" placeholder="Property value…" />
+                  <button id="addPropertyBtn" class="btn btn-secondary">Add</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Environment Variables -->
+            <div class="setting-row">
+              <label class="setting-label">Environment Variables:</label>
+              <div class="envvars-container">
+                <div class="envvars-legend">
+                  <small>* = default from .env file</small>
+                </div>
+                <div id="envvarsList" class="envvars-list"></div>
+                <div class="envvar-input-row">
+                  <input type="text" id="newEnvVarKey" class="envvar-input" placeholder="Variable name…" />
+                  <input type="text" id="newEnvVarValue" class="envvar-input" placeholder="Variable value…" />
+                  <button id="addEnvVarBtn" class="btn btn-secondary">Add</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div class="tab-pane" id="settings-tab">
+          <div class="card settings-card">
+            <h2 class="card-title">Settings</h2>
+            <div class="setting-row">
+              <label class="setting-label">
+                <input type="checkbox" id="logToFileCheck" />
+                Write logs to file
+              </label>
+            </div>
+            <div class="setting-row file-row" id="filePathRow" style="display:none">
+              <input type="text" id="logFilePathInput" class="path-input"
+                     placeholder="Log file path…" readonly />
+              <button id="browseBtn" class="btn btn-secondary">Browse…</button>
+            </div>
+          </div>
+        </div>
+
       </div>
-      <div class="setting-row file-row" id="filePathRow" style="display:none">
-        <input type="text" id="logFilePathInput" class="path-input"
-               placeholder="Log file path…" readonly />
-        <button id="browseBtn" class="btn btn-secondary">Browse…</button>
-      </div>
-    </section>
+    </div>
 
   </div>
   <script src="manager.js"></script>

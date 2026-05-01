@@ -28,11 +28,60 @@
   const filePathRow    = document.getElementById('filePathRow');
   const browseBtn      = document.getElementById('browseBtn');
 
+  // Backend configuration refs
+  const executablePathInput = document.getElementById('executablePathInput');
+  const browseExecutableBtn = document.getElementById('browseExecutableBtn');
+  const propertiesList = document.getElementById('propertiesList');
+  const newPropertyKey = document.getElementById('newPropertyKey');
+  const newPropertyValue = document.getElementById('newPropertyValue');
+  const addPropertyBtn = document.getElementById('addPropertyBtn');
+  const envvarsList = document.getElementById('envvarsList');
+  const newEnvVarKey = document.getElementById('newEnvVarKey');
+  const newEnvVarValue = document.getElementById('newEnvVarValue');
+  const addEnvVarBtn = document.getElementById('addEnvVarBtn');
+
+  // Tab refs
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabPanes = document.querySelectorAll('.tab-pane');
+
   // ── Local state ───────────────────────────────────────────────────────────
   let currentState  = 'stopped';
   let startTime     = null;
   let uptimeTimer   = null;
   let autoScroll    = true;
+  let defaultEnvVars = {};
+  let activeTab = 'console';
+
+  // ── Tab Management ──────────────────────────────────────────────────────────────
+  function switchTab(tabName) {
+    // Update button states
+    tabBtns.forEach(btn => {
+      if (btn.dataset.tab === tabName) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    // Update pane visibility
+    tabPanes.forEach(pane => {
+      if (pane.id === `${tabName}-tab`) {
+        pane.classList.add('active');
+      } else {
+        pane.classList.remove('active');
+      }
+    });
+
+    activeTab = tabName;
+  }
+
+  function initializeTabs() {
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        switchTab(btn.dataset.tab);
+      });
+    });
+  }
 
   // ── Uptime ────────────────────────────────────────────────────────────────
   function formatUptime(ms) {
@@ -127,6 +176,9 @@
 
   // ── Initialize Event Listeners ──────────────────────────────────────────────────────────────
   function initializeEventListeners() {
+    // Initialize tabs first
+    initializeTabs();
+
     // Controls
     startBtn.addEventListener('click', async () => {
       startBtn.disabled = true;
@@ -161,6 +213,107 @@
         await api.setConfig({ logToFile: logToFileCheck.checked, logFilePath: filePath });
       }
     });
+
+    // Backend configuration event listeners
+    browseExecutableBtn.addEventListener('click', async () => {
+      const executablePath = await api.pickExecutable();
+      if (executablePath) {
+        executablePathInput.value = executablePath;
+        await api.setConfig({ executablePath });
+      }
+    });
+
+    executablePathInput.addEventListener('change', async () => {
+      await api.setConfig({ executablePath: executablePathInput.value });
+    });
+
+    addPropertyBtn.addEventListener('click', async () => {
+      const key = newPropertyKey.value.trim();
+      const value = newPropertyValue.value.trim();
+      if (key && value) {
+        const currentConfig = await api.getConfig();
+        const properties = { ...currentConfig.additionalProperties };
+        properties[key] = value;
+        await api.setConfig({ additionalProperties: properties });
+        newPropertyKey.value = '';
+        newPropertyValue.value = '';
+      }
+    });
+
+    propertiesList.addEventListener('click', async (e) => {
+      if (e.target.classList.contains('property-remove')) {
+        const key = e.target.dataset.key;
+        const currentConfig = await api.getConfig();
+        const properties = { ...currentConfig.additionalProperties };
+        delete properties[key];
+        await api.setConfig({ additionalProperties: properties });
+      }
+    });
+
+    addEnvVarBtn.addEventListener('click', async () => {
+      const key = newEnvVarKey.value.trim();
+      const value = newEnvVarValue.value.trim();
+      if (key && value) {
+        const currentConfig = await api.getConfig();
+        const envvars = { ...currentConfig.environmentVariables };
+        envvars[key] = value;
+        await api.setConfig({ environmentVariables: envvars });
+        newEnvVarKey.value = '';
+        newEnvVarValue.value = '';
+      }
+    });
+
+    envvarsList.addEventListener('click', async (e) => {
+      if (e.target.classList.contains('envvar-remove')) {
+        const key = e.target.dataset.key;
+        const currentConfig = await api.getConfig();
+        const envvars = { ...currentConfig.environmentVariables };
+        
+        if (defaultEnvVars.hasOwnProperty(key)) {
+          // For default variables, remove the custom value to revert to default
+          delete envvars[key];
+        } else {
+          // For custom variables, remove completely
+          delete envvars[key];
+        }
+        
+        await api.setConfig({ environmentVariables: envvars });
+      }
+    });
+  }
+
+  // ── Backend Configuration Management ──────────────────────────────────────────────────────────────
+  function renderProperties(properties) {
+    propertiesList.innerHTML = '';
+    for (const [key, value] of Object.entries(properties)) {
+      const item = document.createElement('div');
+      item.className = 'property-item';
+      item.innerHTML = `
+        <span class="property-key">${key}</span>
+        <span class="property-value">${value}</span>
+        <button class="property-remove" data-key="${key}">×</button>
+      `;
+      propertiesList.appendChild(item);
+    }
+  }
+
+  function renderEnvVars(envvars, defaultEnvVars = {}) {
+    envvarsList.innerHTML = '';
+    for (const [key, value] of Object.entries(envvars)) {
+      const item = document.createElement('div');
+      const isDefault = defaultEnvVars.hasOwnProperty(key);
+      item.className = `envvar-item ${isDefault ? 'envvar-default' : 'envvar-custom'}`;
+      item.innerHTML = `
+        <span class="envvar-key">${key}${isDefault ? ' *' : ''}</span>
+        <span class="envvar-value">${value}</span>
+        <button class="envvar-remove" data-key="${key}" title="${isDefault ? 'Remove custom value (will revert to default)' : 'Remove environment variable'}">×</button>
+      `;
+      envvarsList.appendChild(item);
+    }
+  }
+
+  async function updateBackendConfig(config) {
+    await api.setConfig(config);
   }
 
   // ── Settings ──────────────────────────────────────────────────────────────
@@ -175,11 +328,15 @@
     // Initialize event listeners first
     initializeEventListeners();
 
-    const [status, logs, cfg] = await Promise.all([
+    const [status, logs, cfg, defaultEnv] = await Promise.all([
       api.getStatus(),
       api.getLogs(),
       api.getConfig(),
+      api.getDefaultEnvVars(),
     ]);
+
+    // Store default environment variables for reference
+    defaultEnvVars = defaultEnv || {};
 
     // Replay buffered logs first so the console is populated before status fires
     logs.forEach(appendLogEntry);
@@ -191,9 +348,21 @@
     logFilePathInput.value = cfg.logFilePath || (await api.getDefaultLogPath());
     filePathRow.style.display = cfg.logToFile ? 'flex' : 'none';
 
+    // Backend Configuration
+    executablePathInput.value = cfg.executablePath || '';
+    renderProperties(cfg.additionalProperties || {});
+    renderEnvVars(cfg.environmentVariables || {}, defaultEnvVars);
+
     // Subscribe to live events from main process
     api.onLogLine(appendLogEntry);
     api.onStatusChanged(applyStatus);
+    
+    // Subscribe to configuration changes
+    api.onConfigChanged((newConfig) => {
+      renderProperties(newConfig.additionalProperties || {});
+      renderEnvVars(newConfig.environmentVariables || {}, defaultEnvVars);
+      executablePathInput.value = newConfig.executablePath || '';
+    });
   }
 
   window.addEventListener('beforeunload', () => api && api.removeAllListeners());
