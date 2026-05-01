@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const net = require('net');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 // ──────────────── State ────────────────
 let backendProcess = null;
@@ -27,12 +28,55 @@ const HEALTH_CHECK_TIMEOUT_MS = 60000;
 
 // ──────────────── Config ────────────────
 const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json');
-let config = { logToFile: false, logFilePath: '' };
+
+// Function to get default environment variables from .env file
+function getDefaultEnvironmentVariables() {
+  const envPath = path.join(__dirname, '..', '.env');
+  const defaultEnv = {};
+  
+  if (fs.existsSync(envPath)) {
+    try {
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const lines = envContent.split('\n');
+      
+      lines.forEach(line => {
+        // Skip comments and empty lines
+        if (line.trim() && !line.trim().startsWith('#')) {
+          const equalIndex = line.indexOf('=');
+          if (equalIndex > 0) {
+            const key = line.substring(0, equalIndex).trim();
+            const value = line.substring(equalIndex + 1).trim();
+            defaultEnv[key] = value;
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error reading .env file:', error.message);
+    }
+  }
+  
+  return defaultEnv;
+}
+
+let config = { 
+  logToFile: false, 
+  logFilePath: '',
+  executablePath: '',
+  additionalProperties: {},
+  environmentVariables: getDefaultEnvironmentVariables()
+};
 
 function loadConfig() {
   try {
     if (fs.existsSync(CONFIG_PATH)) {
-      Object.assign(config, JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')));
+      const savedConfig = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+      
+      // Merge saved config with defaults, preserving .env defaults for environment variables
+      Object.assign(config, savedConfig);
+      
+      // Ensure environment variables include .env defaults plus any custom ones
+      const defaultEnv = getDefaultEnvironmentVariables();
+      config.environmentVariables = { ...defaultEnv, ...(config.environmentVariables || {}) };
     }
   } catch { /* ignore */ }
 }
@@ -48,10 +92,30 @@ function saveConfig() {
 
 // ──────────────── Binary ────────────────
 function findBackendBinary() {
-  const packaged = path.join(process.resourcesPath, 'pasa-auto-runner');
+  // Use configured executable path if set and exists
+  if (config.executablePath && fs.existsSync(config.executablePath)) {
+    return config.executablePath;
+  }
+  
+  // Fallback to default locations - try both Windows and Linux executables
+  const isWindows = process.platform === 'win32';
+  const executableName = isWindows ? 'pasa-auto-runner.exe' : 'pasa-auto-runner';
+  
+  // Check packaged resources first
+  const packaged = path.join(process.resourcesPath, executableName);
   if (fs.existsSync(packaged)) return packaged;
-  const dev = path.join(__dirname, 'bin', 'pasa-auto-runner');
+  
+  // Check development directory
+  const dev = path.join(__dirname, 'bin', executableName);
   if (fs.existsSync(dev)) return dev;
+  
+  // Also try the other executable name as fallback
+  const fallbackName = isWindows ? 'pasa-auto-runner' : 'pasa-auto-runner.exe';
+  const packagedFallback = path.join(process.resourcesPath, fallbackName);
+  if (fs.existsSync(packagedFallback)) return packagedFallback;
+  const devFallback = path.join(__dirname, 'bin', fallbackName);
+  if (fs.existsSync(devFallback)) return devFallback;
+  
   return null;
 }
 
@@ -176,9 +240,20 @@ async function startBackend() {
 
   openLogFileStream();
 
-  const proc = spawn(binaryPath, [], {
+  // Prepare environment variables
+  const env = { ...process.env };
+  Object.assign(env, config.environmentVariables);
+
+  // Prepare additional properties as command line arguments
+  const args = [];
+  for (const [key, value] of Object.entries(config.additionalProperties)) {
+    args.push(`-D${key}=${value}`);
+  }
+
+  const proc = spawn(binaryPath, args, {
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
+    env: env,
   });
 
   backendProcess = proc;
@@ -242,11 +317,19 @@ function setupIPC() {
     Object.assign(config, newConfig);
     saveConfig();
     openLogFileStream();
+    
+    // Notify manager window of config changes
+    if (managerWindow && !managerWindow.isDestroyed()) {
+      managerWindow.webContents.send('config:changed', config);
+    }
+    
     return config;
   });
   ipcMain.handle('config:get-default-log-path', () =>
     path.join(app.getPath('logs'), 'pasa-auto-backend.log'),
   );
+
+  ipcMain.handle('config:get-default-env-vars', () => getDefaultEnvironmentVariables());
 
   ipcMain.handle('dialog:pick-log-file', async () => {
     const result = await dialog.showSaveDialog(managerWindow, {
@@ -258,6 +341,18 @@ function setupIPC() {
       ],
     });
     return result.canceled ? null : result.filePath;
+  });
+
+  ipcMain.handle('dialog:pick-executable', async () => {
+    const result = await dialog.showOpenDialog(managerWindow, {
+      title: 'Select pasa-auto-runner Executable',
+      filters: [
+        { name: 'Executable Files', extensions: ['exe', ''] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+      properties: ['openFile'],
+    });
+    return result.canceled ? null : result.filePaths[0];
   });
 
   ipcMain.handle('log:save-to-file', async (_, content) => {

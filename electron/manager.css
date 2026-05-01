@@ -18,6 +18,70 @@ body {
   gap: 10px;
 }
 
+/* ── Tab Navigation ── */
+.tab-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tab-nav {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #252545;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: #7070a0;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  border-radius: 6px 6px 0 0;
+}
+
+.tab-btn:hover {
+  color: #a0a0c0;
+  background: #1a1a30;
+}
+
+.tab-btn.active {
+  color: #60a5fa;
+  border-bottom-color: #60a5fa;
+  background: #16213e;
+}
+
+.tab-content {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+.tab-pane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-pane.active {
+  opacity: 1;
+  visibility: visible;
+  position: relative;
+}
+
 /* ── Cards ── */
 .card {
   background: #16213e;
@@ -107,6 +171,10 @@ body {
   min-height: 0;
 }
 
+.tab-pane .console-card {
+  height: 100%;
+}
+
 .console-header {
   display: flex;
   justify-content: space-between;
@@ -156,22 +224,29 @@ body {
 .log-manager { color: #60a5fa; font-style: italic; }
 .log-default { color: #c8ccd0; }
 
-/* ── Settings card ── */
-.settings-card { flex-shrink: 0; }
+/* ── Backend Configuration card ── */
+.config-card { flex-shrink: 0; }
 
-.setting-row               { display: flex; align-items: center; gap: 10px; }
-.setting-row + .setting-row { margin-top: 8px; }
+.setting-row               { display: flex; align-items: flex-start; gap: 10px; }
+.setting-row + .setting-row { margin-top: 12px; }
 
 .setting-label {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  cursor: pointer;
-  user-select: none;
+  min-width: 140px;
+  margin-top: 4px;
+  color: #a0a0c0;
 }
 
-.file-row { margin-left: 22px; }
+.file-row { 
+  margin-left: 22px; 
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 
 .path-input {
   flex: 1;
@@ -184,5 +259,118 @@ body {
   font-family: 'Cascadia Code', 'Fira Code', monospace;
   outline: none;
 }
+
+.path-input:focus {
+  border-color: #4a5568;
+  box-shadow: 0 0 0 2px #25254533;
+}
+
+/* Properties styling */
+.properties-container, .envvars-container {
+  flex: 1;
+  margin-left: 22px;
+}
+
+.envvars-legend {
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: #7070a0;
+  font-style: italic;
+}
+
+.properties-list, .envvars-list {
+  margin-bottom: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+  border: 1px solid #252545;
+  border-radius: 4px;
+  background: #080d14;
+  padding: 4px;
+}
+
+.property-item, .envvar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  margin-bottom: 2px;
+  background: #1a1a30;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.property-item:last-child, .envvar-item:last-child {
+  margin-bottom: 0;
+}
+
+.property-key, .envvar-key {
+  color: #60a5fa;
+  font-weight: 500;
+  min-width: 120px;
+}
+
+.property-value, .envvar-value {
+  color: #c8ccd0;
+  flex: 1;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
+.envvar-default {
+  background: #1a2a3a;
+  border-left: 3px solid #60a5fa;
+}
+
+.envvar-custom {
+  background: #1a1a30;
+}
+
+.envvar-default .envvar-key {
+  color: #60a5fa;
+  font-style: italic;
+}
+
+.envvar-custom .envvar-key {
+  color: #f59e0b;
+}
+
+.property-remove, .envvar-remove {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.property-remove:hover, .envvar-remove:hover {
+  opacity: 0.8;
+}
+
+.property-input-row, .envvar-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.property-input, .envvar-input {
+  flex: 1;
+  background: #080d14;
+  border: 1px solid #252545;
+  border-radius: 4px;
+  color: #c8ccd0;
+  padding: 4px 8px;
+  font-size: 12px;
+  outline: none;
+}
+
+.property-input:focus, .envvar-input:focus {
+  border-color: #4a5568;
+  box-shadow: 0 0 0 2px #25254533;
+}
+
+/* ── Settings card ── */
+.settings-card { flex-shrink: 0; }
 
 input[type="checkbox"] { accent-color: #22c55e; cursor: pointer; }
