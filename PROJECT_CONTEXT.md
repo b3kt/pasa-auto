@@ -16,8 +16,7 @@ Full-stack application for managing auto repair shop operations including servic
 |-------|-----------|
 | **Backend** | Java 25, Quarkus 3.34.0 |
 | **Frontend** | Vue 3, Quasar Framework 2.x, Vite |
-| **Desktop (opt 1)** | Tauri v2 (Rust) |
-| **Desktop (opt 2)** | Electron 28 |
+| **Desktop** | Electron 28 |
 | **Database** | PostgreSQL |
 | **Build** | Maven (backend), npm (frontend) |
 
@@ -49,7 +48,6 @@ pasa-auto/
 ├── .github/workflows/       # CI/CD (native build, test coverage)
 ├── docs/                    # Architecture, API, deployment docs
 ├── electron/                # Electron desktop app
-├── tauri/                   # Tauri desktop app (Rust)
 ├── src/
 │   ├── main/
 │   │   ├── java/            # Java backend (Clean Architecture)
@@ -206,5 +204,4 @@ cd src/main/webui && npm run format
 ## Deployment Modes
 
 1. **Web app** - Quarkus serves Quasar SPA via Quinoa
-2. **Tauri desktop** - Rust-based, bundles Quarkus native binary
-3. **Electron desktop** - Alternative desktop wrapper
+2. **Electron desktop** - Wraps the Quarkus native binary
