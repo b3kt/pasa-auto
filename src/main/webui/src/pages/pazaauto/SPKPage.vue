@@ -51,9 +51,8 @@
                     <span class="text-caption text-bold">Informasi SPK</span>
                   </div>
                   <q-input v-model="formData.tanggalJamSpk" label="Tanggal" outlined dense
-                           placeholder="YYYY-MM-DD HH:mm:ss"
-                           readonly/>
-                  <q-input v-model="formData.noSpk" label="No SPK" outlined dense readonly/>
+                           placeholder="YYYY-MM-DD HH:mm:ss"/>
+                  <q-input v-model="formData.noSpk" label="No SPK" outlined dense/>
                   <q-input v-model.number="formData.noAntrian" label="No Antrian" outlined dense type="number"
                            :disable="(formData.statusSpk === 'SELESAI' || formData.statusSpk === 'BATAL')"/>
 
@@ -956,10 +955,10 @@ const saveSpk = async () => {
     // If new customer, create pelanggan first
     if (isNewCustomer.value && !isEditMode.value) {
       // Validate required customer fields
-      if (!formData.value.namaPelanggan || !formData.value.merk) {
+      if (!formData.value.nopol || !formData.value.namaPelanggan || !formData.value.merk) {
         $q.notify({
           type: 'warning',
-          message: 'Please fill in required customer fields (Nama, Merk)'
+          message: 'Please fill in required customer fields (No Polisi, Nama, Merk)'
         })
         //saving.value = false
         return

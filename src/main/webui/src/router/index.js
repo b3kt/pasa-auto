@@ -11,10 +11,6 @@ import routes from './routes'
  * with the Router instance.
  */
 
-const ROLE_ROUTES = {
-  'owner': ['/pazaauto/summary'],
-  'admin': []
-}
 
 export default defineRouter(function (/* { store, ssrContext } */) {
   const createHistory = process.env.SERVER
@@ -51,9 +47,6 @@ export default defineRouter(function (/* { store, ssrContext } */) {
           const userRoles = user.roles || []
           
           // Check if route has role restrictions
-          const allowedRoutes = Object.entries(ROLE_ROUTES).flatMap(([role, paths]) => 
-            userRoles.includes(role) ? paths : []
-          )
           
           if (to.path.startsWith('/pazaauto/summary') && !userRoles.includes('owner')) {
             next('/')
