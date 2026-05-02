@@ -203,49 +203,25 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Make release script executable
-        run: chmod +x release.sh
+      - name: Make scripts executable
+        run: |
+          chmod +x release.sh
+          chmod +x update-to-next-version.sh
 
-      - name: Run Release Script
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+
+      - name: Authenticate GitHub CLI
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Run Version Update Script
         run: |
           VERSION=${{ steps.version.outputs.version }}
-          echo "Running release for version $VERSION"
-          ./release.sh --dry-run $VERSION
-          ./release.sh --skip-git-check $VERSION
+          echo "Running version update for version $VERSION"
+          ./update-to-next-version.sh --dry-run --skip-git-check --update-release $VERSION
+          ./update-to-next-version.sh --skip-git-check --update-release $VERSION
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: Release v${{ steps.version.outputs.version }}
-          body: |
-            ## Release v${{ steps.version.outputs.version }}
-            
-            ### 🚀 Features
-            - Automated release with native binaries
-            
-            ### 📦 Downloads
-            - **Native Binary**: Quarkus native executable for Windows
-            - **Electron App**: Desktop application with manager interface
-            
-            ### 🔧 Installation
-            1. Download the native binary for your platform
-            2. Extract and run the executable
-            3. For the desktop app, download the Electron installer
-            
-            ### 📋 Changes
-            - Full release automation
-            - Enhanced manager interface with tabbed navigation
-            - Configurable backend settings
-            - Environment variables integration with .env file
-            
-            ---
-            Built with ❤️ using Quarkus and Electron
-          files: |
-            artifacts/native-windows/pasa-auto-runner.exe
-            artifacts/electron-windows/*.exe
-            artifacts/electron-windows/**/*.exe
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
