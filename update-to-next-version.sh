@@ -80,30 +80,30 @@ update_pom_version() {
     local dry_run=${2:-false}
     
     if [[ "$dry_run" == "true" ]]; then
-        echo "[DRY-RUN] Would update pom.xml version to $new_version"
+        echo "[DRY-RUN] Would update pom.xml line 8 version to $new_version"
         return
     fi
     
-    echo "Updating pom.xml version to $new_version..."
+    echo "Updating pom.xml line 8 version to $new_version..."
     
     if [[ ! -f "$POM_FILE" ]]; then
         echo "Error: pom.xml not found at $POM_FILE"
         exit 1
     fi
     
-    # Update version, handle both snapshot and release versions
-    if [[ $new_version == *"-SNAPSHOT" ]]; then
-        sed -i "s/<version>.*<\/version>/<version>$new_version<\/version>/" "$POM_FILE"
-    else
-        sed -i "s/<version>.*-SNAPSHOT<\/version>/<version>$new_version<\/version>/" "$POM_FILE"
-    fi
+    # Update only line 8 (the version tag)
+    sed -i '8s/<version>.*<\/version>/<version>'"$new_version"'<\/version>/' "$POM_FILE"
     
-    if ! grep -q "<version>$new_version</version>" "$POM_FILE"; then
-        echo "Error: Failed to update version in pom.xml"
+    # Verify line 8 was updated correctly
+    local line8_version=$(sed -n '8p' "$POM_FILE" | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
+    if [[ "$line8_version" != "$new_version" ]]; then
+        echo "Error: Failed to update version on line 8 of pom.xml"
+        echo "Expected: $new_version"
+        echo "Found: $line8_version"
         exit 1
     fi
     
-    echo "Version updated successfully to $new_version"
+    echo "Version updated successfully to $new_version on line 8"
 }
 
 create_git_tag() {
@@ -333,6 +333,7 @@ main() {
     local skip_git_check=false
     local release_version=""
     local update_release_version=false
+    local commit_hash=""
     
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -349,6 +350,10 @@ main() {
                 update_release_version=true
                 shift
                 ;;
+            --commit)
+                commit_hash="$2"
+                shift 2
+                ;;
             -h|--help)
                 usage
                 ;;
@@ -364,8 +369,19 @@ main() {
         esac
     done
     
-    # Get current version from pom.xml if not provided
-    if [[ -z "$release_version" ]]; then
+    # Get version from commit if commit hash is provided
+    if [[ -n "$commit_hash" ]]; then
+        echo "Using commit hash: $commit_hash"
+        local commit_version=$(get_version_from_commit "$commit_hash")
+        
+        if is_snapshot_version "$commit_version"; then
+            # Remove -SNAPSHOT suffix to get release version
+            release_version=${commit_version%-SNAPSHOT}
+        else
+            release_version="$commit_version"
+        fi
+    elif [[ -z "$release_version" ]]; then
+        # Get current version from pom.xml if not provided
         local current_version=$(get_current_version)
         if [[ -z "$current_version" ]]; then
             echo "Error: Could not extract current version from pom.xml"
@@ -377,7 +393,7 @@ main() {
             release_version=${current_version%-SNAPSHOT}
         else
             echo "Error: Current version ($current_version) is not a SNAPSHOT version"
-            echo "Please provide the release version explicitly"
+            echo "Please provide the release version explicitly or use --commit hash"
             exit 1
         fi
     fi

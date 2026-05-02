@@ -60,7 +60,7 @@
                              :options="filteredPelangganOptions"
                              :option-label="constructNopolOptions" option-value="nopol" emit-value map-options use-input
                              input-debounce="300" @filter="filterPelanggan" @update:model-value="onNopolChange"
-                             :loading="loadingPelanggan"
+                             :loading="loadingPelanggan" :disable="(formData.statusSpk !== 'OPEN')"
                              new-value-mode="add-unique"
                              :rules="[val => !!val || 'No Polisi harus diisi']"
                              hide-bottom-space>
@@ -133,6 +133,7 @@
                      @filter:merk="filterMerk"
                      @filter:jenis="filterJenis"
                      @check:vehicle="checkAndShowVehicleDialog"
+                     @pelanggan-updated="handlePelangganUpdated"
                    />
                 </q-card-section>
               </q-card-section>
@@ -829,30 +830,6 @@ const initNoSpk = () => {
   fetchNextSpkNumber()
 }
 
-const createNewSpkProcess = async () => {
-  isEditMode.value = false
-  isEditable.value = true
-  resetForm()
-
-  const offsetMs = 7 * 60 * 60 * 1000;
-  const gmt7 = new Date(new Date().getTime() + offsetMs);
-  const gmt7Iso = gmt7.toISOString().replace("T", " ").replace("Z", "").substring(0, 16);
-  formData.value.tanggalJamSpk = gmt7Iso
-  formData.value.statusSpk = 'PROSES'
-  formData.value.startedAt = new Date().toISOString()
-
-await fetchNextSpkNumber()
-  await Promise.all([fetchPelanggan(), fetchJasa(), fetchBarang(), fetchMerkOptions(), fetchJenisOptions()])
-
-  initialData.value = null
-  showDialog.value = true
-
-  $q.notify({
-    type: 'info',
-    message: 'SPK baru dibuat dan siap proses',
-    timeout: 2000
-  })
-}
 
 const startProcess = () => {
   formData.value.statusSpk = 'PROSES'
@@ -975,10 +952,10 @@ const saveSpk = async () => {
     // If new customer, create pelanggan first
     if (isNewCustomer.value && !isEditMode.value) {
       // Validate required customer fields
-      if (!formData.value.namaPelanggan || !formData.value.merk) {
+      if (!formData.value.nopol || !formData.value.namaPelanggan || !formData.value.merk) {
         $q.notify({
           type: 'warning',
-          message: 'Please fill in required customer fields (Nama, Merk)'
+          message: 'Please fill in required customer fields (No Polisi, Nama, Merk)'
         })
         //saving.value = false
         return
@@ -1381,6 +1358,50 @@ const handleUpdateMasterBarang = async (payload) => {
       type: 'negative',
       message: 'Failed to update master data Barang',
       caption: error.response?.data?.message || error.message
+    })
+  }
+}
+
+// Handle pelanggan data update from inline editing
+const handlePelangganUpdated = async (payload) => {
+  try {
+    // Refresh pelanggan list to update dropdown options
+    await fetchPelanggan()
+    
+    // Refresh SPK table to show updated pelanggan data
+    await fetchSpk()
+    
+    // Update the current SPK form data with the new values
+    const updatedPelanggan = pelangganOptions.value.find(p => p.nopol === payload.nopol)
+    if (updatedPelanggan) {
+      // Update the form data with the latest values from pelanggan options
+      if (payload.field === 'namaPelanggan') {
+        formData.value.namaPelanggan = payload.value
+      } else if (payload.field === 'alamat') {
+        formData.value.alamat = payload.value
+      } else if (payload.field === 'merk') {
+        formData.value.merk = payload.value
+      } else if (payload.field === 'jenis') {
+        formData.value.jenis = payload.value
+      }
+      
+      // Also update the filtered pelanggan options to reflect changes
+      const filteredIndex = filteredPelangganOptions.value.findIndex(p => p.nopol === payload.nopol)
+      if (filteredIndex !== -1) {
+        filteredPelangganOptions.value[filteredIndex] = {...updatedPelanggan}
+      }
+    }
+    
+    $q.notify({
+      type: 'positive',
+      message: 'Data pelanggan berhasil diperbarui di form SPK dan tabel'
+    })
+  } catch (error) {
+    console.error('Failed to refresh pelanggan data', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Gagal memperbarui data pelanggan di form SPK',
+      caption: error.message
     })
   }
 }
