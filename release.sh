@@ -7,11 +7,13 @@ PROJECT_DIR="$SCRIPT_DIR"
 POM_FILE="$PROJECT_DIR/pom.xml"
 
 usage() {
-    echo "Usage: $0 [--dry-run] [release-version]"
+    echo "Usage: $0 [--dry-run] [--skip-git-check] [release-version]"
     echo "  --dry-run: Show what would be done without making changes"
+    echo "  --skip-git-check: Skip git status check (useful for CI environments)"
     echo "  release-version: Optional. If not provided, will extract from pom.xml"
     echo "Example: $0 1.0.0"
     echo "Example: $0 --dry-run"
+    echo "Example: $0 --skip-git-check 1.0.0"
     exit 1
 }
 
@@ -50,8 +52,25 @@ is_snapshot_version() {
 }
 
 check_git_status() {
+    local dry_run=${1:-false}
+    local skip_check=${2:-false}
+    
+    if [[ "$skip_check" == "true" ]]; then
+        echo "Skipping git status check as requested"
+        return
+    fi
+    
+    if [[ "$dry_run" == "true" ]]; then
+        echo "[DRY-RUN] Would check git status for uncommitted changes"
+        return
+    fi
+    
     if [[ -n $(git status --porcelain) ]]; then
         echo "Error: Working directory is not clean. Please commit or stash changes."
+        echo "Current git status:"
+        git status
+        echo ""
+        echo "To skip this check, use: $0 --skip-git-check"
         exit 1
     fi
 }
@@ -163,6 +182,7 @@ commit_next_version() {
 
 main() {
     local dry_run=false
+    local skip_git_check=false
     local release_version=""
     
     # Parse arguments
@@ -170,6 +190,10 @@ main() {
         case $1 in
             --dry-run)
                 dry_run=true
+                shift
+                ;;
+            --skip-git-check)
+                skip_git_check=true
                 shift
                 ;;
             -h|--help)
@@ -206,10 +230,7 @@ main() {
     fi
     
     validate_version "$release_version"
-    
-    if [[ "$dry_run" != "true" ]]; then
-        check_git_status
-    fi
+    check_git_status "$dry_run" "$skip_git_check"
     
     # Calculate next development version
     local next_version=$(increment_version "$release_version")

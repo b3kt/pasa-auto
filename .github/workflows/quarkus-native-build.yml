@@ -211,7 +211,7 @@ jobs:
           VERSION=${{ steps.version.outputs.version }}
           echo "Running release for version $VERSION"
           ./release.sh --dry-run $VERSION
-          ./release.sh $VERSION
+          ./release.sh --skip-git-check $VERSION
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
