@@ -207,7 +207,15 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
 
         if (pageRequest.getSortBy() != null && !pageRequest.getSortBy().isEmpty()) {
             String sortDirection = pageRequest.isDescending() ? "desc" : "asc";
-            baseQuery += " order by s." + pageRequest.getSortBy() + " " + sortDirection;
+            String sortField = pageRequest.getSortBy();
+            
+            // Handle special case for grandTotal which comes from TbPenjualanEntity
+            if ("grandTotal".equals(sortField)) {
+                baseQuery += " order by p." + sortField + " " + sortDirection;
+            } else {
+                baseQuery += " order by s." + sortField + " " + sortDirection;
+            }
+            
             query = entityManager.createQuery(baseQuery, RekapPenjualanDto.class);
             for (int i = 0; i < params.length; i++) {
                 query.setParameter(i + 1, params[i]);
