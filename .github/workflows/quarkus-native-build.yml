@@ -182,7 +182,7 @@ jobs:
       - name: Download Native Windows Artifact
         uses: actions/download-artifact@v4
         with:
-          name: native-windows
+          name: quarkus-native-windows
           path: artifacts/native-windows
 
       - name: Download Electron Windows Artifact
@@ -242,7 +242,7 @@ jobs:
             ---
             Built with ❤️ using Quarkus and Electron
           files: |
-            artifacts/native-windows/*-runner.exe
+            artifacts/native-windows/pasa-auto-runner.exe
             artifacts/electron-windows/*.exe
             artifacts/electron-windows/**/*.exe
           draft: false
