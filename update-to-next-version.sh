@@ -122,19 +122,38 @@ create_git_tag() {
     echo "Git tag v$version created"
 }
 
+get_default_branch() {
+    # Try to get the default branch from remote
+    local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+    if [[ -z "$default_branch" ]]; then
+        # Fallback to common branch names
+        if git rev-parse --verify main >/dev/null 2>&1; then
+            echo "main"
+        elif git rev-parse --verify master >/dev/null 2>&1; then
+            echo "master"
+        else
+            # Get current branch as last resort
+            git branch --show-current
+        fi
+    else
+        echo "$default_branch"
+    fi
+}
+
 push_to_remote() {
     local version=$1
     local dry_run=${2:-false}
+    local default_branch=$(get_default_branch)
     
     if [[ "$dry_run" == "true" ]]; then
         echo "[DRY-RUN] Would push to remote:"
-        echo "[DRY-RUN]   git push origin main"
+        echo "[DRY-RUN]   git push origin $default_branch"
         echo "[DRY-RUN]   git push origin v$version"
         return
     fi
     
-    echo "Pushing to remote..."
-    git push origin main
+    echo "Pushing to remote (branch: $default_branch)..."
+    git push origin "$default_branch"
     git push origin "v$version"
     echo "Pushed to remote successfully"
 }
@@ -296,14 +315,16 @@ commit_next_version() {
 
 push_next_version() {
     local dry_run=${1:-false}
+    local default_branch=$(get_default_branch)
     
     if [[ "$dry_run" == "true" ]]; then
         echo "[DRY-RUN] Would push next development version to remote"
+        echo "[DRY-RUN]   git push origin $default_branch"
         return
     fi
     
-    echo "Pushing next development version..."
-    git push origin main
+    echo "Pushing next development version (branch: $default_branch)..."
+    git push origin "$default_branch"
     echo "Next development version pushed"
 }
 
