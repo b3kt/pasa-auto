@@ -1,207 +1,367 @@
-# Clean Modular Architecture
+# Architecture Guide
 
-This document describes the clean modular architecture implemented in the Quarkus backend.
+## Clean Architecture
 
-## Architecture Overview
-
-The application follows a **Clean Architecture** pattern with clear separation of concerns across four main layers:
+Pasa Auto follows Clean Architecture with strict layer separation and dependency inversion.
 
 ```
-com.github.b3kt
-├── domain/          # Domain Layer (Business Logic)
-├── application/     # Application Layer (Use Cases)
-├── infrastructure/  # Infrastructure Layer (Technical Details)
-└── presentation/    # Presentation Layer (API/Controllers)
+src/main/java/com/github/b3kt/
+├── domain/              # Business logic (zero dependencies)
+├── application/         # Use cases (depends on domain)
+├── infrastructure/      # Technical details (implements app interfaces)
+└── presentation/        # HTTP layer (depends on application)
 ```
 
-## Layer Responsibilities
+### Dependency Rule
 
-### 1. Domain Layer (`domain/`)
+```
+Presentation ──> Application ──> Domain <── Infrastructure
+```
 
-**Purpose**: Contains the core business logic and domain entities.
+**Inner layers know nothing about outer layers.**
+
+---
+
+## Layer Details
+
+### 1. Domain Layer
+
+**Purpose**: Core business rules and entities.
 
 **Contents**:
-- **`model/`**: Domain entities (e.g., `User`)
-- **`exception/`**: Domain-specific exceptions
+- `model/` - Domain entities (`User`, `Role`, `Permission`)
+- `exception/` - Domain exceptions (`AuthenticationException`, `UserNotFoundException`)
 
-**Principles**:
-- No dependencies on other layers
-- Pure business logic
-- Framework-agnostic
+**Rules**:
+- No framework dependencies
+- No database annotations
+- Pure Java business logic
 
-**Example**:
 ```java
 // domain/model/User.java
 public class User {
-    // Business logic methods
-    public boolean canAuthenticate() { ... }
+    private String username;
+    private String password;
+
+    public boolean canAccess(String permission) {
+        // Business logic here
+    }
 }
 ```
 
-### 2. Application Layer (`application/`)
+### 2. Application Layer
 
-**Purpose**: Orchestrates use cases and application logic.
+**Purpose**: Orchestrates use cases.
 
 **Contents**:
-- **`dto/`**: Data Transfer Objects for API communication
-- **`service/`**: Application service interfaces and implementations
-- **`mapper/`**: Mappers between domain entities and DTOs
+- `dto/` - Request/Response DTOs
+- `service/` - Service interfaces and implementations
+- `mapper/` - Entity ↔ DTO converters
+- `helper/` - Shared utilities (`QueryFilterBuilder`)
 
-**Principles**:
+**Rules**:
 - Depends only on domain layer
-- Defines use cases (interfaces)
-- Coordinates domain objects
+- Defines interfaces that infrastructure implements
+- Contains application-level business logic
 
-**Example**:
 ```java
-// application/service/AuthService.java (interface)
+// application/service/AuthService.java
 public interface AuthService {
     LoginResponse login(String username, String password);
+    TokenResponse refreshToken(String refreshToken);
+    void logout(String token);
 }
 
-// application/service/AuthServiceImpl.java (implementation)
+// application/service/AuthServiceImpl.java
 @ApplicationScoped
 public class AuthServiceImpl implements AuthService {
-    // Orchestrates domain logic
+    @Inject UserRepository userRepository;
+    @Inject PasswordEncoder passwordEncoder;
+    @Inject JwtTokenService jwtService;
+
+    public LoginResponse login(String username, String password) {
+        // Orchestrate: validate user → encode check → generate token
+    }
 }
 ```
 
-### 3. Infrastructure Layer (`infrastructure/`)
+### 3. Infrastructure Layer
 
-**Purpose**: Implements technical concerns and external integrations.
+**Purpose**: Technical implementations.
 
 **Contents**:
-- **`repository/`**: Data access implementations
-- **`security/`**: Security implementations (JWT, password encoding)
+- `persistence/entity/` - JPA entities with `@Entity` annotations
+- `repository/` - Repository implementations
+- `security/` - JWT, password encoding, interceptors
+- `audit/` - Audit trail implementation
 
-**Principles**:
+**Rules**:
 - Implements interfaces defined in application layer
-- Handles technical details (database, JWT, etc.)
-- Can be swapped without affecting other layers
+- Contains framework-specific code (JPA, JWT, etc.)
+- Can be swapped without changing business logic
 
-**Example**:
 ```java
-// infrastructure/repository/UserRepository.java (interface)
-public interface UserRepository {
-    Optional<User> findByUsername(String username);
-}
-
-// infrastructure/repository/InMemoryUserRepository.java (implementation)
+// infrastructure/repository/UserRepository.java
 @ApplicationScoped
-public class InMemoryUserRepository implements UserRepository {
-    // In-memory storage implementation
+public class UserRepository {
+    @Inject PanacheQuery<TbUserEntity> findAll();
+
+    public Optional<TbUserEntity> findByUsername(String username) {
+        return find("username", username).firstResultOptional();
+    }
 }
 ```
 
-### 4. Presentation Layer (`presentation/`)
+### 4. Presentation Layer
 
-**Purpose**: Handles HTTP requests and responses.
+**Purpose**: HTTP request/response handling.
 
 **Contents**:
-- **`rest/`**: REST controllers
-- **`exception/`**: Exception mappers for HTTP responses
-- **`config/`**: Presentation-specific configuration
+- `rest/` - JAX-RS REST resources
+- `rest/pazaauto/` - Business domain resources
+- `exception/` - Exception mappers for HTTP responses
+- `config/` - CORS, OpenAPI configuration
 
-**Principles**:
-- Depends on application layer
-- Handles HTTP concerns
-- Maps HTTP to application layer
+**Rules**:
+- Depends on application layer (services, DTOs)
+- Handles HTTP concerns only (status codes, headers)
+- No business logic
 
-**Example**:
 ```java
 // presentation/rest/AuthResource.java
 @Path("/api/auth")
 public class AuthResource {
-    @Inject
-    AuthService authService; // Depends on application layer
-    
+    @Inject AuthService authService;
+
     @POST
     @Path("/login")
-    public Response login(LoginRequest request) { ... }
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response login(LoginRequest request) {
+        LoginResponse response = authService.login(request.username(), request.password());
+        return Response.ok(response).build();
+    }
 }
 ```
 
-## Dependency Flow
+---
+
+## Standard Patterns
+
+### CRUD Pattern
+
+All business entities follow a standard CRUD pattern:
 
 ```
-Presentation → Application → Domain
-     ↓              ↓
-Infrastructure → Application → Domain
+AbstractCrudService<T>        ← Base service class
+  └── TbSpkService            ← Entity-specific service
+
+AbstractCrudResource<T>       ← Base REST resource
+  └── TbSpkResource           ← Entity-specific resource
 ```
 
-**Key Rules**:
-1. **Domain** has no dependencies
-2. **Application** depends only on **Domain**
-3. **Infrastructure** implements **Application** interfaces and depends on **Domain**
-4. **Presentation** depends on **Application** and **Domain**
+**Service provides**:
+- `findAll()`, `findById()`, `create()`, `update()`, `delete()`
+- `findPaginated()` with search/filter support
 
-## Benefits
+**Resource provides**:
+- `GET /`, `GET /{id}`, `POST /`, `PUT /{id}`, `DELETE /{id}`
+- `GET /paginated` with query parameters
 
-1. **Testability**: Each layer can be tested independently
-2. **Maintainability**: Clear separation makes code easier to understand and modify
-3. **Flexibility**: Infrastructure can be swapped (e.g., in-memory to database)
-4. **Scalability**: Easy to add new features without affecting existing code
-5. **Independence**: Business logic is independent of frameworks
+### Entity Pattern
 
-## Module Structure
+```java
+@Entity
+@Table(name = "tb_spk")
+@EntityListeners(AuditTrailListener.class)
+public class TbSpkEntity extends AbstractAuditableEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    public Long id;
 
-### Authentication Module
+    public String noSpk;
+    public String status;
 
-```
-domain/
-  └── model/User.java
-  └── exception/
-      ├── AuthenticationException.java
-      └── UserNotFoundException.java
-
-application/
-  └── dto/
-      ├── LoginRequest.java
-      ├── LoginResponse.java
-      └── UserInfo.java
-  └── service/
-      ├── AuthService.java (interface)
-      └── AuthServiceImpl.java
-  └── mapper/
-      └── UserMapper.java
-
-infrastructure/
-  └── repository/
-      ├── UserRepository.java (interface)
-      └── InMemoryUserRepository.java
-  └── security/
-      ├── JwtTokenService.java (interface)
-      ├── JwtTokenServiceImpl.java
-      ├── PasswordEncoder.java (interface)
-      └── SimplePasswordEncoder.java
-
-presentation/
-  └── rest/
-      └── AuthResource.java
-  └── exception/
-      └── GlobalExceptionHandler.java
+    @ManyToOne
+    public TbPelangganEntity pelanggan;
+}
 ```
 
-## Adding New Features
+### DTO Pattern
 
-To add a new feature (e.g., User Management):
+```java
+// Request DTO
+public class SpkRequest {
+    @NotBlank
+    public String noSpk;
 
-1. **Domain**: Create `User` entity (if not exists) and domain exceptions
-2. **Application**: Create DTOs, service interface, and implementation
-3. **Infrastructure**: Implement repository interface (e.g., `JpaUserRepository`)
-4. **Presentation**: Create REST controller
+    @NotNull
+    public Long pelangganId;
+}
 
-## Testing Strategy
+// Response DTO
+public class SpkResponse {
+    public Long id;
+    public String noSpk;
+    public String status;
+    public String pelangganName;
+}
+```
 
-- **Domain**: Unit tests for business logic
-- **Application**: Integration tests with mocked infrastructure
-- **Infrastructure**: Integration tests with test database
-- **Presentation**: REST API tests
+---
 
-## Configuration
+## Security Architecture
 
-Configuration is externalized in `application.properties`:
-- JWT settings
-- CORS configuration
-- Security settings
+```
+HTTP Request
+    │
+    ▼
+┌─────────────────────────┐
+│  JWT Token Validation   │  (SmallRye JWT)
+│  - Signature check      │
+│  - Expiration check     │
+│  - Issuer check         │
+└─────────────────────────┘
+    │
+    ▼
+┌─────────────────────────┐
+│  Role Check             │  (@RolesAllowed)
+│  - ADMIN, USER, etc.    │
+└─────────────────────────┘
+    │
+    ▼
+┌─────────────────────────┐
+│  Business Logic         │  (Service layer)
+└─────────────────────────┘
+    │
+    ▼
+┌─────────────────────────┐
+│  Data Access            │  (Repository layer)
+└─────────────────────────┘
+    │
+    ▼
+┌─────────────────────────┐
+│  Audit Trail            │  (Entity listener)
+└─────────────────────────┘
+```
 
+---
+
+## Database Architecture
+
+### Migrations
+
+Flyway manages schema changes:
+
+```
+db/migration/
+├── V1__initial_schema.sql
+├── V2__add_audit_trail.sql
+├── V3__add_rbac_tables.sql
+├── ...
+└── V13__latest_change.sql
+```
+
+Migrations run automatically at startup (`quarkus.flyway.migrate-at-start=true`).
+
+### Entity Relationships
+
+```
+tb_pelanggan ──1:N──> tb_kendaraan ──1:N──> tb_spk
+tb_spk ──1:N──> tb_spk_detail
+tb_spk ──1:1──> tb_penjualan
+tb_karyawan ──1:N──> tb_absensi
+tb_supplier ──1:N──> tb_pembelian ──1:N──> tb_pembelian_detail
+tb_barang ──1:N──> tb_sparepart
+```
+
+### Auditing
+
+All entities extend `AbstractAuditableEntity`:
+
+```java
+public abstract class AbstractAuditableEntity {
+    public String createdBy;
+    public LocalDateTime createdAt;
+    public String updatedBy;
+    public LocalDateTime updatedAt;
+}
+```
+
+---
+
+## Adding a New Feature
+
+### Step 1: Domain
+
+```java
+// domain/model/NewEntity.java
+public class NewEntity {
+    // Business rules
+}
+```
+
+### Step 2: Infrastructure (Entity)
+
+```java
+// infrastructure/persistence/entity/NewEntityEntity.java
+@Entity
+@Table(name = "tb_new_entity")
+public class NewEntityEntity extends AbstractAuditableEntity {
+    @Id
+    @GeneratedValue
+    public Long id;
+
+    public String name;
+}
+```
+
+### Step 3: Infrastructure (Repository)
+
+```java
+// infrastructure/repository/NewEntityRepository.java
+@ApplicationScoped
+public class NewEntityRepository {
+    // Panache-based data access
+}
+```
+
+### Step 4: Application (DTOs + Service)
+
+```java
+// application/dto/NewEntityRequest.java
+public record NewEntityRequest(@NotBlank String name) {}
+
+// application/service/NewEntityService.java
+@ApplicationScoped
+public class NewEntityService extends AbstractCrudService<NewEntityEntity> {
+    // Business logic
+}
+```
+
+### Step 5: Presentation (Resource)
+
+```java
+// presentation/rest/NewEntityResource.java
+@Path("/api/new-entity")
+public class NewEntityResource extends AbstractCrudResource<NewEntityEntity, NewEntityService> {
+    // REST endpoints
+}
+```
+
+### Step 6: Database Migration
+
+```sql
+-- db/migration/V14__add_new_entity.sql
+CREATE TABLE tb_new_entity (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_by VARCHAR(255),
+    created_at TIMESTAMP,
+    updated_by VARCHAR(255),
+    updated_at TIMESTAMP
+);
+```
+
+### Step 7: Frontend
+
+Add page in `src/main/webui/src/pages/pazaauto/NewEntityPage.vue`.

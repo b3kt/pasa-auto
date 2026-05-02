@@ -1,37 +1,45 @@
-# Swagger/OpenAPI Documentation
+# Swagger/OpenAPI Guide
 
-This project includes Swagger UI for interactive API documentation.
+## Access
 
-## Accessing Swagger UI
+| Resource | URL |
+|----------|-----|
+| Swagger UI | http://localhost:8080/swagger-ui |
+| OpenAPI JSON | http://localhost:8080/openapi |
 
-Once the application is running, you can access Swagger UI at:
+**Note**: Swagger UI is disabled by default. Enable with `SWAGGER_ENABLED=true`.
 
-**Development:**
-- Swagger UI: http://localhost:8080/swagger-ui
-- OpenAPI JSON: http://localhost:8080/openapi
+---
 
-## Features
+## Enable/Disable
 
-### 1. Interactive API Documentation
-- Browse all available endpoints
-- See request/response schemas
-- Test endpoints directly from the browser
+### Via Environment Variable
 
-### 2. JWT Authentication Support
-- Swagger UI includes an "Authorize" button
-- Enter your JWT token to test protected endpoints
-- Token format: `Bearer <your-jwt-token>`
+```bash
+# Enable
+SWAGGER_ENABLED=true
 
-### 3. Request/Response Examples
-- All DTOs include example values
-- Validation rules are documented
-- Error responses are documented
+# Disable (production default)
+SWAGGER_ENABLED=false
+```
+
+### Via application.properties
+
+```properties
+quarkus.swagger-ui.enabled=${SWAGGER_ENABLED:false}
+quarkus.swagger-ui.always-include=true
+quarkus.swagger-ui.path=/swagger-ui
+quarkus.smallrye-openapi.path=/openapi
+```
+
+---
 
 ## Using Swagger UI
 
-### Step 1: Login
-1. Navigate to the `/api/auth/login` endpoint
-2. Click "Try it out"
+### 1. Get a JWT Token
+
+1. Navigate to `POST /api/auth/login` in Swagger UI
+2. Click **Try it out**
 3. Enter credentials:
    ```json
    {
@@ -39,58 +47,86 @@ Once the application is running, you can access Swagger UI at:
      "password": "admin123"
    }
    ```
-4. Click "Execute"
-5. Copy the `token` from the response
+4. Click **Execute**
+5. Copy the `token` value from the response
 
-### Step 2: Authorize
-1. Click the "Authorize" button at the top of the page
-2. In the "bearerAuth" section, enter: `Bearer <your-token>`
-3. Click "Authorize"
-4. Click "Close"
+### 2. Authorize Requests
 
-### Step 3: Test Protected Endpoints
-- Now you can test `/api/auth/me` and `/api/auth/logout` endpoints
-- The JWT token will be automatically included in requests
+1. Click the **Authorize** button (lock icon) at the top
+2. Enter: `Bearer <your-token>`
+3. Click **Authorize** → **Close**
 
-## API Endpoints
+### 3. Test Endpoints
 
-### Authentication Endpoints
+All protected endpoints now include your token automatically.
 
-#### POST `/api/auth/login`
-- **Description**: Authenticate user and get JWT token
-- **Auth Required**: No
-- **Request Body**: `LoginRequest` (username, password)
-- **Response**: `LoginResponse` (token, username, email, expiresIn)
-
-#### POST `/api/auth/logout`
-- **Description**: Logout current user
-- **Auth Required**: Yes (Bearer token)
-- **Response**: Success message
-
-#### GET `/api/auth/me`
-- **Description**: Get current user information
-- **Auth Required**: Yes (Bearer token)
-- **Response**: `UserInfo` (username, email, roles)
+---
 
 ## Configuration
 
-Swagger configuration is in:
-- `application.properties`: Basic settings
-- `OpenApiConfig.java`: API metadata and security schemes
+### API Metadata
 
-## Customization
+Configured in `OpenApiConfig.java`:
 
-To customize Swagger documentation:
+```java
+@Info(
+    title = "Quarkus Quasar API",
+    version = "0.0.28",
+    description = "REST API for Quarkus Quasar Application"
+)
+```
 
-1. **Update API Info**: Edit `OpenApiConfig.java`
-2. **Add Endpoint Documentation**: Use `@Operation`, `@APIResponse` annotations
-3. **Add Schema Documentation**: Use `@Schema` annotations on DTOs
-4. **Configure Security**: Update `@SecurityScheme` in `OpenApiConfig.java`
+### Security Scheme
+
+JWT Bearer authentication is defined via `@SecurityScheme` annotation:
+
+```java
+@SecurityScheme(
+    securitySchemeName = "bearerAuth",
+    type = SecuritySchemeType.HTTP,
+    scheme = "bearer",
+    bearerFormat = "JWT"
+)
+```
+
+---
+
+## Customizing Documentation
+
+### Add Endpoint Description
+
+```java
+@Operation(
+    summary = "Create a new customer",
+    description = "Creates a customer record with contact information"
+)
+@APIResponse(responseCode = "201", description = "Customer created")
+@APIResponse(responseCode = "400", description = "Invalid input")
+public Response create(CustomerRequest request) { ... }
+```
+
+### Document DTO Fields
+
+```java
+@Schema(description = "Customer request payload")
+public class CustomerRequest {
+    @Schema(description = "Customer full name", example = "John Doe")
+    public String name;
+
+    @Schema(description = "Email address", example = "john@example.com")
+    public String email;
+}
+```
+
+---
 
 ## Production
 
-In production, you may want to:
-- Disable Swagger UI: Set `quarkus.swagger-ui.always-include=false`
-- Restrict access: Use authentication/authorization
-- Customize paths: Update `quarkus.swagger-ui.path` and `quarkus.smallrye-openapi.path`
+**Disable Swagger UI in production** to avoid exposing API details:
 
+```bash
+SWAGGER_ENABLED=false
+OPENAPI_ENABLED=false
+```
+
+Or restrict access behind authentication/proxy.
