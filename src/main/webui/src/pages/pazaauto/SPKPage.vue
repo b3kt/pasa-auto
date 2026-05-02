@@ -51,9 +51,8 @@
                     <span class="text-caption text-bold">Informasi SPK</span>
                   </div>
                   <q-input v-model="formData.tanggalJamSpk" label="Tanggal" outlined dense
-                           placeholder="YYYY-MM-DD HH:mm:ss"
-                           readonly/>
-                  <q-input v-model="formData.noSpk" label="No SPK" outlined dense readonly/>
+                           placeholder="YYYY-MM-DD HH:mm:ss"/>
+                  <q-input v-model="formData.noSpk" label="No SPK" outlined dense/>
                   <q-input v-model.number="formData.noAntrian" label="No Antrian" outlined dense type="number"
                            :disable="(formData.statusSpk === 'SELESAI' || formData.statusSpk === 'BATAL')"/>
 
