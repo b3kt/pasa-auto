@@ -955,10 +955,10 @@ const saveSpk = async () => {
     // If new customer, create pelanggan first
     if (isNewCustomer.value && !isEditMode.value) {
       // Validate required customer fields
-      if (!formData.value.namaPelanggan || !formData.value.merk) {
+      if (!formData.value.nopol || !formData.value.namaPelanggan || !formData.value.merk) {
         $q.notify({
           type: 'warning',
-          message: 'Please fill in required customer fields (Nama, Merk)'
+          message: 'Please fill in required customer fields (No Polisi, Nama, Merk)'
         })
         //saving.value = false
         return

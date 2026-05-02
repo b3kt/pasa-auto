@@ -135,7 +135,7 @@ class BrowserCache {
                 timestamp: item.timestamp
               })
             }
-          } catch (error) {
+          } catch {
             // Remove malformed items
             localStorage.removeItem(key)
           }
