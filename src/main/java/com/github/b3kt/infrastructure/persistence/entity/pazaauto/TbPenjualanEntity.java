@@ -52,6 +52,9 @@ public class TbPenjualanEntity extends BaseEntity {
     @Column(name = "metode_pembayaran", length = 20)
     private String metodePembayaran;
 
+    @Column(name = "discount", precision = 18, scale = 2)
+    private BigDecimal discount;
+
 
 
     @Transient
