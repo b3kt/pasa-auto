@@ -55,6 +55,7 @@ public class RekapPenjualanDto {
     private Long kendaraanId;
     private String metodePembayaran;
     private String noPolisi;
+    private BigDecimal discount;
 
     public RekapPenjualanDto(TbSpkEntity spk, TbPenjualanEntity penjualan){
         id = spk.getId();
@@ -90,6 +91,7 @@ public class RekapPenjualanDto {
             kendaraanId = penjualan.getKendaraanId();
             metodePembayaran = penjualan.getMetodePembayaran();
             noPolisi = penjualan.getNoPolisi();
+            discount = penjualan.getDiscount();
         } else {
             // Set default values when penjualan is null
             alamatPelanggan = null;
@@ -105,6 +107,7 @@ public class RekapPenjualanDto {
             kendaraanId = null;
             metodePembayaran = null;
             noPolisi = null;
+            discount = null;
         }
     }
 }
