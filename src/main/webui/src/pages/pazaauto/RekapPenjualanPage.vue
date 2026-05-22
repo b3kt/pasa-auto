@@ -873,7 +873,11 @@ const printSpk = async () => {
     merk: formData.value.merk,
     model: formData.value.jenis,
     km: formData.value.km,
-    namaMekanik: selectedMekaniks.value.map(m => m.namaKaryawan).join(', '),
+    namaMekanik: selectedMekaniks.value.length > 0
+      ? selectedMekaniks.value.map(m => m.namaKaryawan).join(', ')
+      : (formData.value.mekanikList && Array.isArray(formData.value.mekanikList)
+        ? formData.value.mekanikList.map(m => m.namaKaryawan || `ID: ${m.id}`).join(', ')
+        : formData.value.namaKaryawan || ''),
     subTotal: grandTotal.value,
     diskon: formData.value.discount || 0,
     ppn: formData.value.ppn || 0,

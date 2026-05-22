@@ -60,7 +60,7 @@
                              :options="filteredPelangganOptions"
                              :option-label="constructNopolOptions" option-value="nopol" emit-value map-options use-input
                              input-debounce="300" @filter="filterPelanggan" @update:model-value="onNopolChange"
-                             :loading="loadingPelanggan" :disable="(formData.statusSpk !== 'OPEN')"
+                             :loading="loadingPelanggan" :disable="isEditMode && formData.statusSpk !== 'OPEN'"
                              new-value-mode="add-unique"
                              :rules="[val => !!val || 'No Polisi harus diisi']"
                              hide-bottom-space>
