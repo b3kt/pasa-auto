@@ -66,6 +66,7 @@ public class TbPenjualanResource extends AbstractCrudResource<TbPenjualanEntity,
         dto.setNoSpk(penjualan.getNoSpk());
         dto.setStatusPembayaran(penjualan.getStatusPembayaran());
         dto.setMetodePembayaran(penjualan.getMetodePembayaran());
+        dto.setDiskon(penjualan.getDiscount());
         dto.setGrandTotal(penjualan.getGrandTotal());
         dto.setUangDibayar(penjualan.getUangDibayar());
         dto.setKembalian(penjualan.getKembalian());
