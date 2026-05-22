@@ -32,7 +32,7 @@
       row-key="id"
       :loading="loading"
       :pagination="pagination"
-      @update:pagination="v => pagination = v"
+      @request="onRequest"
       flat
       :rows-per-page-options="[10, 20, 50, 0]"
     >
@@ -195,13 +195,34 @@ const columns = [
   { name: 'changes', label: 'Perubahan', field: 'changes', align: 'center' }
 ]
 
+function onRequest(props) {
+  const { page, rowsPerPage, sortBy, descending } = props.pagination
+  pagination.value.page = page
+  pagination.value.rowsPerPage = rowsPerPage
+  pagination.value.sortBy = sortBy
+  pagination.value.descending = descending
+  loadData()
+}
+
 async function loadData() {
   loading.value = true
   try {
     const params = {
       page: pagination.value.page,
-      rowsPerPage: pagination.value.rowsPerPage,
-      search: filters.value.tableName || undefined
+      rowsPerPage: pagination.value.rowsPerPage
+    }
+
+    if (pagination.value.sortBy) {
+      params.sortBy = pagination.value.sortBy
+      params.descending = pagination.value.descending
+    }
+
+    const searchParts = []
+    if (filters.value.tableName) searchParts.push(filters.value.tableName)
+    if (filters.value.username) searchParts.push(filters.value.username)
+    if (filters.value.action) searchParts.push(filters.value.action)
+    if (searchParts.length > 0) {
+      params.search = searchParts.join(' ')
     }
 
     const response = await api.get('/api/audit-trail/paginated', { params })
