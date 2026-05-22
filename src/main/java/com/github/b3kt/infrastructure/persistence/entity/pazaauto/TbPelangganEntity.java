@@ -67,12 +67,18 @@ public class TbPelangganEntity extends BaseEntity {
     public Pelanggan toDomain() {
         Pelanggan p = new Pelanggan();
         p.setId(this.id);
-        p.setNopol(this.nopol);
-        p.setNamaPelanggan(this.namaPelanggan);
+        if (this.nopol != null && !this.nopol.trim().isEmpty()) {
+            p.setNopol(this.nopol);
+        }
+        if (this.namaPelanggan != null && !this.namaPelanggan.trim().isEmpty()) {
+            p.setNamaPelanggan(this.namaPelanggan);
+        }
         p.setAlamat(this.alamat);
         p.setContactPerson(this.contactPerson);
         p.setTelepon(this.telepon);
-        p.setMerk(this.merk);
+        if (this.merk != null && !this.merk.trim().isEmpty()) {
+            p.setMerk(this.merk);
+        }
         p.setJenis(this.jenis);
         p.setEmail(this.email);
         p.setJenisKelamin(this.jenisKelamin);
