@@ -34,7 +34,7 @@
       :pagination="pagination"
       @request="onRequest"
       flat
-      :rows-per-page-options="[10, 20, 50, 0]"
+      :rows-per-page-options="[10, 20, 50]"
     >
       <template v-slot:body-cell-action="props">
         <q-td :props="props">
@@ -197,10 +197,7 @@ const columns = [
 
 function onRequest(props) {
   const { page, rowsPerPage, sortBy, descending } = props.pagination
-  pagination.value.page = page
-  pagination.value.rowsPerPage = rowsPerPage
-  pagination.value.sortBy = sortBy
-  pagination.value.descending = descending
+  pagination.value = { page: Math.max(1, page), rowsPerPage: Math.max(1, Math.min(100, rowsPerPage)), rowsNumber: pagination.value.rowsNumber, sortBy, descending }
   loadData()
 }
 
