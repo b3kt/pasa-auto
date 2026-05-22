@@ -5,6 +5,7 @@ import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPembelianDetailEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPembelianEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPembelianRepository;
+import com.github.b3kt.application.helper.PageHelper;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
@@ -168,7 +169,6 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
 
     @Override
     public PageResponse<TbPembelianEntity> findPaginated(PageRequest pageRequest) {
-        // Build query with filters
         StringBuilder queryStr = new StringBuilder("" +
                 " SELECT new com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPembelianEntity(b, s.namaSupplier)  " +
                 " FROM TbPembelianEntity b " +
@@ -176,34 +176,29 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
                 " WHERE 1=1 ");
         io.quarkus.panache.common.Parameters params = new io.quarkus.panache.common.Parameters();
 
-        // Search filter
         if (pageRequest.getSearch() != null && !pageRequest.getSearch().isEmpty()) {
             queryStr.append(" and lower(noPembelian) like :search");
             params.and("search", "%" + pageRequest.getSearch().toLowerCase() + "%");
         }
 
-        // Jenis pembelian filter
         String jenisPembelianFilter = pageRequest.getJenisPembelianFilter();
         if (jenisPembelianFilter != null && !jenisPembelianFilter.isEmpty()) {
             queryStr.append(" and jenisPembelian = :jenisPembelian");
             params.and("jenisPembelian", jenisPembelianFilter);
         }
 
-        // Kategori operasional filter
         String kategoriOperasionalFilter = pageRequest.getKategoriOperasionalFilter();
         if (kategoriOperasionalFilter != null && !kategoriOperasionalFilter.isEmpty()) {
             queryStr.append(" and kategoriOperasional = :kategoriOperasional");
             params.and("kategoriOperasional", kategoriOperasionalFilter);
         }
 
-        // Status pembayaran filter
         if (pageRequest.getStatusFilter() != null && !pageRequest.getStatusFilter().isEmpty()) {
             String[] statuses = pageRequest.getStatusFilter().split(",");
             queryStr.append(" and statusPembayaran in (:statuses)");
             params.and("statuses", java.util.Arrays.asList(statuses));
         }
 
-        // Date range filter
         if (pageRequest.getStartDate() != null && !pageRequest.getStartDate().isEmpty()) {
             LocalDateTime startDateTime = LocalDate.parse(pageRequest.getStartDate()).atStartOfDay();
             queryStr.append(" and tanggalPembelian >= :startDate");
@@ -216,21 +211,7 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
         }
 
         PanacheQuery<TbPembelianEntity> query = repository.find(queryStr.toString(), params);
-
-        // Apply sorting
-        if (pageRequest.getSortBy() != null && !pageRequest.getSortBy().isEmpty()) {
-            Sort sort = pageRequest.isDescending()
-                    ? Sort.descending(pageRequest.getSortBy())
-                    : Sort.ascending(pageRequest.getSortBy());
-            query = repository.find(queryStr.toString(), sort, params);
-        }
-
-        long totalCount = query.count();
-
-        List<TbPembelianEntity> rows = query.page(Page.of(pageRequest.getPage() - 1, pageRequest.getRowsPerPage()))
-                .list();
-
-        return new PageResponse<>(rows, pageRequest.getPage(), pageRequest.getRowsPerPage(), totalCount);
+        return PageHelper.applyPagination(query, repository, pageRequest, queryStr.toString(), params);
     }
 
     public String generateNoPembelian(String jenisPembelian) {

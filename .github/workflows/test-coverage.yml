@@ -3,7 +3,8 @@ name: Test Coverage Check
 on:
   workflow_dispatch:
   pull_request:
-    branches: [ release ]
+    branches: 
+      - feature/*
 
 jobs:
   test:
