@@ -63,3 +63,5 @@ lerna-debug.log*
 # JWT Keys
 privateKey*.pem
 *.pem
+
+app.log*

@@ -95,6 +95,7 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
             List<com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity> details = detailRepository
                     .find("id.noSpk", entity.getNoSpk()).list();
             entity.setDetails(details);
+            enrich(entity);
         }
         return entity;
     }
@@ -112,8 +113,46 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
             List<com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity> details = detailRepository
                     .find("id.noSpk", entity.getNoSpk()).list();
             entity.setDetails(details);
+            enrich(entity);
         }
         return entity;
+    }
+
+    public void enrich(SpkEnrichable target) {
+        if (target.getPelangganId() != null) {
+            com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity pelanggan =
+                    pelangganService.findById(target.getPelangganId());
+            if (pelanggan != null) {
+                target.setNamaPelanggan(pelanggan.getNamaPelanggan());
+                target.setAlamatPelanggan(pelanggan.getAlamat());
+                target.setMerkKendaraan(pelanggan.getMerk());
+                target.setJenisKendaraan(pelanggan.getJenis());
+            }
+        } else if (target.getNopol() != null) {
+            com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity pelanggan =
+                    pelangganService.findByNopol(target.getNopol());
+            if (pelanggan != null) {
+                target.setPelangganId(pelanggan.getId());
+                target.setNamaPelanggan(pelanggan.getNamaPelanggan());
+                target.setAlamatPelanggan(pelanggan.getAlamat());
+                target.setMerkKendaraan(pelanggan.getMerk());
+                target.setJenisKendaraan(pelanggan.getJenis());
+            }
+        }
+
+        if (target.getMekanikList() != null && !target.getMekanikList().isEmpty()) {
+            List<Long> ids = target.getMekanikList().stream()
+                    .map(SpkMekanik::getId).collect(Collectors.toList());
+            List<String> names = karyawanRepository.find("id in :ids", Parameters.with("ids", ids))
+                    .stream()
+                    .map(obj -> obj.getNamaKaryawan())
+                    .collect(Collectors.toList());
+            target.setNamaKaryawan(String.join(", ", names));
+        }
+
+        if (target.getKm() != null) {
+            target.setKmSaatIni(target.getKm());
+        }
     }
 
     private void saveDetails(TbSpkEntity entity) {
@@ -233,32 +272,7 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
 
 
     private void fillRequiredFields(List<TbSpkEntity> entities) {
-
-        entities
-                .stream()
-                .forEach(entity -> {
-                    if (entity.getMekanikList() != null) {
-                        List<Long> ids = entity.getMekanikList().stream().map(SpkMekanik::getId)
-                                .collect(Collectors.toList());
-
-                        List<String> names = karyawanRepository.find("id in :ids", Parameters.with("ids", ids)).stream()
-                                .map(obj -> obj.getNamaKaryawan()).collect(Collectors.toList());
-
-                        entity.setNamaKaryawan(String.join(", ", names));
-                    }
-
-                    if (entity.getNopol() != null) {
-                        Optional.ofNullable(pelangganService.findByNopol(entity.getNopol()))
-                                .ifPresent(pelanggan -> {
-                                    entity.setPelangganId(pelanggan.getId());
-                                    entity.setNamaPelanggan(pelanggan.getNamaPelanggan());
-                                    entity.setAlamatPelanggan(pelanggan.getAlamat());
-                                    entity.setMerkKendaraan(pelanggan.getMerk());
-                                    entity.setJenisKendaraan(pelanggan.getJenis());
-                                });
-                    }
-                });
-
+        entities.forEach(this::enrich);
     }
 
     public String getNextSpkNumber(String spkNumber) {
@@ -270,6 +284,14 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
                 .map(TbSpkEntity::getNoSpk)
                 .findFirst()
                 .orElse(spkNumber + "00");
+    }
+
+    public String generateNextSpkNumber(String datePrefix) {
+        String lastSpkNumber = getNextSpkNumber(datePrefix);
+        String lastQueueNumber = lastSpkNumber.substring(lastSpkNumber.length() - 2);
+        int nextQueueNumber = Integer.parseInt(lastQueueNumber) + 1;
+        return lastSpkNumber.substring(0, lastSpkNumber.length() - 2)
+                + String.format("%02d", nextQueueNumber);
     }
 
     public List<TbSpkEntity> findUnprocessedSpk() {

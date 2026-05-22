@@ -47,26 +47,10 @@ public class TbPelangganResource extends AbstractCrudResource<TbPelangganEntity,
     @PUT
     @Path("/by-nopol/{nopol}")
     public Response updateByNopol(@PathParam("nopol") String nopol, TbPelangganEntity pelangganData) {
-        TbPelangganEntity existingPelanggan = service.findByNopol(nopol);
-        if (existingPelanggan == null) {
+        TbPelangganEntity updated = service.patchByNopol(nopol, pelangganData);
+        if (updated == null) {
             return Response.ok(ApiResponse.error("Pelanggan not found for nopol: " + nopol)).build();
         }
-        
-        // Update only the allowed fields from the request
-        if (pelangganData.getNamaPelanggan() != null) {
-            existingPelanggan.setNamaPelanggan(pelangganData.getNamaPelanggan());
-        }
-        if (pelangganData.getAlamat() != null) {
-            existingPelanggan.setAlamat(pelangganData.getAlamat());
-        }
-        if (pelangganData.getMerk() != null) {
-            existingPelanggan.setMerk(pelangganData.getMerk());
-        }
-        if (pelangganData.getJenis() != null) {
-            existingPelanggan.setJenis(pelangganData.getJenis());
-        }
-        
-        TbPelangganEntity updated = service.update(existingPelanggan.getId(), existingPelanggan);
         return Response.ok(ApiResponse.success("Pelanggan updated", updated)).build();
     }
 }
