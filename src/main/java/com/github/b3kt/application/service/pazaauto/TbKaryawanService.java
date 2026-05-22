@@ -2,13 +2,11 @@ package com.github.b3kt.application.service.pazaauto;
 
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
+import com.github.b3kt.application.helper.PageHelper;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKaryawanEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawanPosisiRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawanRepository;
-import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
-import io.quarkus.panache.common.Page;
-import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -97,40 +95,16 @@ public class TbKaryawanService extends AbstractCrudService<TbKaryawanEntity, Lon
 
     @Override
     public PageResponse<TbKaryawanEntity> findPaginated(PageRequest pageRequest) {
-        PanacheQuery<TbKaryawanEntity> query;
-
+        PageResponse<TbKaryawanEntity> result;
         if (pageRequest.getSearch() != null && !pageRequest.getSearch().isEmpty()) {
-            String searchPattern = "%" + pageRequest.getSearch().toLowerCase() + "%";
-            query = repository.find(
+            result = PageHelper.paginate(repository, pageRequest,
                     "lower(namaKaryawan) like ?1 or lower(email) like ?1",
-                    searchPattern);
+                    "%" + pageRequest.getSearch().toLowerCase() + "%");
         } else {
-            query = repository.findAll();
+            result = PageHelper.findAll(repository, pageRequest);
         }
-
-        if (pageRequest.getSortBy() != null && !pageRequest.getSortBy().isEmpty()) {
-            Sort sort = pageRequest.isDescending()
-                    ? Sort.descending(pageRequest.getSortBy())
-                    : Sort.ascending(pageRequest.getSortBy());
-            query = query.page(Page.of(0, Integer.MAX_VALUE));
-
-            if (pageRequest.getSearch() != null && !pageRequest.getSearch().isEmpty()) {
-                String searchPattern = "%" + pageRequest.getSearch().toLowerCase() + "%";
-                query = repository.find(
-                        "lower(namaKaryawan) like ?1 or lower(email) like ?1",
-                        sort,
-                        searchPattern);
-            } else {
-                query = repository.findAll(sort);
-            }
-        }
-
-        long totalCount = query.count();
-        List<TbKaryawanEntity> rows = query.page(Page.of(pageRequest.getPage() - 1, pageRequest.getRowsPerPage()))
-                .list();
-        rows.forEach(this::setRelationships);
-
-        return new PageResponse<>(rows, pageRequest.getPage(), pageRequest.getRowsPerPage(), totalCount);
+        result.getRows().forEach(this::setRelationships);
+        return result;
     }
 
     public List<TbKaryawanEntity> findAllUnregistered() {

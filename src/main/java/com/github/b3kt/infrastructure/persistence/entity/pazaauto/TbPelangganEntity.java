@@ -1,5 +1,6 @@
 package com.github.b3kt.infrastructure.persistence.entity.pazaauto;
 
+import com.github.b3kt.domain.model.pazaauto.Pelanggan;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -62,4 +63,46 @@ public class TbPelangganEntity extends BaseEntity {
 
     @Column(name = "tanggal_join")
     private LocalDate tanggalJoin;
+
+    public Pelanggan toDomain() {
+        Pelanggan p = new Pelanggan();
+        p.setId(this.id);
+        p.setNopol(this.nopol);
+        p.setNamaPelanggan(this.namaPelanggan);
+        p.setAlamat(this.alamat);
+        p.setContactPerson(this.contactPerson);
+        p.setTelepon(this.telepon);
+        p.setMerk(this.merk);
+        p.setJenis(this.jenis);
+        p.setEmail(this.email);
+        p.setJenisKelamin(this.jenisKelamin);
+        p.setKeterangan(this.keterangan);
+        p.setKodePos(this.kodePos);
+        p.setKota(this.kota);
+        p.setNoHp(this.noHp);
+        p.setNoTelepon(this.noTelepon);
+        p.setTanggalJoin(this.tanggalJoin);
+        return p;
+    }
+
+    public static TbPelangganEntity fromDomain(Pelanggan p) {
+        TbPelangganEntity e = new TbPelangganEntity();
+        e.setId(p.getId());
+        e.setNopol(p.getNopol());
+        e.setNamaPelanggan(p.getNamaPelanggan());
+        e.setAlamat(p.getAlamat());
+        e.setContactPerson(p.getContactPerson());
+        e.setTelepon(p.getTelepon());
+        e.setMerk(p.getMerk());
+        e.setJenis(p.getJenis());
+        e.setEmail(p.getEmail());
+        e.setJenisKelamin(p.getJenisKelamin());
+        e.setKeterangan(p.getKeterangan());
+        e.setKodePos(p.getKodePos());
+        e.setKota(p.getKota());
+        e.setNoHp(p.getNoHp());
+        e.setNoTelepon(p.getNoTelepon());
+        e.setTanggalJoin(p.getTanggalJoin());
+        return e;
+    }
 }
