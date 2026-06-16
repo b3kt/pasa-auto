@@ -64,4 +64,6 @@ lerna-debug.log*
 privateKey*.pem
 *.pem
 
-app.log*
+# ai
+.codegraph/*
+.cursor/*
