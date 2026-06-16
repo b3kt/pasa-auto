@@ -23,6 +23,7 @@ public class QueryFilterBuilder {
                 searchClause.append(" or lower(").append(additionalFields[i]).append(") like ?").append(paramIndex);
             }
             searchClause.append(")");
+            queryString.append(searchClause);
             
             addParam(searchPattern);
         }
