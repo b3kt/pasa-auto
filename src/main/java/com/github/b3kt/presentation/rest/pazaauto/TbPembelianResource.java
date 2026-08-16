@@ -3,11 +3,14 @@ package com.github.b3kt.presentation.rest.pazaauto;
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
-import com.github.b3kt.application.service.pazaauto.AbstractCrudService;
+import com.github.b3kt.application.dto.PembelianWithDetailsRequest;
+import com.github.b3kt.application.dto.pazaauto.PembelianDto;
+import com.github.b3kt.application.mapper.pazaauto.PembelianMapper;
 import com.github.b3kt.application.service.pazaauto.TbPembelianDetailService;
 import com.github.b3kt.application.service.pazaauto.TbPembelianService;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPembelianEntity;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
@@ -19,7 +22,6 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.RequiredArgsConstructor;
 
 import java.util.Optional;
 
@@ -27,25 +29,27 @@ import java.util.Optional;
 @Path("/api/pazaauto/pembelian")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@RequiredArgsConstructor
-public class TbPembelianResource extends AbstractCrudResource<TbPembelianEntity, Long> {
+public class TbPembelianResource {
 
-    private final TbPembelianService service;
-    private final TbPembelianDetailService tbPembelianDetailService;
+    @Inject
+    TbPembelianService service;
 
-    @Override
-    protected AbstractCrudService<TbPembelianEntity, Long> getService() {
-        return service;
-    }
+    @Inject
+    TbPembelianDetailService tbPembelianDetailService;
 
-    @Override
-    protected Long parseId(String id) {
-        return Long.parseLong(id);
-    }
+    @Inject
+    PembelianMapper pembelianMapper;
 
-    @Override
-    protected String getEntityName() {
-        return "Pembelian";
+    @GET
+    @Path("/{id}")
+    public Response getById(@PathParam("id") String id) {
+        TbPembelianEntity entity = service.findById(Long.valueOf(id));
+        if (entity == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("Pembelian not found"))
+                    .build();
+        }
+        return Response.ok(ApiResponse.success(pembelianMapper.toDto(entity))).build();
     }
 
     @GET
@@ -74,12 +78,17 @@ public class TbPembelianResource extends AbstractCrudResource<TbPembelianEntity,
         pageRequest.setStartDate(startDate);
         pageRequest.setEndDate(endDate);
 
-        PageResponse<TbPembelianEntity> pageResponse = getService().findPaginated(pageRequest);
-        return Response.ok(ApiResponse.success(pageResponse)).build();
+        PageResponse<TbPembelianEntity> pageResponse = service.findPaginated(pageRequest);
+        return Response.ok(ApiResponse.success(
+                new PageResponse<>(
+                        pembelianMapper.toDtoList(pageResponse.getRows()),
+                        pageResponse.getCurrentPage(),
+                        pageResponse.getRowsPerPage(),
+                        pageResponse.getTotalRows()))).build();
     }
 
     @GET
-    @Path("/{noPembelian}")
+    @Path("/by-no/{noPembelian}")
     public Response getByNoPembelian(@PathParam("noPembelian") String noPembelian) {
         try {
             TbPembelianEntity entity = service.findByNoPembelian(noPembelian);
@@ -92,7 +101,7 @@ public class TbPembelianResource extends AbstractCrudResource<TbPembelianEntity,
             Optional.ofNullable(tbPembelianDetailService.findByPembelianId(entity.getId()))
                             .ifPresent(entity::setDetails);
 
-            return Response.ok(ApiResponse.success(entity)).build();
+            return Response.ok(ApiResponse.success(pembelianMapper.toDto(entity))).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to fetch pembelian: " + e.getMessage()))
@@ -100,37 +109,40 @@ public class TbPembelianResource extends AbstractCrudResource<TbPembelianEntity,
         }
     }
 
-    @Override
     @POST
-    public Response create(TbPembelianEntity entity) {
-        // This won't be used, but kept for compatibility
+    public Response create(PembelianDto dto) {
+        TbPembelianEntity entity = pembelianMapper.toEntity(dto);
         TbPembelianEntity created = service.create(entity);
-        return Response.ok(ApiResponse.success(getEntityName() + " created", created)).build();
+        return Response.ok(ApiResponse.success("Pembelian created", pembelianMapper.toDto(created))).build();
     }
 
     @POST
     @Path("/with-details")
-    public Response createWithDetails(com.github.b3kt.application.dto.PembelianWithDetailsRequest request) {
+    public Response createWithDetails(PembelianWithDetailsRequest request) {
         TbPembelianEntity created = service.createWithDetails(request.getPembelian(), request.getDetails());
-        return Response.ok(ApiResponse.success(getEntityName() + " created with details", created)).build();
+        return Response.ok(ApiResponse.success("Pembelian created with details", pembelianMapper.toDto(created))).build();
     }
 
-    @Override
     @PUT
     @Path("/{id}")
-    public Response update(@PathParam("id") String id, TbPembelianEntity entity) {
-        // This won't be used, but kept for compatibility
-        TbPembelianEntity updated = service.update(parseId(id), entity);
-        return Response.ok(ApiResponse.success(getEntityName() + " updated", updated)).build();
+    public Response update(@PathParam("id") String id, PembelianDto dto) {
+        TbPembelianEntity entity = pembelianMapper.toEntity(dto);
+        TbPembelianEntity updated = service.update(Long.valueOf(id), entity);
+        if (updated == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("Pembelian not found"))
+                    .build();
+        }
+        return Response.ok(ApiResponse.success("Pembelian updated", pembelianMapper.toDto(updated))).build();
     }
 
     @PUT
     @Path("/{id}/with-details")
     public Response updateWithDetails(@PathParam("id") String id,
-            com.github.b3kt.application.dto.PembelianWithDetailsRequest request) {
-        TbPembelianEntity updated = service.updateWithDetails(parseId(id), request.getPembelian(),
+            PembelianWithDetailsRequest request) {
+        TbPembelianEntity updated = service.updateWithDetails(Long.valueOf(id), request.getPembelian(),
                 request.getDetails());
-        return Response.ok(ApiResponse.success(getEntityName() + " updated with details", updated)).build();
+        return Response.ok(ApiResponse.success("Pembelian updated with details", pembelianMapper.toDto(updated))).build();
     }
 
     @GET
@@ -155,5 +167,12 @@ public class TbPembelianResource extends AbstractCrudResource<TbPembelianEntity,
              return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                      .entity(ApiResponse.error("Failed to generate no pembelian: " + e.getMessage())).build();
          }
+    }
+
+    @jakarta.ws.rs.DELETE
+    @Path("/{id}")
+    public Response delete(@PathParam("id") String id) {
+        service.delete(Long.valueOf(id));
+        return Response.ok(ApiResponse.success("Pembelian deleted")).build();
     }
 }

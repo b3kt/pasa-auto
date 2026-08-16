@@ -4,59 +4,50 @@ import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto;
-import com.github.b3kt.application.service.pazaauto.AbstractCrudService;
+import com.github.b3kt.application.dto.pazaauto.SpkDto;
+import com.github.b3kt.application.mapper.pazaauto.SpkMapper;
 import com.github.b3kt.application.service.pazaauto.TbSpkService;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @RequestScoped
 @Path("/api/pazaauto/rekap-penjualan")
-@RequiredArgsConstructor
-public class TbRekapPenjualanResource extends AbstractCrudResource<TbSpkEntity, Long> {
+public class TbRekapPenjualanResource {
 
-    final TbSpkService service;
+    @Inject
+    TbSpkService service;
 
-    @Override
-    protected AbstractCrudService<TbSpkEntity, Long> getService() {
-        return service;
-    }
-
-    @Override
-    protected Long parseId(String id) {
-        return Long.valueOf(id);
-    }
-
-    @Override
-    protected String getEntityName() {
-        return "SPK";
-    }
+    @Inject
+    SpkMapper spkMapper;
 
     @GET
     @Path("/by-no-spk/{noSpk}")
     public Response findByNoSpk(@PathParam("noSpk") String noSpk) {
-        return Response.ok(ApiResponse.success(service.findByNoSpk(noSpk))).build();
+        TbSpkEntity entity = service.findByNoSpk(noSpk);
+        if (entity == null) {
+            return Response.ok(ApiResponse.error("SPK not found")).build();
+        }
+        return Response.ok(ApiResponse.success(spkMapper.toDto(entity))).build();
     }
 
     @GET
     @Path("/unprocessed")
     public Response getUnprocessedSpk() {
-        return Response.ok(ApiResponse.success(service.findUnprocessedSpk())).build();
+        return Response.ok(ApiResponse.success(spkMapper.toDtoList(service.findUnprocessedSpk()))).build();
     }
 
-    @Override
     @GET
     @Path("/{id}")
     public Response getById(@PathParam("id") String id) {
-        RekapPenjualanDto entity = service.findByIdWithPenjualan(parseId(id));
+        RekapPenjualanDto entity = service.findByIdWithPenjualan(Long.valueOf(id));
         return Response.ok(ApiResponse.success(entity)).build();
     }
 
-    @Override
     @GET
     @Path("/paginated")
     public Response listPaginated(
@@ -86,31 +77,17 @@ public class TbRekapPenjualanResource extends AbstractCrudResource<TbSpkEntity, 
     @GET
     @Path("/get-next-spk-number")
     public Response getNextSpk() {
-        String nextSpkNumber = service.generateNextSpkNumber(SPK_DATE_FORMATTER.format(LocalDateTime.now()));
+        String nextSpkNumber = service.generateNextSpkNumber(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd").format(LocalDateTime.now()));
         return Response.ok(ApiResponse.success(nextSpkNumber)).build();
     }
 
-    @POST
-    @Override
-    public Response create(TbSpkEntity entity) {
-        return Response.notModified().build();
-    }
-
-    @Override
-    @PUT
-    @Path("/{id}")
-    public Response update(@PathParam("id") String id, TbSpkEntity entity) {
-        return Response.notModified().build();
-    }
-
-    @Override
-    @DELETE
+    @jakarta.ws.rs.DELETE
     @Path("/{id}")
     public Response delete(@PathParam("id") String id) {
-        TbSpkEntity cancelled = service.cancelSpk(parseId(id));
+        TbSpkEntity cancelled = service.cancelSpk(Long.valueOf(id));
         if (cancelled == null) {
-            return Response.ok(ApiResponse.error(getEntityName() + " not found")).build();
+            return Response.ok(ApiResponse.error("SPK not found")).build();
         }
-        return Response.ok(ApiResponse.success(getEntityName() + " cancelled", cancelled)).build();
+        return Response.ok(ApiResponse.success("SPK cancelled", spkMapper.toDto(cancelled))).build();
     }
 }

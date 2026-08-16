@@ -3,7 +3,8 @@ package com.github.b3kt.presentation.rest.pazaauto;
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
-import com.github.b3kt.application.service.pazaauto.AbstractCrudService;
+import com.github.b3kt.application.dto.pazaauto.AbsensiDto;
+import com.github.b3kt.application.mapper.pazaauto.AbsensiMapper;
 import com.github.b3kt.application.service.pazaauto.TbAbsensiService;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbAbsensiEntity;
 import jakarta.enterprise.context.RequestScoped;
@@ -19,25 +20,13 @@ import java.util.Map;
 @Path("/api/pazaauto/absensi")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public class TbAbsensiResource extends AbstractCrudResource<TbAbsensiEntity, Long> {
+public class TbAbsensiResource {
 
     @Inject
     TbAbsensiService service;
 
-    @Override
-    protected AbstractCrudService<TbAbsensiEntity, Long> getService() {
-        return service;
-    }
-
-    @Override
-    protected Long parseId(String id) {
-        return Long.parseLong(id);
-    }
-
-    @Override
-    protected String getEntityName() {
-        return "Absensi";
-    }
+    @Inject
+    AbsensiMapper absensiMapper;
 
     /**
      * Clock in endpoint
@@ -45,17 +34,14 @@ public class TbAbsensiResource extends AbstractCrudResource<TbAbsensiEntity, Lon
     @POST
     @Path("/clock-in")
     public Response clockIn(
-            Map<String, Object> payload,
+            AbsensiDto dto,
             @HeaderParam("X-Forwarded-For") String xForwardedFor,
             @HeaderParam("X-Real-IP") String xRealIp) {
         try {
-            Long karyawanId = Long.parseLong(payload.get("karyawanId").toString());
-            String location = (String) payload.get("location");
-            String deviceInfo = (String) payload.get("deviceInfo");
             String ipAddress = getClientIpAddress(xForwardedFor, xRealIp);
-
-            TbAbsensiEntity result = service.clockIn(karyawanId, ipAddress, deviceInfo, location);
-            return Response.ok(ApiResponse.success("Clock-in successful", result)).build();
+            TbAbsensiEntity entity = absensiMapper.toEntity(dto);
+            TbAbsensiEntity result = service.clockIn(entity.getKaryawanId(), ipAddress, entity.getDeviceInfo(), entity.getLokasiMasuk());
+            return Response.ok(ApiResponse.success("Clock-in successful", absensiMapper.toDto(result))).build();
         } catch (IllegalStateException | SecurityException e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error(e.getMessage()))
@@ -73,16 +59,14 @@ public class TbAbsensiResource extends AbstractCrudResource<TbAbsensiEntity, Lon
     @POST
     @Path("/clock-out")
     public Response clockOut(
-            Map<String, Object> payload,
+            AbsensiDto dto,
             @HeaderParam("X-Forwarded-For") String xForwardedFor,
             @HeaderParam("X-Real-IP") String xRealIp) {
         try {
-            Long karyawanId = Long.parseLong(payload.get("karyawanId").toString());
-            String location = (String) payload.get("location");
             String ipAddress = getClientIpAddress(xForwardedFor, xRealIp);
-
-            TbAbsensiEntity result = service.clockOut(karyawanId, ipAddress, location);
-            return Response.ok(ApiResponse.success("Clock-out successful", result)).build();
+            TbAbsensiEntity entity = absensiMapper.toEntity(dto);
+            TbAbsensiEntity result = service.clockOut(entity.getKaryawanId(), ipAddress, entity.getLokasiKeluar());
+            return Response.ok(ApiResponse.success("Clock-out successful", absensiMapper.toDto(result))).build();
         } catch (IllegalStateException | SecurityException e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error(e.getMessage()))
@@ -94,6 +78,49 @@ public class TbAbsensiResource extends AbstractCrudResource<TbAbsensiEntity, Lon
         }
     }
 
+    @GET
+    @Path("/{id}")
+    public Response getById(@PathParam("id") String id) {
+        TbAbsensiEntity entity = service.findById(Long.valueOf(id));
+        if (entity == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("Absensi not found"))
+                    .build();
+        }
+        return Response.ok(ApiResponse.success(absensiMapper.toDto(entity))).build();
+    }
+
+    @GET
+    @Path("/paginated")
+    public Response listPaginated(
+            @QueryParam("page") @DefaultValue("1") int page,
+            @QueryParam("rowsPerPage") @DefaultValue("10") int rowsPerPage,
+            @QueryParam("sortBy") String sortBy,
+            @QueryParam("descending") @DefaultValue("false") boolean descending,
+            @QueryParam("search") String search,
+            @QueryParam("statusFilter") String statusFilter,
+            @QueryParam("filterToday") @DefaultValue("false") boolean filterToday,
+            @QueryParam("startDate") String startDate,
+            @QueryParam("endDate") String endDate) {
+
+        PageRequest pageRequest = new PageRequest(page, rowsPerPage);
+        pageRequest.setSortBy(sortBy);
+        pageRequest.setDescending(descending);
+        pageRequest.setSearch(search);
+        pageRequest.setStatusFilter(statusFilter);
+        pageRequest.setFilterToday(filterToday);
+        pageRequest.setStartDate(startDate);
+        pageRequest.setEndDate(endDate);
+
+        PageResponse<TbAbsensiEntity> pageResponse = service.findPaginated(pageRequest);
+        return Response.ok(ApiResponse.success(
+                new PageResponse<>(
+                        absensiMapper.toDtoList(pageResponse.getRows()),
+                        pageResponse.getCurrentPage(),
+                        pageResponse.getRowsPerPage(),
+                        pageResponse.getTotalRows()))).build();
+    }
+
     /**
      * Get today's attendance
      */
@@ -102,7 +129,12 @@ public class TbAbsensiResource extends AbstractCrudResource<TbAbsensiEntity, Lon
     public Response getTodayAttendance(@PathParam("karyawanId") Long karyawanId) {
         try {
             TbAbsensiEntity result = service.getTodayAttendance(karyawanId);
-            return Response.ok(ApiResponse.success("Today's attendance retrieved", result)).build();
+            if (result == null) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(ApiResponse.error("No attendance found for today"))
+                        .build();
+            }
+            return Response.ok(ApiResponse.success("Today's attendance retrieved", absensiMapper.toDto(result))).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to get today's attendance: " + e.getMessage()))
@@ -125,9 +157,7 @@ public class TbAbsensiResource extends AbstractCrudResource<TbAbsensiEntity, Lon
             @QueryParam("sortBy") String sortBy,
             @QueryParam("descending") @DefaultValue("true") boolean descending) {
         try {
-            PageRequest pageRequest = new PageRequest();
-            pageRequest.setPage(page);
-            pageRequest.setRowsPerPage(rowsPerPage);
+            PageRequest pageRequest = new PageRequest(page, rowsPerPage);
             pageRequest.setSortBy(sortBy);
             pageRequest.setDescending(descending);
 
@@ -136,7 +166,12 @@ public class TbAbsensiResource extends AbstractCrudResource<TbAbsensiEntity, Lon
 
             PageResponse<TbAbsensiEntity> result = service.getAttendanceHistory(
                     karyawanId, start, end, status, pageRequest);
-            return Response.ok(ApiResponse.success("Attendance history retrieved", result)).build();
+            return Response.ok(ApiResponse.success("Attendance history retrieved",
+                    new PageResponse<>(
+                            absensiMapper.toDtoList(result.getRows()),
+                            result.getCurrentPage(),
+                            result.getRowsPerPage(),
+                            result.getTotalRows()))).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to get attendance history: " + e.getMessage()))
@@ -168,20 +203,23 @@ public class TbAbsensiResource extends AbstractCrudResource<TbAbsensiEntity, Lon
      */
     @POST
     @Path("/mark-absence")
-    public Response markAbsence(Map<String, Object> payload) {
+    public Response markAbsence(AbsensiDto dto) {
         try {
-            Long karyawanId = Long.parseLong(payload.get("karyawanId").toString());
-            LocalDate tanggal = LocalDate.parse((String) payload.get("tanggal"));
-            String status = (String) payload.get("status");
-            String keterangan = (String) payload.get("keterangan");
-
-            TbAbsensiEntity result = service.markAbsence(karyawanId, tanggal, status, keterangan);
-            return Response.ok(ApiResponse.success("Absence marked successfully", result)).build();
+            TbAbsensiEntity entity = absensiMapper.toEntity(dto);
+            TbAbsensiEntity result = service.markAbsence(entity.getKaryawanId(), entity.getTanggal(), entity.getStatus(), entity.getKeterangan());
+            return Response.ok(ApiResponse.success("Absence marked successfully", absensiMapper.toDto(result))).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to mark absence: " + e.getMessage()))
                     .build();
         }
+    }
+
+    @jakarta.ws.rs.DELETE
+    @Path("/{id}")
+    public Response delete(@PathParam("id") String id) {
+        service.delete(Long.valueOf(id));
+        return Response.ok(ApiResponse.success("Absensi deleted")).build();
     }
 
     /**

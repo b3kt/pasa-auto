@@ -3,45 +3,31 @@ package com.github.b3kt.application.service.pazaauto;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto;
-import com.github.b3kt.application.helper.QueryFilterBuilder;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
-import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
-import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbBarangRepository;
-import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbJasaRepository;
-import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawanRepository;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkDetailRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkRepository;
-import io.quarkus.hibernate.orm.panache.PanacheQuery;
-import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
-import io.quarkus.panache.common.Page;
-import io.quarkus.panache.common.Parameters;
-import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
-import jakarta.persistence.TypedQuery;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 @ApplicationScoped
 @RequiredArgsConstructor
 public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
 
     private final TbSpkRepository repository;
-    private final TbKaryawanRepository karyawanRepository;
-    private final TbPelangganService pelangganService;
     private final TbSpkDetailRepository detailRepository;
-    private final TbBarangRepository barangRepository;
-    private final TbJasaRepository jasaRepository;
-    private final EntityManager entityManager;
+    private final SpkDetailService spkDetailService;
+    private final SpkEnrichmentService enrichmentService;
+    private final SpkReportService reportService;
+    private final SpkNumberService numberService;
 
     @Override
-    protected PanacheRepositoryBase<TbSpkEntity, Long> getRepository() {
+    protected TbSpkRepository getRepository() {
         return repository;
     }
 
@@ -51,7 +37,7 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
     }
 
     @Override
-    @jakarta.transaction.Transactional
+    @Transactional
     public TbSpkEntity create(TbSpkEntity entity) {
         // Persist SPK first to get ID/NoSPK if needed (though NoSPK seems
         if (entity.getNoAntrian() == null) {
@@ -63,18 +49,18 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
         super.create(entity);
 
         // Save details
-        saveDetails(entity);
+        spkDetailService.saveDetails(entity);
 
         return entity;
     }
 
     @Override
-    @jakarta.transaction.Transactional
+    @Transactional
     public TbSpkEntity update(Long id, TbSpkEntity entity) {
         TbSpkEntity updated = super.update(id, entity);
 
         // Delete existing details
-        detailRepository.delete("id.noSpk", updated.getNoSpk());
+        spkDetailService.deleteDetailsByNoSpk(updated.getNoSpk());
 
         // update status
         if (entity.isStartProcess()) {
@@ -83,7 +69,7 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
         }
 
         // Save new details
-        saveDetails(entity);
+        spkDetailService.saveDetails(entity);
 
         return updated;
     }
@@ -92,229 +78,49 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
     public TbSpkEntity findById(Long id) {
         TbSpkEntity entity = super.findById(id);
         if (entity != null) {
-            List<com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity> details = detailRepository
-                    .find("id.noSpk", entity.getNoSpk()).list();
+            List<TbSpkDetailEntity> details = spkDetailService.findByNoSpk(entity.getNoSpk());
             entity.setDetails(details);
-            enrich(entity);
+            enrichmentService.enrich(entity);
         }
         return entity;
     }
 
     public RekapPenjualanDto findByIdWithPenjualan(Long id) {
-        String queryString = "SELECT new com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto(s, p) " +
-                " FROM com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity s " +
-                " LEFT JOIN com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity p " +
-                "   ON s.noSpk = p.noSpk " +
-                " WHERE s.id = ?1 ";
-        Query query = entityManager.createQuery(queryString)
-                .setParameter(1, id);
-        RekapPenjualanDto entity = (RekapPenjualanDto) query.getSingleResult();
-        if (entity != null) {
-            List<com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity> details = detailRepository
-                    .find("id.noSpk", entity.getNoSpk()).list();
-            entity.setDetails(details);
-            enrich(entity);
-        }
-        return entity;
-    }
-
-    public void enrich(SpkEnrichable target) {
-        if (target.getPelangganId() != null) {
-            com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity pelanggan =
-                    pelangganService.findById(target.getPelangganId());
-            if (pelanggan != null) {
-                target.setNamaPelanggan(pelanggan.getNamaPelanggan());
-                target.setAlamatPelanggan(pelanggan.getAlamat());
-                target.setMerkKendaraan(pelanggan.getMerk());
-                target.setJenisKendaraan(pelanggan.getJenis());
-            }
-        } else if (target.getNopol() != null) {
-            com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity pelanggan =
-                    pelangganService.findByNopol(target.getNopol());
-            if (pelanggan != null) {
-                target.setPelangganId(pelanggan.getId());
-                target.setNamaPelanggan(pelanggan.getNamaPelanggan());
-                target.setAlamatPelanggan(pelanggan.getAlamat());
-                target.setMerkKendaraan(pelanggan.getMerk());
-                target.setJenisKendaraan(pelanggan.getJenis());
-            }
-        }
-
-        if (target.getMekanikList() != null && !target.getMekanikList().isEmpty()) {
-            List<Long> ids = target.getMekanikList().stream()
-                    .map(SpkMekanik::getId).collect(Collectors.toList());
-            List<String> names = karyawanRepository.find("id in :ids", Parameters.with("ids", ids))
-                    .stream()
-                    .map(obj -> obj.getNamaKaryawan())
-                    .collect(Collectors.toList());
-            target.setNamaKaryawan(String.join(", ", names));
-        }
-
-        if (target.getKm() != null) {
-            target.setKmSaatIni(target.getKm());
-        }
-    }
-
-    private void saveDetails(TbSpkEntity entity) {
-        if (entity.getDetails() != null) {
-            for (com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity detail : entity
-                    .getDetails()) {
-                if (detail.getId() == null) {
-                    detail.setId(new com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailId());
-                }
-                detail.getId().setNoSpk(entity.getNoSpk());
-
-                // Ensure hargaMaster is populated from master data if not set
-                if (detail.getHargaMaster() == null) {
-                    if (detail.getSparepartId() != null) {
-                        barangRepository.findByIdOptional(detail.getSparepartId())
-                            .ifPresent(barang -> detail.setHargaMaster(barang.getHargaJual()));
-                    } else if (detail.getJasaId() != null) {
-                        jasaRepository.findByIdOptional(detail.getJasaId())
-                            .ifPresent(jasa -> detail.setHargaMaster(
-                                jasa.getHargaJasa() != null ? java.math.BigDecimal.valueOf(jasa.getHargaJasa()) : null));
-                    }
-                }
-                // If no custom price set, harga equals hargaMaster
-                if (detail.getHarga() == null && detail.getHargaMaster() != null) {
-                    detail.setHarga(detail.getHargaMaster());
-                }
-
-                detailRepository.persist(detail);
-            }
-        }
+        return reportService.findByIdWithPenjualan(id);
     }
 
     @Override
     public PageResponse<TbSpkEntity> findPaginated(PageRequest pageRequest) {
-        QueryFilterBuilder filterBuilder = QueryFilterBuilder.create()
-                .withSearch(pageRequest.getSearch())
-                .withStatusFilter(pageRequest.getStatusFilter(), "statusSpk")
-                .withDateRange(pageRequest.getStartDate(), pageRequest.getEndDate(), "tanggalJamSpk");
-
-        String queryString = filterBuilder.getQueryString();
-        Object[] params = filterBuilder.getParams();
-
-        PanacheQuery<TbSpkEntity> query;
-        if (params.length > 0) {
-            query = repository.find(queryString, params);
-        } else {
-            query = repository.find(queryString);
-        }
-
-        if (pageRequest.getSortBy() != null && !pageRequest.getSortBy().isEmpty()) {
-            Sort sort = pageRequest.isDescending()
-                    ? Sort.descending(pageRequest.getSortBy())
-                    : Sort.ascending(pageRequest.getSortBy());
-            query = repository.find(queryString, sort, params);
-        }
-
-        long totalCount = query.count();
-        List<TbSpkEntity> rows = query.page(Page.of(pageRequest.getPage() - 1, pageRequest.getRowsPerPage())).list();
-        fillRequiredFields(rows);
-
-        return new PageResponse<>(rows, pageRequest.getPage(), pageRequest.getRowsPerPage(), totalCount);
+        return reportService.findPaginated(pageRequest);
     }
 
     public PageResponse<RekapPenjualanDto> findPaginatedWithPenjualan(PageRequest pageRequest) {
-        String baseQuery = "SELECT new com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto(s, p) " +
-                " FROM com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity s " +
-                " LEFT JOIN com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity p " +
-                "   ON s.noSpk = p.noSpk " +
-                " WHERE 1=1";
-        String countQuery = "SELECT COUNT(s) FROM com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity s " +
-                " LEFT JOIN com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity p " +
-                "   ON s.noSpk = p.noSpk WHERE 1=1";
-
-        QueryFilterBuilder filterBuilder = QueryFilterBuilder.create()
-                .withSearch(pageRequest.getSearch())
-                .withStatusFilter(pageRequest.getStatusFilter(), "statusSpk")
-                .withDateRange(pageRequest.getStartDate(), pageRequest.getEndDate(), "tanggalJamSpk");
-
-        String filterClause = filterBuilder.getQueryString().replace("1=1", "");
-        baseQuery += filterClause;
-        countQuery += filterClause;
-
-        Object[] params = filterBuilder.getParams();
-        TypedQuery<RekapPenjualanDto> query = entityManager.createQuery(baseQuery, RekapPenjualanDto.class);
-        Query countQ = entityManager.createQuery(countQuery);
-
-        for (int i = 0; i < params.length; i++) {
-            query.setParameter(i + 1, params[i]);
-            countQ.setParameter(i + 1, params[i]);
-        }
-
-        if (pageRequest.getSortBy() != null && !pageRequest.getSortBy().isEmpty()) {
-            String sortDirection = pageRequest.isDescending() ? "desc" : "asc";
-            String sortField = pageRequest.getSortBy();
-            
-            // Handle special case for grandTotal which comes from TbPenjualanEntity
-            if ("grandTotal".equals(sortField)) {
-                baseQuery += " order by p." + sortField + " " + sortDirection;
-            } else {
-                baseQuery += " order by s." + sortField + " " + sortDirection;
-            }
-            
-            query = entityManager.createQuery(baseQuery, RekapPenjualanDto.class);
-            for (int i = 0; i < params.length; i++) {
-                query.setParameter(i + 1, params[i]);
-            }
-        }
-
-        long totalCount = (Long) countQ.getSingleResult();
-        int firstResult = (pageRequest.getPage() - 1) * pageRequest.getRowsPerPage();
-        query.setFirstResult(firstResult);
-        query.setMaxResults(pageRequest.getRowsPerPage());
-        List<RekapPenjualanDto> rows = query.getResultList();
-
-        return new PageResponse<>(rows, pageRequest.getPage(), pageRequest.getRowsPerPage(), totalCount);
-    }
-
-
-    private void fillRequiredFields(List<TbSpkEntity> entities) {
-        entities.forEach(this::enrich);
-    }
-
-    public String getNextSpkNumber(String spkNumber) {
-        final String spkPattern = spkNumber + "%";
-        return repository
-                .find("where noSpk LIKE :spkPattern order by id desc", Parameters.with("spkPattern", spkPattern))
-                .list()
-                .stream()
-                .map(TbSpkEntity::getNoSpk)
-                .findFirst()
-                .orElse(spkNumber + "00");
-    }
-
-    public String generateNextSpkNumber(String datePrefix) {
-        String lastSpkNumber = getNextSpkNumber(datePrefix);
-        String lastQueueNumber = lastSpkNumber.substring(lastSpkNumber.length() - 2);
-        int nextQueueNumber = Integer.parseInt(lastQueueNumber) + 1;
-        return lastSpkNumber.substring(0, lastSpkNumber.length() - 2)
-                + String.format("%02d", nextQueueNumber);
+        return reportService.findPaginatedWithPenjualan(pageRequest);
     }
 
     public List<TbSpkEntity> findUnprocessedSpk() {
-        List<TbSpkEntity> list = repository.find("statusSpk in ('PROSES', 'SELESAI') and noSpk not in (select noSpk from TbPenjualanEntity where noSpk is not null)").list();
-        fillRequiredFields(list);
-        return list;
+        return reportService.findUnprocessedSpk();
     }
 
     public TbSpkEntity findByNoSpk(String noSpk) {
-        TbSpkEntity entity = repository.find("noSpk", noSpk).firstResult();
-        if (entity != null) {
-            fillRequiredFields(List.of(entity));
-        }
-        return entity;
+        return reportService.findByNoSpk(noSpk);
     }
 
-    @jakarta.transaction.Transactional
+    public String getNextSpkNumber(String spkNumber) {
+        return numberService.getNextSpkNumber(spkNumber);
+    }
+
+    public String generateNextSpkNumber(String datePrefix) {
+        return numberService.generateNextSpkNumber(datePrefix);
+    }
+
+    @Transactional
     public void deleteByNoSpk(String noSpk) {
-        detailRepository.delete("id.noSpk", noSpk);
+        spkDetailService.deleteDetailsByNoSpk(noSpk);
         repository.delete("noSpk", noSpk);
     }
 
-    @jakarta.transaction.Transactional
+    @Transactional
     public TbSpkEntity cancelSpk(Long id) {
         TbSpkEntity entity = repository.findById(id);
         if (entity != null) {
