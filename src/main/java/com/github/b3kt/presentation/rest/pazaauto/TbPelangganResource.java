@@ -7,7 +7,9 @@ import com.github.b3kt.application.service.pazaauto.TbPelangganService;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -78,7 +80,7 @@ public class TbPelangganResource {
 
     @PUT
     @Path("/by-nopol/{nopol}")
-    public Response updateByNopol(@PathParam("nopol") String nopol, PelangganDto pelangganData) {
+    public Response updateByNopol(@PathParam("nopol") String nopol, @Valid PelangganDto pelangganData) {
         TbPelangganEntity entity = pelangganMapper.toEntity(pelangganData);
         TbPelangganEntity updated = service.patchByNopol(nopol, entity);
         if (updated == null) {
@@ -88,7 +90,7 @@ public class TbPelangganResource {
     }
 
     @POST
-    public Response create(PelangganDto dto) {
+    public Response create(@Valid PelangganDto dto) {
         TbPelangganEntity entity = pelangganMapper.toEntity(dto);
         TbPelangganEntity created = service.create(entity);
         return Response.ok(ApiResponse.success("Pelanggan created", pelangganMapper.toDto(created))).build();
@@ -96,7 +98,7 @@ public class TbPelangganResource {
 
     @PUT
     @Path("/{id}")
-    public Response update(@PathParam("id") String id, PelangganDto dto) {
+    public Response update(@PathParam("id") String id, @Valid PelangganDto dto) {
         TbPelangganEntity entity = pelangganMapper.toEntity(dto);
         TbPelangganEntity updated = service.update(Long.valueOf(id), entity);
         if (updated == null) {

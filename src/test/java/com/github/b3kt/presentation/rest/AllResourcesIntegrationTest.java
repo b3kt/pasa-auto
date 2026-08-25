@@ -1263,13 +1263,11 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
         given().when().get("/api/pazaauto/spk/1").then().statusCode(200);
 
         // create
-        doNothing().when(tbSpkService).enrich(any());
         when(tbSpkService.create(any())).thenReturn(s);
         given().contentType(ContentType.JSON).body(Map.of("noSpk", "SPK001"))
             .when().post("/api/pazaauto/spk").then().statusCode(200);
 
         // update
-        doNothing().when(tbSpkService).enrich(any());
         when(tbSpkService.update(anyLong(), any())).thenReturn(s);
         given().contentType(ContentType.JSON).body(Map.of("status", "PROSES"))
             .when().put("/api/pazaauto/spk/1").then().statusCode(200);

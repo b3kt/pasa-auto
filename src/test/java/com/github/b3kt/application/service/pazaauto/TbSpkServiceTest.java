@@ -4,14 +4,10 @@ import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
-import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkDetailRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkRepository;
-import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbBarangRepository;
-import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbJasaRepository;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.panache.common.Parameters;
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,22 +35,19 @@ class TbSpkServiceTest {
     private TbSpkRepository repository;
 
     @Mock
-    private TbKaryawanRepository karyawanRepository;
-
-    @Mock
-    private TbPelangganService pelangganService;
-
-    @Mock
     private TbSpkDetailRepository detailRepository;
 
     @Mock
-    private TbBarangRepository barangRepository;
+    private SpkDetailService spkDetailService;
 
     @Mock
-    private TbJasaRepository jasaRepository;
+    private SpkEnrichmentService enrichmentService;
 
     @Mock
-    private EntityManager entityManager;
+    private SpkReportService reportService;
+
+    @Mock
+    private SpkNumberService numberService;
 
     @Mock
     private PanacheQuery<TbSpkEntity> panacheQuery;
@@ -67,12 +60,11 @@ class TbSpkServiceTest {
     void setUp() {
         spkService = new TbSpkService(
                 repository,
-                karyawanRepository,
-                pelangganService,
                 detailRepository,
-                barangRepository,
-                jasaRepository,
-                entityManager
+                spkDetailService,
+                enrichmentService,
+                reportService,
+                numberService
         );
 
         testSpkEntity = new TbSpkEntity();
