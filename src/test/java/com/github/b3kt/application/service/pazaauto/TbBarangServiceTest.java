@@ -15,7 +15,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import jakarta.persistence.EntityNotFoundException;
+
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -135,5 +138,61 @@ class TbBarangServiceTest {
     void create() {
         doNothing().when(repository).persist(any(TbBarangEntity.class));
         assertNotNull(tbBarangService.create(testEntity));
+    }
+
+    @Test
+    @DisplayName("findPaginated with multiple status filters")
+    void findPaginatedMultipleStatuses() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setStatusFilter("AVAILABLE,OUT_OF_STOCK");
+        when(repository.find(anyString())).thenReturn(query);
+        when(query.count()).thenReturn(1L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of(testEntity));
+
+        PageResponse<TbBarangEntity> result = tbBarangService.findPaginated(pr);
+        assertEquals(1, result.getRowsNumber());
+    }
+
+    @Test
+    @DisplayName("findPaginated with search and status together")
+    void findPaginatedSearchAndStatus() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSearch("oli");
+        pr.setStatusFilter("AVAILABLE");
+        when(repository.find(anyString(), any(Object[].class))).thenReturn(query);
+        when(query.count()).thenReturn(1L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of(testEntity));
+
+        PageResponse<TbBarangEntity> result = tbBarangService.findPaginated(pr);
+        assertEquals(1, result.getRowsNumber());
+    }
+
+    @Test
+    @DisplayName("update merges entity when found")
+    void update_found() {
+        when(repository.findByIdOptional(1L)).thenReturn(Optional.of(testEntity));
+        jakarta.persistence.EntityManager em = mock(jakarta.persistence.EntityManager.class);
+        when(repository.getEntityManager()).thenReturn(em);
+        when(em.merge(any(TbBarangEntity.class))).thenReturn(testEntity);
+
+        TbBarangEntity result = tbBarangService.update(1L, testEntity);
+        assertNotNull(result);
+    }
+
+    @Test
+    @DisplayName("update throws when not found")
+    void update_notFound() {
+        when(repository.findByIdOptional(999L)).thenReturn(Optional.empty());
+        assertThrows(EntityNotFoundException.class, () -> tbBarangService.update(999L, testEntity));
+    }
+
+    @Test
+    @DisplayName("delete calls deleteById")
+    void delete_success() {
+        when(repository.deleteById(1L)).thenReturn(true);
+        tbBarangService.delete(1L);
+        verify(repository).deleteById(1L);
     }
 }

@@ -31,6 +31,11 @@ public class TbSpkDetailResource {
     SpkDetailMapper spkDetailMapper;
 
     @GET
+    public Response findAll() {
+        return Response.ok(ApiResponse.success(spkDetailMapper.toDtoList(service.findAll()))).build();
+    }
+
+    @GET
     @Path("/{id}")
     public Response getById(@PathParam("id") String id) {
         TbSpkDetailId detailId = parseId(id);

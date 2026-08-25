@@ -41,9 +41,23 @@ public class TbPembelianResource {
     PembelianMapper pembelianMapper;
 
     @GET
+    public Response findAll() {
+        return Response.ok(ApiResponse.success(pembelianMapper.toDtoList(service.findAll()))).build();
+    }
+
+    @GET
     @Path("/{id}")
     public Response getById(@PathParam("id") String id) {
-        TbPembelianEntity entity = service.findById(Long.valueOf(id));
+        TbPembelianEntity entity;
+        try {
+            entity = service.findById(Long.valueOf(id));
+        } catch (NumberFormatException e) {
+            entity = service.findByNoPembelian(id);
+            if (entity != null) {
+                Optional.ofNullable(tbPembelianDetailService.findByPembelianId(entity.getId()))
+                        .ifPresent(entity::setDetails);
+            }
+        }
         if (entity == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(ApiResponse.error("Pembelian not found"))

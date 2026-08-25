@@ -29,6 +29,11 @@ public class TbBarangResource {
     BarangMapper barangMapper;
 
     @GET
+    public Response findAll() {
+        return Response.ok(ApiResponse.success(barangMapper.toDtoList(service.findAll()))).build();
+    }
+
+    @GET
     @Path("/{id}")
     public Response getById(@PathParam("id") String id) {
         TbBarangEntity entity = service.findById(Long.valueOf(id));

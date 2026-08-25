@@ -31,6 +31,18 @@ public class TbAbsensiResource {
     /**
      * Clock in endpoint
      */
+    @GET
+    public Response findAll() {
+        return Response.ok(ApiResponse.success(absensiMapper.toDtoList(service.findAll()))).build();
+    }
+
+    @POST
+    public Response create(AbsensiDto dto) {
+        TbAbsensiEntity entity = absensiMapper.toEntity(dto);
+        TbAbsensiEntity created = service.create(entity);
+        return Response.ok(ApiResponse.success(absensiMapper.toDto(created))).build();
+    }
+
     @POST
     @Path("/clock-in")
     public Response clockIn(
@@ -213,6 +225,14 @@ public class TbAbsensiResource {
                     .entity(ApiResponse.error("Failed to mark absence: " + e.getMessage()))
                     .build();
         }
+    }
+
+    @PUT
+    @Path("/{id}")
+    public Response update(@PathParam("id") String id, AbsensiDto dto) {
+        TbAbsensiEntity entity = absensiMapper.toEntity(dto);
+        TbAbsensiEntity updated = service.update(Long.valueOf(id), entity);
+        return Response.ok(ApiResponse.success(absensiMapper.toDto(updated))).build();
     }
 
     @jakarta.ws.rs.DELETE

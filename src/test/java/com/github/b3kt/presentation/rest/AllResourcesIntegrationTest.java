@@ -802,7 +802,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
         given().when().get("/api/pazaauto/absensi/today/1").then().statusCode(200);
 
         // history
-        when(tbAbsensiService.getAttendanceHistory(anyLong(), any(), any(), anyString(), any()))
+        when(tbAbsensiService.getAttendanceHistory(anyLong(), any(), any(), any(), any()))
             .thenReturn(new PageResponse<>(List.of(absen), 1, 10, 1));
         given().queryParam("karyawanId", 1).queryParam("startDate", "2025-01-01")
             .when().get("/api/pazaauto/absensi/history")
@@ -1016,11 +1016,11 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
         given().when().get("/api/pazaauto/pelanggan/1").then().statusCode(200);
 
         when(tbPelangganService.create(any())).thenReturn(p);
-        given().contentType(ContentType.JSON).body(Map.of("namaPelanggan", "budi"))
+        given().contentType(ContentType.JSON).body(Map.of("nopol", "B1234CD", "namaPelanggan", "budi", "merk", "Toyota"))
             .when().post("/api/pazaauto/pelanggan").then().statusCode(200);
 
         when(tbPelangganService.update(anyLong(), any())).thenReturn(p);
-        given().contentType(ContentType.JSON).body(Map.of("telepon", "0811"))
+        given().contentType(ContentType.JSON).body(Map.of("nopol", "B1234CD", "namaPelanggan", "budi", "merk", "Toyota", "telepon", "0811"))
             .when().put("/api/pazaauto/pelanggan/1").then().statusCode(200);
 
         doNothing().when(tbPelangganService).delete(1L);
@@ -1037,12 +1037,12 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
         // put by-nopol found
         when(tbPelangganService.patchByNopol(anyString(), any())).thenReturn(p);
-        given().contentType(ContentType.JSON).body(Map.of("namaPelanggan", "x"))
+        given().contentType(ContentType.JSON).body(Map.of("nopol", "B1234CD", "namaPelanggan", "x", "merk", "Toyota"))
             .when().put("/api/pazaauto/pelanggan/by-nopol/B1234CD").then().statusCode(200);
 
         // put by-nopol not found
         when(tbPelangganService.patchByNopol(eq("MISSING"), any())).thenReturn(null);
-        given().contentType(ContentType.JSON).body(Map.of("namaPelanggan", "x"))
+        given().contentType(ContentType.JSON).body(Map.of("nopol", "B1234CD", "namaPelanggan", "x", "merk", "Toyota"))
             .when().put("/api/pazaauto/pelanggan/by-nopol/MISSING").then().statusCode(200)
             .body("error", containsString("not found"));
     }
@@ -1269,7 +1269,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
         // update
         when(tbSpkService.update(anyLong(), any())).thenReturn(s);
-        given().contentType(ContentType.JSON).body(Map.of("status", "PROSES"))
+        given().contentType(ContentType.JSON).body(Map.of("noSpk", "SPK20250101001", "status", "PROSES"))
             .when().put("/api/pazaauto/spk/1").then().statusCode(200);
 
         // delete (cancel)

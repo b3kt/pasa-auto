@@ -1,5 +1,7 @@
 package com.github.b3kt.application.service.pazaauto;
 
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 

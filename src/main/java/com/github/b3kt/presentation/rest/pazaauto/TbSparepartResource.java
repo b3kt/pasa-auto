@@ -29,6 +29,11 @@ public class TbSparepartResource {
     SparepartMapper sparepartMapper;
 
     @GET
+    public Response findAll() {
+        return Response.ok(ApiResponse.success(sparepartMapper.toDtoList(service.findAll()))).build();
+    }
+
+    @GET
     @Path("/{id}")
     public Response getById(@PathParam("id") String id) {
         TbSparepartEntity entity = service.findById(Long.valueOf(id));

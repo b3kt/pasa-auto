@@ -51,6 +51,14 @@ public class PageResponse<T> {
         return rowsNumber;
     }
 
+    public long getTotalRows() {
+        return rowsNumber;
+    }
+
+    public int getCurrentPage() {
+        return page;
+    }
+
     public void setRowsNumber(long rowsNumber) {
         this.rowsNumber = rowsNumber;
     }

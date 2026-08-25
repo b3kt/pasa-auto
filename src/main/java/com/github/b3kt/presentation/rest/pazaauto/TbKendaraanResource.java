@@ -31,6 +31,11 @@ public class TbKendaraanResource {
     KendaraanMapper kendaraanMapper;
 
     @GET
+    public Response findAll() {
+        return Response.ok(ApiResponse.success(kendaraanMapper.toDtoList(service.findAll()))).build();
+    }
+
+    @GET
     @Path("/{id}")
     public Response getById(@PathParam("id") String id) {
         TbKendaraanEntity entity = service.findById(Long.valueOf(id));

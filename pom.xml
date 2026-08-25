@@ -115,15 +115,10 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-opentelemetry</artifactId>
         </dependency>
-        <!-- Health checks for Kubernetes -->
+        <!-- Health checks -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-health</artifactId>
-        </dependency>
-        <!-- Kubernetes deployment manifests -->
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-kubernetes</artifactId>
         </dependency>
 
         <!-- Lombok -->
@@ -230,6 +225,9 @@
                             <version>1.6.3</version>
                         </path>
                     </annotationProcessorPaths>
+                    <compilerArgs>
+                        <arg>-Amapstruct.defaultComponentModel=jakarta</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
@@ -276,6 +274,21 @@
                 <configuration>
                     <excludes>
                         <exclude>**/*Resource.class</exclude>
+                        <exclude>**/*Entity.class</exclude>
+                        <exclude>**/*Dto.class</exclude>
+                        <exclude>**/*Request.class</exclude>
+                        <exclude>**/*Response.class</exclude>
+                        <exclude>**/*Mapper.class</exclude>
+                        <exclude>**/*MapperImpl.class</exclude>
+                        <exclude>**/*Repository.class</exclude>
+                        <exclude>**/domain/model/**</exclude>
+                        <exclude>**/infrastructure/persistence/entity/**</exclude>
+                        <exclude>**/infrastructure/persistence/listener/**</exclude>
+                        <exclude>**/infrastructure/health/**</exclude>
+                        <exclude>**/infrastructure/config/**</exclude>
+                        <exclude>**/presentation/config/**</exclude>
+                        <exclude>**/presentation/exception/**</exclude>
+                        <exclude>**/application/mapper/**</exclude>
                     </excludes>
                     <rules>
                         <rule>
@@ -284,7 +297,7 @@
                                 <limit>
                                     <counter>INSTRUCTION</counter>
                                     <value>COVEREDRATIO</value>
-                                    <minimum>0.60</minimum>
+                                    <minimum>0.95</minimum>
                                 </limit>
                             </limits>
                         </rule>

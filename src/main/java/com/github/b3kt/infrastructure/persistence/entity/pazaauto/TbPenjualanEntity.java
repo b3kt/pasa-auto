@@ -73,7 +73,9 @@ public class TbPenjualanEntity extends BaseEntity {
     private String noPolisi;
 
     @Transient
-    private List<TbSpkDetailEntity> details;
+    private List<TbPenjualanDetailEntity> details;
 
+    @Transient
+    private List<TbSpkDetailEntity> spkDetails;
 
 }

@@ -5,6 +5,8 @@ import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto;
 import com.github.b3kt.application.helper.QueryFilterBuilder;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkDetailRepository;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Parameters;

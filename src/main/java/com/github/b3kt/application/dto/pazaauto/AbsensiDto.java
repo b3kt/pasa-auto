@@ -31,15 +31,19 @@ public class AbsensiDto {
     private LocalTime jamKeluar;
 
     @Size(max = 20, message = "Status must not exceed 20 characters")
+    @Builder.Default
     private String status = "HADIR";
 
     @Size(max = 500, message = "Keterangan must not exceed 500 characters")
     private String keterangan;
 
+    @Builder.Default
     private Boolean terlambat = false;
 
+    @Builder.Default
     private Boolean pulangCepat = false;
 
+    @Builder.Default
     private Integer lembur = 0;
 
     @Size(max = 200, message = "Lokasi Masuk must not exceed 200 characters")

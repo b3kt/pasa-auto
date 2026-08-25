@@ -189,7 +189,7 @@ public class TbPenjualanService extends AbstractCrudService<TbPenjualanEntity, S
             }
 
             List<TbSpkDetailEntity> details = spkDetailService.findByNoSpk(entity.getNoSpk());
-            Optional.ofNullable(details).ifPresent(entity::setDetails);
+            Optional.ofNullable(details).ifPresent(entity::setSpkDetails);
         }
 
         if (Objects.nonNull(pelangganId)) {

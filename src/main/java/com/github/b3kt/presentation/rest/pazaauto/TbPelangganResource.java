@@ -28,6 +28,11 @@ public class TbPelangganResource {
     PelangganMapper pelangganMapper;
 
     @GET
+    public Response findAll() {
+        return Response.ok(ApiResponse.success(pelangganMapper.toDtoList(service.findAll()))).build();
+    }
+
+    @GET
     @Path("/{id}")
     public Response getById(@PathParam("id") String id) {
         TbPelangganEntity entity = service.findById(Long.valueOf(id));

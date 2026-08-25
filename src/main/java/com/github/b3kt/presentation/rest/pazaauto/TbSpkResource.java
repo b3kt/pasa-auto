@@ -30,9 +30,14 @@ public class TbSpkResource {
     SpkMapper spkMapper;
 
     @GET
+    public Response findAll() {
+        return Response.ok(ApiResponse.success(spkMapper.toDtoList(service.findAll()))).build();
+    }
+
+    @GET
     @Path("/by-no-spk/{noSpk}")
     @WithSpan("find-spk-by-no-spk")
-    @RateLimit(value = 30, window = 60, windowUnit = java.util.concurrent.TimeUnit.SECONDS)
+    @RateLimit(value = 30, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
     public Response findByNoSpk(@PathParam("noSpk") @SpanAttribute("spk.no-spk") String noSpk) {
         TbSpkEntity entity = service.findByNoSpk(noSpk);
         if (entity == null) {
@@ -44,7 +49,7 @@ public class TbSpkResource {
     @GET
     @Path("/unprocessed")
     @WithSpan("get-unprocessed-spk")
-    @RateLimit(value = 30, window = 60, windowUnit = java.util.concurrent.TimeUnit.SECONDS)
+    @RateLimit(value = 30, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
     public Response getUnprocessedSpk() {
         return Response.ok(ApiResponse.success(spkMapper.toDtoList(service.findUnprocessedSpk()))).build();
     }
@@ -52,7 +57,7 @@ public class TbSpkResource {
     @GET
     @Path("/{id}")
     @WithSpan("get-spk-by-id")
-    @RateLimit(value = 30, window = 60, windowUnit = java.util.concurrent.TimeUnit.SECONDS)
+    @RateLimit(value = 30, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
     public Response getById(@PathParam("id") String id) {
         TbSpkEntity entity = service.findById(Long.valueOf(id));
         if (entity == null) {
@@ -64,7 +69,7 @@ public class TbSpkResource {
     @GET
     @Path("/paginated")
     @WithSpan("list-paginated-spk")
-    @RateLimit(value = 20, window = 60, windowUnit = java.util.concurrent.TimeUnit.SECONDS)
+    @RateLimit(value = 20, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
     public Response listPaginated(
             @jakarta.ws.rs.QueryParam("page") @jakarta.ws.rs.DefaultValue("1") int page,
             @jakarta.ws.rs.QueryParam("rowsPerPage") @jakarta.ws.rs.DefaultValue("10") int rowsPerPage,
@@ -97,7 +102,7 @@ public class TbSpkResource {
     @GET
     @Path("/get-next-spk-number")
     @WithSpan("get-next-spk-number")
-    @RateLimit(value = 10, window = 60, windowUnit = java.util.concurrent.TimeUnit.SECONDS)
+    @RateLimit(value = 10, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
     public Response getNextSpk() {
         String nextSpkNumber = service.generateNextSpkNumber(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd").format(java.time.LocalDateTime.now()));
         return Response.ok(ApiResponse.success(nextSpkNumber)).build();
@@ -105,10 +110,9 @@ public class TbSpkResource {
 
     @POST
     @WithSpan("create-spk")
-    @RateLimit(value = 10, window = 60, windowUnit = java.util.concurrent.TimeUnit.SECONDS)
+    @RateLimit(value = 10, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
     public Response create(@Valid SpkDto dto) {
         TbSpkEntity entity = spkMapper.toEntity(dto);
-        service.enrich(entity);
         TbSpkEntity created = service.create(entity);
         return Response.ok(ApiResponse.success("SPK created", spkMapper.toDto(created))).build();
     }
@@ -116,10 +120,9 @@ public class TbSpkResource {
     @PUT
     @Path("/{id}")
     @WithSpan("update-spk")
-    @RateLimit(value = 10, window = 60, windowUnit = java.util.concurrent.TimeUnit.SECONDS)
+    @RateLimit(value = 10, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
     public Response update(@PathParam("id") String id, @Valid SpkDto dto) {
         TbSpkEntity entity = spkMapper.toEntity(dto);
-        service.enrich(entity);
         TbSpkEntity updated = service.update(Long.valueOf(id), entity);
 
         if (updated == null) {
@@ -131,7 +134,7 @@ public class TbSpkResource {
     @DELETE
     @Path("/{id}")
     @WithSpan("delete-spk")
-    @RateLimit(value = 10, window = 60, windowUnit = java.util.concurrent.TimeUnit.SECONDS)
+    @RateLimit(value = 10, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
     public Response delete(@PathParam("id") String id) {
         TbSpkEntity cancelled = service.cancelSpk(Long.valueOf(id));
         if (cancelled == null) {
@@ -143,7 +146,7 @@ public class TbSpkResource {
     @DELETE
     @Path("/delete-by-no-spk/{noSpk}")
     @WithSpan("delete-spk-by-no-spk")
-    @RateLimit(value = 5, window = 60, windowUnit = java.util.concurrent.TimeUnit.SECONDS)
+    @RateLimit(value = 5, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
     public Response deleteByNoSpk(@PathParam("noSpk") String noSpk) {
         service.deleteByNoSpk(noSpk);
         return Response.ok(ApiResponse.success("SPK deleted permanently")).build();

@@ -133,6 +133,21 @@ class AuditTrailServiceTest {
     }
 
     @Test
+    @DisplayName("findPaginated with ascending sort")
+    void findPaginatedWithAscendingSort() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSortBy("tableName");
+        pr.setDescending(false);
+        when(repository.findAll(any(Sort.class))).thenReturn(query);
+        when(query.count()).thenReturn(1L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of(testEntity));
+
+        PageResponse<AuditTrailEntity> result = auditTrailService.findPaginated(pr);
+        assertEquals(1, result.getRowsNumber());
+    }
+
+    @Test
     @DisplayName("getRepository returns the repository")
     void getRepository() {
         assertEquals(repository, auditTrailService.getRepository());

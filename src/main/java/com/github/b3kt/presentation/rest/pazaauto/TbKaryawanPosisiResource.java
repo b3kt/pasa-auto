@@ -29,6 +29,11 @@ public class TbKaryawanPosisiResource {
     KaryawanPosisiMapper karyawanPosisiMapper;
 
     @GET
+    public Response findAll() {
+        return Response.ok(ApiResponse.success(karyawanPosisiMapper.toDtoList(service.findAll()))).build();
+    }
+
+    @GET
     @Path("/{id}")
     public Response getById(@PathParam("id") String id) {
         TbKaryawanPosisiEntity entity = service.findById(Long.valueOf(id));

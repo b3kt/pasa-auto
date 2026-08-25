@@ -12,7 +12,7 @@ import org.mapstruct.factory.Mappers;
 
 import java.util.List;
 
-@Mapper(componentModel = "cdi", uses = {SpkDetailMapper.class})
+@Mapper(config = PazaAutoMapperConfig.class, uses = {SpkDetailMapper.class})
 public interface SpkMapper {
 
     SpkMapper INSTANCE = Mappers.getMapper(SpkMapper.class);

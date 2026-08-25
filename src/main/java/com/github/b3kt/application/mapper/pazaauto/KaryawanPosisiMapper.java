@@ -7,7 +7,7 @@ import org.mapstruct.factory.Mappers;
 
 import java.util.List;
 
-@Mapper(componentModel = "cdi")
+@Mapper(config = PazaAutoMapperConfig.class)
 public interface KaryawanPosisiMapper {
 
     KaryawanPosisiMapper INSTANCE = Mappers.getMapper(KaryawanPosisiMapper.class);

@@ -207,4 +207,32 @@ class PageHelperTest {
 
         verify(repo).findAll(any(Sort.class));
     }
+
+    @Test
+    @DisplayName("paginate with null params array")
+    void paginateNullParams() {
+        PageRequest pr = new PageRequest(1, 10);
+        when(repo.find(anyString())).thenReturn(query);
+        when(query.count()).thenReturn(0L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of());
+
+        PageHelper.paginate(repo, pr, "1=1", (Object[]) null);
+
+        verify(repo).find(anyString());
+    }
+
+    @Test
+    @DisplayName("applyPagination without sort uses original query")
+    void applyPaginationNoSort() {
+        PageRequest pr = new PageRequest(1, 10);
+        when(query.count()).thenReturn(1L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of(new Object()));
+
+        PageResponse<Object> result = PageHelper.applyPagination(query, repo, pr, "1=1", new Object[0]);
+
+        assertEquals(1, result.getRowsNumber());
+        verify(repo, never()).find(anyString(), any(Sort.class), any(Object[].class));
+    }
 }

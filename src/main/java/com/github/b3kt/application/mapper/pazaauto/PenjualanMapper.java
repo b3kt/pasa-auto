@@ -11,7 +11,7 @@ import org.mapstruct.factory.Mappers;
 
 import java.util.List;
 
-@Mapper(componentModel = "cdi", uses = {PenjualanDetailMapper.class})
+@Mapper(config = PazaAutoMapperConfig.class, uses = {PenjualanDetailMapper.class})
 public interface PenjualanMapper {
 
     PenjualanMapper INSTANCE = Mappers.getMapper(PenjualanMapper.class);

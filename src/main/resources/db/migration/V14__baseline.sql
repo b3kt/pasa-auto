@@ -34,9 +34,6 @@
 -- 21. tb_absensi
 -- 22. tb_absensi_config
 -- 23. tb_audit_trail
--- 24. kategori_item
--- 25. jenis_pembelian
--- 26. kategori_operasional
 
 -- Indexes, constraints, and triggers are defined in V1-V13.
 
@@ -69,7 +66,7 @@ DECLARE
         'tb_barang', 'tb_sparepart', 'tb_jasa', 'tb_supplier',
         'tb_pembelian', 'tb_pembelian_detail', 'tb_penjualan', 'tb_penjualan_detail',
         'tb_spk', 'tb_spk_detail', 'tb_absensi', 'tb_absensi_config',
-        'tb_audit_trail', 'kategori_item', 'jenis_pembelian', 'kategori_operasional'
+        'tb_audit_trail'
     ];
     missing_tables TEXT[] := '{}';
     tbl TEXT;

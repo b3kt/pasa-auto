@@ -26,6 +26,11 @@ public class TbRekapPenjualanResource {
     SpkMapper spkMapper;
 
     @GET
+    public Response findAll() {
+        return Response.ok(ApiResponse.success(spkMapper.toDtoList(service.findAll()))).build();
+    }
+
+    @GET
     @Path("/by-no-spk/{noSpk}")
     public Response findByNoSpk(@PathParam("noSpk") String noSpk) {
         TbSpkEntity entity = service.findByNoSpk(noSpk);
@@ -79,6 +84,17 @@ public class TbRekapPenjualanResource {
     public Response getNextSpk() {
         String nextSpkNumber = service.generateNextSpkNumber(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd").format(LocalDateTime.now()));
         return Response.ok(ApiResponse.success(nextSpkNumber)).build();
+    }
+
+    @POST
+    public Response create() {
+        return Response.status(Response.Status.NOT_MODIFIED).build();
+    }
+
+    @PUT
+    @Path("/{id}")
+    public Response update(@PathParam("id") String id) {
+        return Response.status(Response.Status.NOT_MODIFIED).build();
     }
 
     @jakarta.ws.rs.DELETE

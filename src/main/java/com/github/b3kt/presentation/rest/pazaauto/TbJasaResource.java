@@ -29,6 +29,11 @@ public class TbJasaResource {
     JasaMapper jasaMapper;
 
     @GET
+    public Response findAll() {
+        return Response.ok(ApiResponse.success(jasaMapper.toDtoList(service.findAll()))).build();
+    }
+
+    @GET
     @Path("/{id}")
     public Response getById(@PathParam("id") String id) {
         TbJasaEntity entity = service.findById(Long.valueOf(id));

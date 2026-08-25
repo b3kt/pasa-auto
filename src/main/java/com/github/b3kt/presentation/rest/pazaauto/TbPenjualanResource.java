@@ -11,6 +11,7 @@ import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEnt
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -33,6 +34,11 @@ public class TbPenjualanResource {
 
     @Inject
     PenjualanMapper penjualanMapper;
+
+    @GET
+    public Response findAll() {
+        return Response.ok(ApiResponse.success(penjualanMapper.toDtoList(service.findAll()))).build();
+    }
 
     @GET
     @Path("/{noPenjualan}/print")
@@ -109,7 +115,7 @@ public class TbPenjualanResource {
         return Response.ok(ApiResponse.success("Penjualan cancelled, SPK status reverted to OPEN")).build();
     }
 
-    @jakarta.ws.rs.DELETE
+    @DELETE
     @Path("/{noPenjualan}")
     public Response delete(@PathParam("noPenjualan") String noPenjualan) {
         service.delete(noPenjualan);
