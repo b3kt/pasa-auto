@@ -2,6 +2,7 @@ package com.github.b3kt.application.service.pazaauto;
 
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
+import com.github.b3kt.infrastructure.persistence.entity.BaseEntity;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
@@ -65,11 +66,35 @@ public abstract class AbstractCrudService<T, ID> {
 
     @Transactional
     public T update(ID id, T entity) {
-        if (!getRepository().findByIdOptional(id).isPresent()) {
-            throw new EntityNotFoundException("Entity not found with id: " + id);
-        }
+        T existing = getRepository().findByIdOptional(id)
+                .orElseThrow(() -> new EntityNotFoundException("Entity not found with id: " + id));
         setEntityId(entity, id);
+        carryOverVersion(existing, entity);
         return getRepository().getEntityManager().merge(entity);
+    }
+
+    /**
+     * None of this app's DTOs round-trip the @Version value (clients never
+     * receive it on read), so an incoming entity built from a DTO always has a
+     * null version. Left as null, Hibernate's merge() reads that as a stale
+     * write and rejects the update with "Row was already updated or deleted by
+     * another transaction" — every time, for every entity. Carry the currently
+     * persisted version forward instead of doing optimistic-lock validation the
+     * API doesn't actually support end-to-end.
+     * <p>
+     * Trade-off: this makes update() last-write-wins rather than truly
+     * optimistic-locked — a write that raced another request committed in
+     * between is applied, not rejected, because we always re-read and stamp
+     * the current version right before merge. That is not a regression: no
+     * DTO has ever carried a real version for a client to send back, so no
+     * working conflict detection existed to preserve (every update failed
+     * unconditionally before this fix). Real optimistic locking would require
+     * adding version to every DTO/mapper and having clients echo it back.
+     */
+    private void carryOverVersion(T existing, T entity) {
+        if (existing instanceof BaseEntity existingBase && entity instanceof BaseEntity entityBase) {
+            entityBase.setVersion(existingBase.getVersion());
+        }
     }
 
     @Transactional

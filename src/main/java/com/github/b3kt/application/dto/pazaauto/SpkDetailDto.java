@@ -46,4 +46,12 @@ public class SpkDetailDto {
     private Long sparepartId;
     private String namaJasa;
     private String namaSparepart;
+
+    /**
+     * Display name sent by the frontend for this line item (service or part name).
+     * Doubles as the composite-key discriminator alongside noSpk
+     * (see TbSpkDetailId.namaJasa) — the frontend nests the same value under
+     * {@code id.namaJasa} when building the payload.
+     */
+    private String namaItem;
 }

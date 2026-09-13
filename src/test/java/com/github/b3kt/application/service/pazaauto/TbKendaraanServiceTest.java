@@ -162,4 +162,35 @@ class TbKendaraanServiceTest {
         service.delete(1L);
         verify(repository).deleteById(1L);
     }
+
+    @Test
+    @DisplayName("findOrCreateByMerkJenis returns existing master")
+    void testFindOrCreateByMerkJenis_existing() {
+        when(repository.findByMerkAndJenis("Toyota", "Sedan")).thenReturn(Optional.of(kendaraan));
+
+        TbKendaraanEntity result = service.findOrCreateByMerkJenis("Toyota", "Sedan");
+
+        assertSame(kendaraan, result);
+        verify(repository, never()).getEntityManager();
+    }
+
+    @Test
+    @DisplayName("findOrCreateByMerkJenis persists a new master when none exists")
+    void testFindOrCreateByMerkJenis_creates() {
+        when(repository.findByMerkAndJenis("Honda", "Sedan")).thenReturn(Optional.empty());
+        jakarta.persistence.EntityManager em = mock(jakarta.persistence.EntityManager.class);
+        when(repository.getEntityManager()).thenReturn(em);
+        when(em.merge(any(TbKendaraanEntity.class))).thenAnswer(inv -> {
+            TbKendaraanEntity created = inv.getArgument(0);
+            created.setId(99L);
+            return created;
+        });
+
+        TbKendaraanEntity result = service.findOrCreateByMerkJenis("Honda", "Sedan");
+
+        assertEquals("Honda", result.getMerk());
+        assertEquals("Sedan", result.getJenis());
+        assertEquals(99L, result.getId());
+        verify(em).merge(any(TbKendaraanEntity.class));
+    }
 }

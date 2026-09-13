@@ -48,4 +48,13 @@ public class TbKendaraanService extends AbstractCrudService<TbKendaraanEntity, L
     public List<String> findDistinctJenisByMerk(String merk) {
         return repository.findDistinctJenisByMerk(merk);
     }
+
+    public TbKendaraanEntity findOrCreateByMerkJenis(String merk, String jenis) {
+        return repository.findByMerkAndJenis(merk, jenis).orElseGet(() -> {
+            TbKendaraanEntity entity = new TbKendaraanEntity();
+            entity.setMerk(merk);
+            entity.setJenis(jenis);
+            return repository.getEntityManager().merge(entity);
+        });
+    }
 }

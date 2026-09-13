@@ -7,6 +7,11 @@
                       :on-create="openCreateDialog" ref="tableRef"
                       :on-edit="openEditDialog" create-label="Tambah data Kendaraan"
                       search-placeholder="Search...">
+          <template v-slot:body-cell-actions="props">
+            <q-btn flat dense round icon="group" color="primary" @click.stop="openOwnersDialog(props.row)">
+              <q-tooltip>Riwayat pemilik kendaraan</q-tooltip>
+            </q-btn>
+          </template>
         </GenericTable>
       </template>
 
@@ -57,16 +62,64 @@
         <q-btn flat label="Hapus saja" color="negative" @click="deleteItem" :loading="deleting"/>
       </template>
     </GenericDialog>
+
+    <!-- Owner History Dialog -->
+    <GenericDialog v-model="showOwnersDialog" title="Riwayat Pemilik Kendaraan" min-width="800px" position="drawer">
+      <q-list v-if="owners.length === 0" class="text-grey">
+        <q-item><q-item-section>Belum ada data kepemilikan.</q-item-section></q-item>
+      </q-list>
+      <q-table flat bordered :rows="owners" :columns="ownerColumns" row-key="id" :pagination="{rowsPerPage: 10}"
+               :loading="loadingOwners">
+        <template v-slot:body-cell-current="props">
+          <q-td :props="props">
+            <q-chip :color="props.value ? 'positive' : 'grey'" text-color="white" size="sm" dense>
+              {{ props.value ? 'Aktif' : 'Lama' }}
+            </q-chip>
+          </q-td>
+        </template>
+        <template v-slot:body-cell-actions="props">
+          <q-td :props="props">
+            <q-btn v-if="props.row.current" flat dense color="primary" icon="swap_horiz"
+                   label="Transfer" @click="openTransferDialog(props.row)"/>
+          </q-td>
+        </template>
+      </q-table>
+    </GenericDialog>
+
+    <!-- Transfer Dialog -->
+    <GenericDialog v-model="showTransferDialog" title="Transfer Kendaraan" min-width="500px" position="standard">
+      <q-form @submit="doTransfer" class="q-gutter-md q-mt-sm">
+        <div class="text-subtitle2">
+          Transfer <strong>{{ transferForm.nopol }}</strong>
+          ({{ transferMaster?.merk }} {{ transferMaster?.jenis }})
+        </div>
+        <q-select v-model="transferForm.idPelangganBaru" label="Pelanggan Tujuan *" outlined dense
+                  :options="pelangganOptions" emit-value map-options use-input input-debounce="300"
+                  @filter="filterPelanggan" option-label="label" option-value="value"
+                  :rules="[val => !!val || 'Pilih pelanggan tujuan']"
+                  hide-bottom-space/>
+        <q-input v-model="transferForm.tanggalAwal" label="Tanggal Transfer" outlined dense type="date"
+                 hint="Mulai tanggal ini, kendaraan menjadi milik pelanggan tujuan."/>
+        <q-input v-model="transferForm.keterangan" label="Keterangan (alasan)" outlined dense type="textarea" rows="2"/>
+        <div class="row justify-end q-mt-md q-gutter-sm">
+          <q-btn flat label="Batalkan" color="primary" @click="showTransferDialog = false"/>
+          <q-btn label="Transfer" type="submit" color="primary" :loading="transferring"/>
+        </div>
+      </q-form>
+    </GenericDialog>
   </q-page>
 </template>
 
 <script setup>
-import {ref, onMounted} from 'vue'
+import {ref, computed, onMounted} from 'vue'
+import {useQuasar} from 'quasar'
 import {api} from 'boot/axios'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
 import {useCrud} from 'src/composables/useCrud'
 import {useKeyboardShortcuts} from 'src/composables/useKeyboardShortcuts'
+
+const $q = useQuasar()
 
 // CRUD Composable configuration
 const {
@@ -89,8 +142,6 @@ const {
 } = useCrud({
   baseApiUrl: '/api/pazaauto/kendaraan',
   onSuccess: () => {
-    // If we just saved a new item, we might want to stay in edit mode for it or reset
-    // For now, let's keep it simple
   },
   enableCache: true
 })
@@ -230,8 +281,137 @@ const columns = [
     align: 'left',
     field: 'model',
     sortable: true
+  },
+  {
+    name: 'actions',
+    label: '',
+    align: 'right',
+    field: 'actions'
   }
 ]
+
+// Owner History
+const showOwnersDialog = ref(false)
+const owners = ref([])
+const loadingOwners = ref(false)
+
+const ownerColumns = [
+  {name: 'nopol', label: 'Nopol', field: 'nopol', sortable: true},
+  {name: 'namaPelanggan', label: 'Pelanggan', field: 'namaPelanggan', sortable: true},
+  {name: 'merk', label: 'Merk', field: 'merk'},
+  {name: 'jenis', label: 'Jenis', field: 'jenis'},
+  {name: 'tanggalMulai', label: 'Mulai', field: 'tanggalMulai'},
+  {name: 'tanggalAkhir', label: 'Berakhir', field: 'tanggalAkhir'},
+  {name: 'current', label: 'Status', field: 'current'},
+  {name: 'keterangan', label: 'Keterangan', field: 'keterangan'},
+  {name: 'actions', label: '', field: 'actions'}
+]
+
+const openOwnersDialog = async (row) => {
+  showOwnersDialog.value = true
+  loadingOwners.value = true
+  owners.value = []
+  try {
+    const response = await api.get(`/api/pazaauto/kendaraan/${row.id}/owners`)
+    if (response.data.success) {
+      owners.value = response.data.data || []
+    } else {
+      $q.notify({type: 'negative', message: response.data.message || 'Gagal memuat riwayat pemilik'})
+    }
+  } catch (error) {
+    console.error('Failed to fetch owner history', error)
+    $q.notify({type: 'negative', message: 'Gagal memuat riwayat pemilik'})
+  } finally {
+    loadingOwners.value = false
+  }
+}
+const showTransferDialog = ref(false)
+const transferring = ref(false)
+const transferMaster = ref(null)
+const allPelanggan = ref([])
+const filteredPelanggan = ref([])
+const transferForm = ref({
+  nopol: '',
+  idPelangganBaru: null,
+  tanggalAwal: '',
+  keterangan: ''
+})
+
+const pelangganOptions = computed(() => filteredPelanggan.value)
+
+const filterPelanggan = (val, update) => {
+  update(() => {
+    if (val === '') {
+      filteredPelanggan.value = allPelanggan.value
+    } else {
+      const needle = val.toLowerCase()
+      filteredPelanggan.value = allPelanggan.value.filter(p =>
+        p.label.toLowerCase().indexOf(needle) > -1
+      )
+    }
+  })
+}
+
+const fetchPelanggan = async () => {
+  try {
+    const response = await api.get('/api/pazaauto/pelanggan')
+    if (response.data.success) {
+      allPelanggan.value = (response.data.data || []).map(p => ({
+        value: p.id,
+        label: `${p.namaPelanggan} (${p.nopol || '-'})`
+      }))
+      filteredPelanggan.value = allPelanggan.value
+    }
+  } catch (error) {
+    console.error('Failed to fetch pelanggan', error)
+  }
+}
+
+const openTransferDialog = async (row) => {
+  transferMaster.value = row
+  transferForm.value = {
+    nopol: row.nopol,
+    idPelangganBaru: null,
+    tanggalAwal: '',
+    keterangan: ''
+  }
+  if (allPelanggan.value.length === 0) {
+    await fetchPelanggan()
+  } else {
+    filteredPelanggan.value = allPelanggan.value
+  }
+  showTransferDialog.value = true
+}
+
+const doTransfer = async () => {
+  transferring.value = true
+  try {
+    const body = {
+      nopol: transferForm.value.nopol,
+      idPelangganBaru: transferForm.value.idPelangganBaru,
+      tanggalAwal: transferForm.value.tanggalAwal || null,
+      keterangan: transferForm.value.keterangan || null
+    }
+    const response = await api.post('/api/pazaauto/kendaraan/transfer', body)
+    if (response.data.success) {
+      $q.notify({type: 'positive', message: response.data.message || 'Kendaraan ditransfer'})
+      showTransferDialog.value = false
+      if (transferMaster.value) {
+        const reload = await api.get(`/api/pazaauto/kendaraan/${transferMaster.value.idKendaraan}/owners`)
+        if (reload.data.success) {
+          owners.value = reload.data.data || []
+        }
+      }
+    } else {
+      $q.notify({type: 'negative', message: response.data.message || 'Transfer gagal'})
+    }
+  } catch (error) {
+    console.error('Failed to transfer', error)
+    $q.notify({type: 'negative', message: 'Transfer gagal: ' + (error.response?.data?.message || error.message)})
+  } finally {
+    transferring.value = false
+  }
+}
 
 // Lifecycle
 onMounted(() => {

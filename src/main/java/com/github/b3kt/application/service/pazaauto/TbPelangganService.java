@@ -17,6 +17,9 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
     @Inject
     PelangganRepository pelangganRepository;
 
+    @Inject
+    PelangganOwnershipSyncService ownershipSyncService;
+
     @Override
     protected PanacheRepositoryBase<TbPelangganEntity, Long> getRepository() {
         throw new UnsupportedOperationException("Use PelangganRepository instead");
@@ -57,6 +60,8 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
     public TbPelangganEntity create(TbPelangganEntity entity) {
         Pelanggan domain = entity.toDomain();
         Pelanggan saved = pelangganRepository.save(domain);
+        ownershipSyncService.syncOnCreate(saved.getId(), saved.getNopol(), saved.getMerk(),
+                saved.getJenis(), saved.getTanggalJoin());
         return TbPelangganEntity.fromDomain(saved);
     }
 
@@ -67,6 +72,9 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
         if (domain == null) {
             return null;
         }
+        String oldNopol = domain.getNopol();
+        String oldMerk = domain.getMerk();
+        String oldJenis = domain.getJenis();
         domain.setNopol(entity.getNopol());
         domain.setNamaPelanggan(entity.getNamaPelanggan());
         domain.setAlamat(entity.getAlamat());
@@ -83,6 +91,8 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
         domain.setNoTelepon(entity.getNoTelepon());
         domain.setTanggalJoin(entity.getTanggalJoin());
         Pelanggan saved = pelangganRepository.save(domain);
+        ownershipSyncService.syncOnUpdate(saved.getId(), oldNopol, oldMerk, oldJenis,
+                saved.getNopol(), saved.getMerk(), saved.getJenis(), saved.getTanggalJoin());
         return TbPelangganEntity.fromDomain(saved);
     }
 
@@ -103,6 +113,8 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
         Pelanggan domain = pelangganRepository.findByNopol(nopol).orElse(null);
         if (domain == null) return null;
 
+        String oldMerk = domain.getMerk();
+        String oldJenis = domain.getJenis();
         if (data.getNamaPelanggan() != null) domain.setNamaPelanggan(data.getNamaPelanggan());
         if (data.getAlamat() != null) domain.setAlamat(data.getAlamat());
         if (data.getMerk() != null) domain.setMerk(data.getMerk());
@@ -118,6 +130,8 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
         if (data.getNoTelepon() != null) domain.setNoTelepon(data.getNoTelepon());
 
         Pelanggan saved = pelangganRepository.save(domain);
+        ownershipSyncService.syncOnUpdate(saved.getId(), saved.getNopol(), oldMerk, oldJenis,
+                saved.getNopol(), saved.getMerk(), saved.getJenis(), saved.getTanggalJoin());
         return TbPelangganEntity.fromDomain(saved);
     }
 }

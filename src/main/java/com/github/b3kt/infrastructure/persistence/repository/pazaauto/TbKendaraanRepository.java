@@ -26,6 +26,15 @@ public class TbKendaraanRepository implements PanacheRepositoryBase<TbKendaraanE
         return find("SELECT DISTINCT merk FROM TbKendaraanEntity WHERE merk IS NOT NULL ORDER BY merk").project(String.class).list();
     }
 
+    public Optional<TbKendaraanEntity> findByMerkAndJenis(String merk, String jenis) {
+        if (merk == null || merk.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        String jenisNorm = jenis == null ? "" : jenis.trim();
+        return find("lower(merk) = lower(?1) and lower(jenis) = lower(?2)", merk.trim(), jenisNorm)
+                .firstResultOptional();
+    }
+
     public java.util.List<String> findDistinctJenis() {
         return find("SELECT DISTINCT jenis FROM TbKendaraanEntity WHERE jenis IS NOT NULL ORDER BY jenis").project(String.class).list();
     }
