@@ -91,12 +91,9 @@ update_pom_version() {
         exit 1
     fi
     
-    # Update version, handle both snapshot and release versions
-    if [[ $new_version == *"-SNAPSHOT" ]]; then
-        sed -i "s/<version>.*<\/version>/<version>$new_version<\/version>/" "$POM_FILE"
-    else
-        sed -i "s/<version>.*-SNAPSHOT<\/version>/<version>$new_version<\/version>/" "$POM_FILE"
-    fi
+    # Update only the project version (the <version> directly after the artifactId),
+    # leaving dependency and plugin versions untouched
+    sed -i "/<artifactId>pasa-auto<\/artifactId>/{n;s/<version>.*<\/version>/<version>$new_version<\/version>/;}" "$POM_FILE"
     
     if ! grep -q "<version>$new_version</version>" "$POM_FILE"; then
         echo "Error: Failed to update version in pom.xml"
