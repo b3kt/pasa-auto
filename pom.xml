@@ -27,21 +27,21 @@
             <dependency>
                 <groupId>${quarkus.platform.group-id}</groupId>
                 <artifactId>${quarkus.platform.artifact-id}</artifactId>
-                <version>0.0.35-SNAPSHOT</version>
+                <version>${quarkus.platform.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers-bom</artifactId>
-                <version>0.0.35-SNAPSHOT</version>
+                <version>2.0.5</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>io.quarkiverse.quinoa</groupId>
                 <artifactId>quarkus-quinoa</artifactId>
-                <version>0.0.35-SNAPSHOT</version>
+                <version>2.9.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -125,19 +125,19 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>0.0.35-SNAPSHOT</version>
+            <version>1.18.46</version>
             <scope>provided</scope>
         </dependency>
         <!-- MapStruct -->
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
-            <version>0.0.35-SNAPSHOT</version>
+            <version>1.6.3</version>
         </dependency>
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct-processor</artifactId>
-            <version>0.0.35-SNAPSHOT</version>
+            <version>1.6.3</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -158,13 +158,13 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>0.0.35-SNAPSHOT</version>
+            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
-            <version>0.0.35-SNAPSHOT</version>
+            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -195,7 +195,7 @@
             <plugin>
                 <groupId>${quarkus.platform.group-id}</groupId>
                 <artifactId>quarkus-maven-plugin</artifactId>
-                <version>0.0.35-SNAPSHOT</version>
+                <version>${quarkus.platform.version}</version>
                 <extensions>true</extensions>
                 <executions>
                     <execution>
@@ -210,19 +210,19 @@
             </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>0.0.35-SNAPSHOT</version>
+                <version>${compiler-plugin.version}</version>
                 <configuration>
                     <parameters>true</parameters>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
-                            <version>0.0.35-SNAPSHOT</version>
+                            <version>1.18.46</version>
                         </path>
                         <path>
                             <groupId>org.mapstruct</groupId>
                             <artifactId>mapstruct-processor</artifactId>
-                            <version>0.0.35-SNAPSHOT</version>
+                            <version>1.6.3</version>
                         </path>
                     </annotationProcessorPaths>
                     <compilerArgs>
@@ -232,7 +232,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>0.0.35-SNAPSHOT</version>
+                <version>${surefire-plugin.version}</version>
                 <configuration>
                     <argLine>--add-opens java.base/java.lang=ALL-UNNAMED @{argLine}</argLine>
                     <systemPropertyVariables>
@@ -248,7 +248,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <version>0.0.35-SNAPSHOT</version>
+                <version>${surefire-plugin.version}</version>
                 <executions>
                     <execution>
                         <goals>
@@ -270,7 +270,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.0.35-SNAPSHOT</version>
+                <version>0.8.13</version>
                 <configuration>
                     <excludes>
                         <exclude>**/*Resource.class</exclude>
