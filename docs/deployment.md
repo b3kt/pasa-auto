@@ -2,7 +2,7 @@
 
 ## Overview
 
-Pasa Auto supports two deployment modes:
+Pasa Auto is a standalone application (no Kubernetes). It runs as a plain Quarkus process serving plain HTTP.
 
 | Mode | Description |
 |------|-------------|
@@ -134,121 +134,7 @@ docker compose logs -f app
 
 ---
 
-### Option 2: Kubernetes
-
-#### 1. Secrets
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: pasa-auto-secrets
-type: Opaque
-stringData:
-  DB_PASSWORD: "your_password"
-  APP_SECURITY_SALT: "your_salt"
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: pasa-auto-config
-data:
-  DB_URL: "jdbc:postgresql://postgres:5432/pasa_auto"
-  DB_USERNAME: "pasa_user"
-  JWT_PRIVATE_KEY: "/app/keys/private.pem"
-  JWT_PUBLIC_KEY: "/app/keys/public.pem"
-  JWT_ISSUER: "https://your-domain.com"
-```
-
-#### 2. Deployment
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: pasa-auto
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: pasa-auto
-  template:
-    metadata:
-      labels:
-        app: pasa-auto
-    spec:
-      containers:
-      - name: pasa-auto
-        image: pasa-auto:latest
-        ports:
-        - containerPort: 8080
-        envFrom:
-        - configMapRef:
-            name: pasa-auto-config
-        - secretRef:
-            name: pasa-auto-secrets
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "250m"
-          limits:
-            memory: "1Gi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 5
-```
-
-#### 3. Service + Ingress
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: pasa-auto
-spec:
-  selector:
-    app: pasa-auto
-  ports:
-  - port: 80
-    targetPort: 8080
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: pasa-auto
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-spec:
-  tls:
-  - hosts:
-    - pasa-auto.example.com
-    secretName: pasa-auto-tls
-  rules:
-  - host: pasa-auto.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: pasa-auto
-            port:
-              number: 80
-```
-
----
-
-### Option 3: Traditional (Systemd)
+### Option 2: Traditional (Systemd)
 
 #### 1. Build
 
@@ -305,7 +191,7 @@ sudo systemctl status pasa-auto
 
 ---
 
-### Option 4: Electron Desktop
+### Option 3: Electron Desktop
 
 Built automatically via CI/CD on `release` branch:
 

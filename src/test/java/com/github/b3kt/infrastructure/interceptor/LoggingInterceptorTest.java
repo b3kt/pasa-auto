@@ -7,6 +7,7 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
+import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.core.MediaType;
@@ -41,6 +42,9 @@ class LoggingInterceptorTest {
     Tracer tracer;
 
     @Mock
+    Instance<Tracer> tracerInstance;
+
+    @Mock
     ContainerRequestContext requestContext;
 
     @Mock
@@ -59,6 +63,8 @@ class LoggingInterceptorTest {
         uriInfo = mock(UriInfo.class);
 
         lenient().when(tracer.spanBuilder(anyString())).thenReturn(spanBuilder);
+        lenient().when(tracerInstance.isResolvable()).thenReturn(true);
+        lenient().when(tracerInstance.get()).thenReturn(tracer);
         lenient().when(spanBuilder.setSpanKind(any(SpanKind.class))).thenReturn(spanBuilder);
         lenient().when(spanBuilder.setParent(any(Context.class))).thenReturn(spanBuilder);
         lenient().when(spanBuilder.startSpan()).thenReturn(span);

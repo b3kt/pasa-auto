@@ -1,10 +1,13 @@
 package com.github.b3kt.infrastructure.interceptor;
 
 import com.github.b3kt.infrastructure.logging.TracingLogger;
+import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
 import jakarta.annotation.Priority;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -32,7 +35,15 @@ public class LoggingInterceptor implements ContainerRequestFilter, ContainerResp
     TracingLogger tracingLogger;
 
     @Inject
-    Tracer tracer;
+    @Any
+    Instance<Tracer> tracer;
+
+    private static final Tracer NOOP_TRACER = OpenTelemetry.noop()
+            .getTracer(LoggingInterceptor.class.getName());
+
+    private Tracer getTracer() {
+        return tracer.isResolvable() ? tracer.get() : NOOP_TRACER;
+    }
 
     private static final String REQUEST_BODY_PROPERTY = "request.body";
     private static final String START_TIME_PROPERTY = "start.time";
@@ -47,7 +58,7 @@ public class LoggingInterceptor implements ContainerRequestFilter, ContainerResp
         requestContext.setProperty(REQUEST_BODY_PROPERTY, requestBody);
         
         // Create span for the request
-        Span span = tracer.spanBuilder(String.format("%s %s", 
+        Span span = getTracer().spanBuilder(String.format("%s %s", 
                 requestContext.getMethod(), 
                 requestContext.getUriInfo().getPath()))
                 .startSpan();
@@ -86,7 +97,7 @@ public class LoggingInterceptor implements ContainerRequestFilter, ContainerResp
         String responseBody = getResponseBody(responseContext);
         
         // Create span for the response
-        Span span = tracer.spanBuilder(String.format("%s %s Response", 
+        Span span = getTracer().spanBuilder(String.format("%s %s Response", 
                 requestContext.getMethod(), 
                 requestContext.getUriInfo().getPath()))
                 .startSpan();
