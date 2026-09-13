@@ -11,6 +11,7 @@ import java.util.List;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import com.github.b3kt.application.service.pazaauto.SpkEnrichable;
 import com.github.b3kt.infrastructure.persistence.entity.BaseEntity;
 import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
 
@@ -18,7 +19,7 @@ import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
 @Table(name = "tb_spk")
 @Getter
 @Setter
-public class TbSpkEntity extends BaseEntity {
+public class TbSpkEntity extends BaseEntity implements SpkEnrichable {
 
     @Column(name = "no_spk", length = 30, nullable = false)
     private String noSpk;

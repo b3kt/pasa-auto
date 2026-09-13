@@ -23,6 +23,7 @@ public class QueryFilterBuilder {
                 searchClause.append(" or lower(").append(additionalFields[i]).append(") like ?").append(paramIndex);
             }
             searchClause.append(")");
+            queryString.append(searchClause);
             
             addParam(searchPattern);
         }
@@ -66,8 +67,9 @@ public class QueryFilterBuilder {
             addParam(startDate);
         }
         if (endDate != null && !endDate.isEmpty()) {
-            queryString.append(" and ").append(dateField).append(" <= ?").append(paramIndex);
-            addParam(endDate + " 23:59:59");
+            String nextDay = java.time.LocalDate.parse(endDate).plusDays(1).toString();
+            queryString.append(" and ").append(dateField).append(" < ?").append(paramIndex);
+            addParam(nextDay);
         }
         return this;
     }

@@ -129,9 +129,9 @@ const pendingField = ref('')
 if (!editableFields.value) editableFields.value = {}
 if (!editingFields.value) editingFields.value = new Set()
 
-// Check if field is editable (for existing customers)
+// Check if field is editable (for existing customers or new customers)
 const isFieldEditable = (field) => {
-  return !props.isNewCustomer && editingFields.value.has(field)
+  return props.isNewCustomer || (!props.isNewCustomer && editingFields.value.has(field))
 }
 
 // Handle double click to make field editable
@@ -143,12 +143,12 @@ const handleDoubleClick = (field) => {
 
 // Handle field update (immediate update for new customers, temporary for existing)
 const handleFieldUpdate = (field, value) => {
-  if (!props.isNewCustomer) {
-    // For existing customers, store temporary value
-    editableFields.value[field] = value
-  } else {
+  if (props.isNewCustomer) {
     // For new customers, emit update directly
     emitFieldUpdate(field, value)
+  } else {
+    // For existing customers, store temporary value
+    editableFields.value[field] = value
   }
 }
 
@@ -267,18 +267,6 @@ const updateMasterPelanggan = async (field, value) => {
   return response.data
 }
 
-// Original handlers for new customers
-const handleMerkChange = (value) => {
-  if (props.isNewCustomer) {
-    emitFieldUpdate('merk', value)
-  }
-}
-
-const handleJenisChange = (value) => {
-  if (props.isNewCustomer) {
-    emitFieldUpdate('jenis', value)
-  }
-}
 
 const filterMerk = (inputVal, doneFn) => {
   emit('filter:merk', inputVal, doneFn)

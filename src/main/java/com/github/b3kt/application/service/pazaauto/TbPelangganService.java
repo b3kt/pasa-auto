@@ -2,14 +2,10 @@ package com.github.b3kt.application.service.pazaauto;
 
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
+import com.github.b3kt.domain.model.pazaauto.Pelanggan;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
-import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganRepository;
-
-import io.quarkus.cache.CacheResult;
-import io.quarkus.hibernate.orm.panache.PanacheQuery;
+import com.github.b3kt.infrastructure.repository.PelangganRepository;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
-import io.quarkus.panache.common.Page;
-import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -19,15 +15,11 @@ import java.util.List;
 public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, Long> {
 
     @Inject
-    TbPelangganRepository repository;
-
-    @Inject
-    @io.quarkus.cache.CacheName("pelanggan-by-nopol")
-    io.quarkus.cache.Cache cache;
+    PelangganRepository pelangganRepository;
 
     @Override
     protected PanacheRepositoryBase<TbPelangganEntity, Long> getRepository() {
-        return repository;
+        throw new UnsupportedOperationException("Use PelangganRepository instead");
     }
 
     @Override
@@ -36,79 +28,96 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
     }
 
     @Override
-    public PageResponse<TbPelangganEntity> findPaginated(PageRequest pageRequest) {
-        PanacheQuery<TbPelangganEntity> query;
-
-        // Apply search filter if specified
-        if (pageRequest.getSearch() != null && !pageRequest.getSearch().isEmpty()) {
-            String searchPattern = "%" + pageRequest.getSearch().toLowerCase() + "%";
-            query = repository.find(
-                    "lower(namaPelanggan) like ?1 or lower(nopol) like ?1 or lower(email) like ?1",
-                    searchPattern);
-        } else {
-            query = repository.findAll();
-        }
-
-        // Apply sorting if specified
-        if (pageRequest.getSortBy() != null && !pageRequest.getSortBy().isEmpty()) {
-            Sort sort = pageRequest.isDescending()
-                    ? Sort.descending(pageRequest.getSortBy())
-                    : Sort.ascending(pageRequest.getSortBy());
-            query = query.page(Page.of(0, Integer.MAX_VALUE)); // Reset pagination for sorting
-
-            // Re-apply query with sorting
-            if (pageRequest.getSearch() != null && !pageRequest.getSearch().isEmpty()) {
-                String searchPattern = "%" + pageRequest.getSearch().toLowerCase() + "%";
-                query = repository.find(
-                        "lower(namaPelanggan) like ?1 or lower(nopol) like ?1 or lower(email) like ?1",
-                        sort,
-                        searchPattern);
-            } else {
-                query = repository.findAll(sort);
-            }
-        }
-
-        // Get total count
-        long totalCount = query.count();
-
-        // Apply pagination
-        List<TbPelangganEntity> rows = query.page(Page.of(pageRequest.getPage() - 1, pageRequest.getRowsPerPage()))
-                .list();
-
-        return new PageResponse<>(rows, pageRequest.getPage(), pageRequest.getRowsPerPage(), totalCount);
+    public List<TbPelangganEntity> findAll() {
+        return pelangganRepository.findAll()
+                .stream()
+                .map(TbPelangganEntity::fromDomain)
+                .toList();
     }
 
-    /**
-     * Find pelanggan by nopol. If multiple records exist, return the last updated
-     * one.
-     *
-     * @param nopol The vehicle registration number
-     * @return The pelanggan entity or null if not found
-     */
-    @CacheResult(cacheName = "pelanggan-by-nopol")
-    public TbPelangganEntity findByNopol(String nopol) {
-        if (nopol == null || nopol.trim().isEmpty()) {
-            return null;
-        }
+    @Override
+    public TbPelangganEntity findById(Long id) {
+        return pelangganRepository.findById(id)
+                .map(TbPelangganEntity::fromDomain)
+                .orElse(null);
+    }
 
-        return repository.find("nopol", Sort.descending("updatedAt"), nopol)
-                .firstResult();
+    @Override
+    public PageResponse<TbPelangganEntity> findPaginated(PageRequest pageRequest) {
+        PageResponse<Pelanggan> domainPage = pelangganRepository.findPaginated(pageRequest);
+        List<TbPelangganEntity> rows = domainPage.getRows()
+                .stream()
+                .map(TbPelangganEntity::fromDomain)
+                .toList();
+        return new PageResponse<>(rows, domainPage.getPage(), domainPage.getRowsPerPage(), domainPage.getRowsNumber());
+    }
+
+    @Override
+    @jakarta.transaction.Transactional
+    public TbPelangganEntity create(TbPelangganEntity entity) {
+        Pelanggan domain = entity.toDomain();
+        Pelanggan saved = pelangganRepository.save(domain);
+        return TbPelangganEntity.fromDomain(saved);
     }
 
     @Override
     @jakarta.transaction.Transactional
     public TbPelangganEntity update(Long id, TbPelangganEntity entity) {
-        // Invalidate cache for old nopol
-        TbPelangganEntity existing = findById(id);
-        if (existing != null && existing.getNopol() != null) {
-            cache.invalidate(existing.getNopol()).await().indefinitely();
+        Pelanggan domain = pelangganRepository.findById(id).orElse(null);
+        if (domain == null) {
+            return null;
         }
+        domain.setNopol(entity.getNopol());
+        domain.setNamaPelanggan(entity.getNamaPelanggan());
+        domain.setAlamat(entity.getAlamat());
+        domain.setContactPerson(entity.getContactPerson());
+        domain.setTelepon(entity.getTelepon());
+        domain.setMerk(entity.getMerk());
+        domain.setJenis(entity.getJenis());
+        domain.setEmail(entity.getEmail());
+        domain.setJenisKelamin(entity.getJenisKelamin());
+        domain.setKeterangan(entity.getKeterangan());
+        domain.setKodePos(entity.getKodePos());
+        domain.setKota(entity.getKota());
+        domain.setNoHp(entity.getNoHp());
+        domain.setNoTelepon(entity.getNoTelepon());
+        domain.setTanggalJoin(entity.getTanggalJoin());
+        Pelanggan saved = pelangganRepository.save(domain);
+        return TbPelangganEntity.fromDomain(saved);
+    }
 
-        // Invalidate cache for new nopol
-        if (entity.getNopol() != null) {
-            cache.invalidate(entity.getNopol()).await().indefinitely();
-        }
+    @Override
+    @jakarta.transaction.Transactional
+    public void delete(Long id) {
+        pelangganRepository.deleteById(id);
+    }
 
-        return super.update(id, entity);
+    public TbPelangganEntity findByNopol(String nopol) {
+        return pelangganRepository.findByNopol(nopol)
+                .map(TbPelangganEntity::fromDomain)
+                .orElse(null);
+    }
+
+    @jakarta.transaction.Transactional
+    public TbPelangganEntity patchByNopol(String nopol, TbPelangganEntity data) {
+        Pelanggan domain = pelangganRepository.findByNopol(nopol).orElse(null);
+        if (domain == null) return null;
+
+        if (data.getNamaPelanggan() != null) domain.setNamaPelanggan(data.getNamaPelanggan());
+        if (data.getAlamat() != null) domain.setAlamat(data.getAlamat());
+        if (data.getMerk() != null) domain.setMerk(data.getMerk());
+        if (data.getJenis() != null) domain.setJenis(data.getJenis());
+        if (data.getContactPerson() != null) domain.setContactPerson(data.getContactPerson());
+        if (data.getTelepon() != null) domain.setTelepon(data.getTelepon());
+        if (data.getEmail() != null) domain.setEmail(data.getEmail());
+        if (data.getJenisKelamin() != null) domain.setJenisKelamin(data.getJenisKelamin());
+        if (data.getKeterangan() != null) domain.setKeterangan(data.getKeterangan());
+        if (data.getKodePos() != null) domain.setKodePos(data.getKodePos());
+        if (data.getKota() != null) domain.setKota(data.getKota());
+        if (data.getNoHp() != null) domain.setNoHp(data.getNoHp());
+        if (data.getNoTelepon() != null) domain.setNoTelepon(data.getNoTelepon());
+
+        Pelanggan saved = pelangganRepository.save(domain);
+        return TbPelangganEntity.fromDomain(saved);
     }
 }

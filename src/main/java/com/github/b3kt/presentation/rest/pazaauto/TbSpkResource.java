@@ -1,20 +1,16 @@
 package com.github.b3kt.presentation.rest.pazaauto;
 
-import java.time.LocalDateTime;
-import java.util.Objects;
-
 import com.github.b3kt.application.dto.ApiResponse;
-import com.github.b3kt.application.service.pazaauto.AbstractCrudService;
-import com.github.b3kt.application.service.pazaauto.TbKaryawanService;
-import com.github.b3kt.application.service.pazaauto.TbPelangganService;
+import com.github.b3kt.application.dto.pazaauto.SpkDto;
+import com.github.b3kt.application.mapper.pazaauto.SpkMapper;
 import com.github.b3kt.application.service.pazaauto.TbSpkService;
-import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKaryawanEntity;
-import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
-import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
 import io.opentelemetry.instrumentation.annotations.SpanAttribute;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
+import io.smallrye.faulttolerance.api.RateLimit;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -22,162 +18,137 @@ import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Response;
-import lombok.RequiredArgsConstructor;
 
 @RequestScoped
 @Path("/api/pazaauto/spk")
-@RequiredArgsConstructor
-public class TbSpkResource extends AbstractCrudResource<TbSpkEntity, Long> {
+public class TbSpkResource {
 
-    final TbSpkService service;
-    final TbPelangganService pelangganService;
-    final TbKaryawanService karyawanService;
+    @Inject
+    TbSpkService service;
 
-    @Override
-    protected AbstractCrudService<TbSpkEntity, Long> getService() {
-        return service;
-    }
+    @Inject
+    SpkMapper spkMapper;
 
-    @Override
-    protected Long parseId(String id) {
-        return Long.valueOf(id);
-    }
-
-    @Override
-    protected String getEntityName() {
-        return "SPK";
+    @GET
+    public Response findAll() {
+        return Response.ok(ApiResponse.success(spkMapper.toDtoList(service.findAll()))).build();
     }
 
     @GET
     @Path("/by-no-spk/{noSpk}")
     @WithSpan("find-spk-by-no-spk")
+    @RateLimit(value = 30, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
     public Response findByNoSpk(@PathParam("noSpk") @SpanAttribute("spk.no-spk") String noSpk) {
-        return Response.ok(ApiResponse.success(service.findByNoSpk(noSpk))).build();
+        TbSpkEntity entity = service.findByNoSpk(noSpk);
+        if (entity == null) {
+            return Response.ok(ApiResponse.error("SPK not found")).build();
+        }
+        return Response.ok(ApiResponse.success(spkMapper.toDto(entity))).build();
     }
 
     @GET
     @Path("/unprocessed")
     @WithSpan("get-unprocessed-spk")
+    @RateLimit(value = 30, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
     public Response getUnprocessedSpk() {
-        return Response.ok(ApiResponse.success(service.findUnprocessedSpk())).build();
+        return Response.ok(ApiResponse.success(spkMapper.toDtoList(service.findUnprocessedSpk()))).build();
     }
 
-    @Override
     @GET
     @Path("/{id}")
+    @WithSpan("get-spk-by-id")
+    @RateLimit(value = 30, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
     public Response getById(@PathParam("id") String id) {
-        TbSpkEntity entity = getService().findById(parseId(id));
-
-        fillKaryawanDetail(entity);
-        fillPelangganDetail(entity);
-        fillKendaraanDetail(entity);
-
-        return Response.ok(ApiResponse.success(entity)).build();
+        TbSpkEntity entity = service.findById(Long.valueOf(id));
+        if (entity == null) {
+            return Response.ok(ApiResponse.error("SPK not found")).build();
+        }
+        return Response.ok(ApiResponse.success(spkMapper.toDto(entity))).build();
     }
 
+    @GET
+    @Path("/paginated")
+    @WithSpan("list-paginated-spk")
+    @RateLimit(value = 20, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
+    public Response listPaginated(
+            @jakarta.ws.rs.QueryParam("page") @jakarta.ws.rs.DefaultValue("1") int page,
+            @jakarta.ws.rs.QueryParam("rowsPerPage") @jakarta.ws.rs.DefaultValue("10") int rowsPerPage,
+            @jakarta.ws.rs.QueryParam("sortBy") String sortBy,
+            @jakarta.ws.rs.QueryParam("descending") @jakarta.ws.rs.DefaultValue("false") boolean descending,
+            @jakarta.ws.rs.QueryParam("search") String search,
+            @jakarta.ws.rs.QueryParam("statusFilter") String statusFilter,
+            @jakarta.ws.rs.QueryParam("filterToday") @jakarta.ws.rs.DefaultValue("false") boolean filterToday,
+            @jakarta.ws.rs.QueryParam("startDate") String startDate,
+            @jakarta.ws.rs.QueryParam("endDate") String endDate) {
+
+        com.github.b3kt.application.dto.PageRequest pageRequest = new com.github.b3kt.application.dto.PageRequest(page, rowsPerPage);
+        pageRequest.setSortBy(sortBy);
+        pageRequest.setDescending(descending);
+        pageRequest.setSearch(search);
+        pageRequest.setStatusFilter(statusFilter);
+        pageRequest.setFilterToday(filterToday);
+        pageRequest.setStartDate(startDate);
+        pageRequest.setEndDate(endDate);
+
+        com.github.b3kt.application.dto.PageResponse<TbSpkEntity> pageResponse = service.findPaginated(pageRequest);
+        return Response.ok(ApiResponse.success(
+                new com.github.b3kt.application.dto.PageResponse<>(
+                        spkMapper.toDtoList(pageResponse.getRows()),
+                        pageResponse.getCurrentPage(),
+                        pageResponse.getRowsPerPage(),
+                        pageResponse.getTotalRows()))).build();
+    }
 
     @GET
     @Path("/get-next-spk-number")
     @WithSpan("get-next-spk-number")
+    @RateLimit(value = 10, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
     public Response getNextSpk() {
-        String lastSpkNumber = service.getNextSpkNumber(SPK_DATE_FORMATTER.format(LocalDateTime.now()));
-        String lastQueueNumber = lastSpkNumber.substring(lastSpkNumber.length() - 2);
-        int nextQueueNumber = Integer.parseInt(lastQueueNumber) + 1;
-        String nextSpkNumber = lastSpkNumber.substring(0, lastSpkNumber.length() - 2)
-                + String.format("%02d", nextQueueNumber);
+        String nextSpkNumber = service.generateNextSpkNumber(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd").format(java.time.LocalDateTime.now()));
         return Response.ok(ApiResponse.success(nextSpkNumber)).build();
     }
 
     @POST
-    @Override
-    public Response create(TbSpkEntity entity) {
-
-        fillKaryawanDetail(entity);
-        fillPelangganDetail(entity);
-        fillKendaraanDetail(entity);
-
-        TbSpkEntity created = getService().create(entity);
-        return Response.ok(ApiResponse.success(getEntityName() + " created", created)).build();
+    @WithSpan("create-spk")
+    @RateLimit(value = 10, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
+    public Response create(@Valid SpkDto dto) {
+        TbSpkEntity entity = spkMapper.toEntity(dto);
+        TbSpkEntity created = service.create(entity);
+        return Response.ok(ApiResponse.success("SPK created", spkMapper.toDto(created))).build();
     }
 
-    @Override
     @PUT
     @Path("/{id}")
-    public Response update(@PathParam("id") String id, TbSpkEntity entity) {
-
-        fillKaryawanDetail(entity);
-        fillPelangganDetail(entity);
-        fillKendaraanDetail(entity);
-
-        TbSpkEntity updated = getService().update(parseId(id), entity);
+    @WithSpan("update-spk")
+    @RateLimit(value = 10, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
+    public Response update(@PathParam("id") String id, @Valid SpkDto dto) {
+        TbSpkEntity entity = spkMapper.toEntity(dto);
+        TbSpkEntity updated = service.update(Long.valueOf(id), entity);
 
         if (updated == null) {
-            return Response.ok(ApiResponse.error(getEntityName() + " not found")).build();
+            return Response.ok(ApiResponse.error("SPK not found")).build();
         }
-        return Response.ok(ApiResponse.success(getEntityName() + " updated", updated)).build();
+        return Response.ok(ApiResponse.success("SPK updated", spkMapper.toDto(updated))).build();
     }
 
-    @Override
     @DELETE
     @Path("/{id}")
+    @WithSpan("delete-spk")
+    @RateLimit(value = 10, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
     public Response delete(@PathParam("id") String id) {
-        TbSpkEntity cancelled = service.cancelSpk(parseId(id));
+        TbSpkEntity cancelled = service.cancelSpk(Long.valueOf(id));
         if (cancelled == null) {
-            return Response.ok(ApiResponse.error(getEntityName() + " not found")).build();
+            return Response.ok(ApiResponse.error("SPK not found")).build();
         }
-        return Response.ok(ApiResponse.success(getEntityName() + " cancelled", cancelled)).build();
+        return Response.ok(ApiResponse.success("SPK cancelled", spkMapper.toDto(cancelled))).build();
     }
 
     @DELETE
     @Path("/delete-by-no-spk/{noSpk}")
+    @WithSpan("delete-spk-by-no-spk")
+    @RateLimit(value = 5, window = 60, windowUnit = java.time.temporal.ChronoUnit.SECONDS)
     public Response deleteByNoSpk(@PathParam("noSpk") String noSpk) {
         service.deleteByNoSpk(noSpk);
-        return Response.ok(ApiResponse.success(getEntityName() + " deleted permanently")).build();
-    }
-
-    private void fillPelangganDetail(TbSpkEntity entity) {
-
-        TbPelangganEntity pelanggan;
-        if (Objects.isNull(entity.getPelangganId())) {
-            pelanggan = pelangganService.findByNopol(entity.getNopol());
-            if (Objects.nonNull(pelanggan)) {
-                entity.setPelangganId(pelanggan.getId());
-                entity.setNamaPelanggan(pelanggan.getNamaPelanggan());
-            }
-        }else{
-            pelanggan = pelangganService.findById(entity.getPelangganId());
-        }
-
-        if(Objects.nonNull(pelanggan)){
-            entity.setAlamatPelanggan(pelanggan.getAlamat());
-            entity.setMerkKendaraan(pelanggan.getMerk());
-            entity.setJenisKendaraan(pelanggan.getJenis());
-        }
-    }
-
-    private void fillKaryawanDetail(TbSpkEntity entity) {
-        if (Objects.isNull(entity.getMekanikId())) {
-            if (entity.getMekanikList() == null || entity.getMekanikList().isEmpty()) {
-                return;
-            }
-            Long mekanikId = entity.getMekanikList().stream()
-                    .findFirst()
-                    .map(SpkMekanik::getId)
-                    .orElse(null);
-            if (mekanikId == null) {
-                return;
-            }
-            TbKaryawanEntity karyawan = karyawanService.findById(mekanikId);
-            if (Objects.nonNull(karyawan)) {
-                entity.setNamaKaryawan(karyawan.getNamaKaryawan());
-                entity.setMekanikId(karyawan.getId());
-            }
-        }
-    }
-
-    private void fillKendaraanDetail(TbSpkEntity entity) {
-        if (Objects.nonNull(entity.getKm())) {
-            entity.setKmSaatIni(entity.getKm());
-        }
+        return Response.ok(ApiResponse.success("SPK deleted permanently")).build();
     }
 }

@@ -60,7 +60,7 @@
                              :options="filteredPelangganOptions"
                              :option-label="constructNopolOptions" option-value="nopol" emit-value map-options use-input
                              input-debounce="300" @filter="filterPelanggan" @update:model-value="onNopolChange"
-                             :loading="loadingPelanggan"
+                             :loading="loadingPelanggan" :disable="isEditMode && formData.statusSpk !== 'OPEN'"
                              new-value-mode="add-unique"
                              :rules="[val => !!val || 'No Polisi harus diisi']"
                              hide-bottom-space>
@@ -133,6 +133,7 @@
                      @filter:merk="filterMerk"
                      @filter:jenis="filterJenis"
                      @check:vehicle="checkAndShowVehicleDialog"
+                     @pelanggan-updated="handlePelangganUpdated"
                    />
                 </q-card-section>
               </q-card-section>
@@ -209,9 +210,20 @@
             <q-input v-model="paymentData.noPenjualan" label="No Penjualan" outlined dense readonly />
           </div>
           <div class="col-12">
-            <q-field label="Total Tagihan" outlined dense stack-label>
+            <q-field label="Subtotal Tagihan" outlined dense stack-label>
               <template v-slot:control>
                 <div class="self-center full-width no-outline" tabindex="0">{{ formatCurrency(grandTotal) }}</div>
+              </template>
+            </q-field>
+          </div>
+          <div class="col-12">
+            <q-input v-model.number="paymentData.discount" label="Diskon" outlined dense type="number"
+                     prefix="Rp" @update:model-value="calculateKembalian" />
+          </div>
+          <div class="col-12">
+            <q-field label="Total Harus Dibayar" outlined dense stack-label class="text-bold text-primary">
+              <template v-slot:control>
+                <div class="self-center full-width no-outline" tabindex="0">{{ formatCurrency(totalToPay) }}</div>
               </template>
             </q-field>
           </div>
@@ -222,7 +234,7 @@
           <div class="col-12">
             <q-input v-model.number="paymentData.uangDibayar" label="Uang Dibayar" outlined dense type="number"
                      prefix="Rp" @update:model-value="calculateKembalian" autofocus
-                     :rules="[val => val >= grandTotal || 'Uang dibayar kurang dari total tagihan']" />
+                     :rules="[val => val >= totalToPay || 'Uang dibayar kurang dari total tagihan']" />
           </div>
           <div class="col-12">
             <q-input v-model="paymentData.kembalian" label="Kembalian" outlined dense readonly
@@ -345,7 +357,8 @@ const isDirty = (current) => {
 const paymentData = ref({
   uangDibayar: 0,
   kembalian: 0,
-  metodePembayaran: 'CASH'
+  metodePembayaran: 'CASH',
+  discount: 0
 })
 
 // Detail SPK State
@@ -393,6 +406,11 @@ const subtotalBarang = computed(() => {
 })
 
 const grandTotal = computed(() => subtotalJasa.value + subtotalBarang.value)
+
+const totalToPay = computed(() => {
+  const total = grandTotal.value - (paymentData.value.discount || 0)
+  return total < 0 ? 0 : total
+})
 
 const pagination = ref({
   sortBy: "noSpk",
@@ -749,22 +767,34 @@ const openEditDialog = async (row) => {
   // Fetch options first so we can map prices and populate vehicle dropdowns
   await Promise.all([fetchPelanggan(), fetchJasa(), fetchBarang(), fetchMerkOptions(), fetchJenisOptions()])
 
-  // Fetch full details including details list
-  try {
-    const response = await api.get(`/api/pazaauto/spk/${row.id}`)
-    if (response.data.success) {
-      formData.value = response.data.data
-      // Ensure details is an array
-      if (!formData.value.details) {
-        formData.value.details = []
+    // Fetch full details including details list
+    try {
+      const response = await api.get(`/api/pazaauto/spk/${row.id}`)
+      if (response.data.success) {
+        formData.value = response.data.data
+        // Ensure details is an array
+        if (!formData.value.details) {
+          formData.value.details = []
+        }
+        
+        // If SPK status is SELESAI, fetch the corresponding penjualan record to get discount
+        if (formData.value.statusSpk === 'SELESAI') {
+          try {
+            const pResponse = await api.get(`/api/pazaauto/penjualan/F${formData.value.noSpk}`)
+            if (pResponse.data.success && pResponse.data.data) {
+              formData.value.discount = pResponse.data.data.discount
+            }
+          } catch (pe) {
+            console.error('Failed to fetch penjualan details for completed SPK', pe)
+          }
+        }
+      } else {
+        formData.value = {...row, details: []}
       }
-    } else {
+    } catch (error) {
+      console.error('Failed to fetch SPK details', error)
       formData.value = {...row, details: []}
     }
-  } catch (error) {
-    console.error('Failed to fetch SPK details', error)
-    formData.value = {...row, details: []}
-  }
 
   onNopolChange(formData.value.nopol)
 
@@ -829,30 +859,6 @@ const initNoSpk = () => {
   fetchNextSpkNumber()
 }
 
-const createNewSpkProcess = async () => {
-  isEditMode.value = false
-  isEditable.value = true
-  resetForm()
-
-  const offsetMs = 7 * 60 * 60 * 1000;
-  const gmt7 = new Date(new Date().getTime() + offsetMs);
-  const gmt7Iso = gmt7.toISOString().replace("T", " ").replace("Z", "").substring(0, 16);
-  formData.value.tanggalJamSpk = gmt7Iso
-  formData.value.statusSpk = 'PROSES'
-  formData.value.startedAt = new Date().toISOString()
-
-await fetchNextSpkNumber()
-  await Promise.all([fetchPelanggan(), fetchJasa(), fetchBarang(), fetchMerkOptions(), fetchJenisOptions()])
-
-  initialData.value = null
-  showDialog.value = true
-
-  $q.notify({
-    type: 'info',
-    message: 'SPK baru dibuat dan siap proses',
-    timeout: 2000
-  })
-}
 
 const startProcess = () => {
   formData.value.statusSpk = 'PROSES'
@@ -875,9 +881,9 @@ const printSpk = async () => {
     km: formData.value.km,
     namaMekanik: selectedMekaniks.value.map(m => m.namaKaryawan).join(', '),
     subTotal: grandTotal.value,
-    diskon: formData.value.diskon || 0,
+    diskon: formData.value.discount || 0,
     ppn: formData.value.ppn || 0,
-    grandTotal: grandTotal.value,
+    grandTotal: grandTotal.value - (formData.value.discount || 0),
     uangDibayar: 0,
     kembalian: 0,
     keterangan: formData.value.keterangan,
@@ -975,10 +981,10 @@ const saveSpk = async () => {
     // If new customer, create pelanggan first
     if (isNewCustomer.value && !isEditMode.value) {
       // Validate required customer fields
-      if (!formData.value.namaPelanggan || !formData.value.merk) {
+      if (!formData.value.nopol || !formData.value.namaPelanggan || !formData.value.merk) {
         $q.notify({
           type: 'warning',
-          message: 'Please fill in required customer fields (Nama, Merk)'
+          message: 'Please fill in required customer fields (No Polisi, Nama, Merk)'
         })
         //saving.value = false
         return
@@ -1066,11 +1072,11 @@ const generatePenjualanNumber = async (spkNo) => {
 }
 
 const calculateKembalian = () => {
-  paymentData.value.kembalian = paymentData.value.uangDibayar - grandTotal.value
+  paymentData.value.kembalian = paymentData.value.uangDibayar - totalToPay.value
 }
 
 const determinePaymentStatus = () => {
-  if (paymentData.value.uangDibayar >= grandTotal.value) {
+  if (paymentData.value.uangDibayar >= totalToPay.value) {
     return 'LUNAS'
   } else if (paymentData.value.uangDibayar > 0) {
     return 'DP'
@@ -1100,7 +1106,8 @@ const confirmPayment = async () => {
       noPenjualan: paymentData.value.noPenjualan,
       tanggalJamPenjualan: new Date().toISOString(),
       noSpk: formData.value.noSpk,
-      grandTotal: grandTotal.value,
+      grandTotal: totalToPay.value,
+      discount: paymentData.value.discount || 0,
       uangDibayar: paymentData.value.uangDibayar,
       kembalian: paymentData.value.kembalian,
       metodePembayaran: paymentData.value.metodePembayaran,
@@ -1381,6 +1388,50 @@ const handleUpdateMasterBarang = async (payload) => {
       type: 'negative',
       message: 'Failed to update master data Barang',
       caption: error.response?.data?.message || error.message
+    })
+  }
+}
+
+// Handle pelanggan data update from inline editing
+const handlePelangganUpdated = async (payload) => {
+  try {
+    // Refresh pelanggan list to update dropdown options
+    await fetchPelanggan()
+    
+    // Refresh SPK table to show updated pelanggan data
+    await fetchSpk()
+    
+    // Update the current SPK form data with the new values
+    const updatedPelanggan = pelangganOptions.value.find(p => p.nopol === payload.nopol)
+    if (updatedPelanggan) {
+      // Update the form data with the latest values from pelanggan options
+      if (payload.field === 'namaPelanggan') {
+        formData.value.namaPelanggan = payload.value
+      } else if (payload.field === 'alamat') {
+        formData.value.alamat = payload.value
+      } else if (payload.field === 'merk') {
+        formData.value.merk = payload.value
+      } else if (payload.field === 'jenis') {
+        formData.value.jenis = payload.value
+      }
+      
+      // Also update the filtered pelanggan options to reflect changes
+      const filteredIndex = filteredPelangganOptions.value.findIndex(p => p.nopol === payload.nopol)
+      if (filteredIndex !== -1) {
+        filteredPelangganOptions.value[filteredIndex] = {...updatedPelanggan}
+      }
+    }
+    
+    $q.notify({
+      type: 'positive',
+      message: 'Data pelanggan berhasil diperbarui di form SPK dan tabel'
+    })
+  } catch (error) {
+    console.error('Failed to refresh pelanggan data', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Gagal memperbarui data pelanggan di form SPK',
+      caption: error.message
     })
   }
 }

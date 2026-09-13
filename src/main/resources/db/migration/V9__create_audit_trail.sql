@@ -4,7 +4,7 @@
 
 CREATE SEQUENCE IF NOT EXISTS tb_audit_trail_id_seq;
 
-CREATE TABLE tb_audit_trail (
+CREATE TABLE IF NOT EXISTS tb_audit_trail (
     id BIGINT NOT NULL DEFAULT nextval('tb_audit_trail_id_seq'),
     table_name VARCHAR(255) NOT NULL,
     field_name VARCHAR(255),
@@ -34,7 +34,7 @@ COMMENT ON COLUMN tb_audit_trail.before_value IS 'JSON representation of the val
 COMMENT ON COLUMN tb_audit_trail.after_value IS 'JSON representation of the value AFTER the change';
 COMMENT ON COLUMN tb_audit_trail.record_id IS 'Primary key ID of the affected record';
 
-CREATE INDEX idx_audit_trail_table_name ON tb_audit_trail(table_name);
-CREATE INDEX idx_audit_trail_timestamp ON tb_audit_trail(timestamp);
-CREATE INDEX idx_audit_trail_user_id ON tb_audit_trail(user_id);
-CREATE INDEX idx_audit_trail_record_id ON tb_audit_trail(record_id);
+CREATE INDEX IF NOT EXISTS idx_audit_trail_table_name ON tb_audit_trail(table_name);
+CREATE INDEX IF NOT EXISTS idx_audit_trail_timestamp ON tb_audit_trail(timestamp);
+CREATE INDEX IF NOT EXISTS idx_audit_trail_user_id ON tb_audit_trail(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_trail_record_id ON tb_audit_trail(record_id);

@@ -2,6 +2,7 @@ package com.github.b3kt.application.dto.pazaauto;
 
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity;
+import com.github.b3kt.application.service.pazaauto.SpkEnrichable;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
 import io.quarkus.runtime.annotations.RegisterForReflection;
@@ -20,7 +21,7 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 @RegisterForReflection
-public class RekapPenjualanDto {
+public class RekapPenjualanDto implements SpkEnrichable {
 
     private Long id;
     private String noSpk;
@@ -55,6 +56,7 @@ public class RekapPenjualanDto {
     private Long kendaraanId;
     private String metodePembayaran;
     private String noPolisi;
+    private BigDecimal discount;
 
     public RekapPenjualanDto(TbSpkEntity spk, TbPenjualanEntity penjualan){
         id = spk.getId();
@@ -90,6 +92,7 @@ public class RekapPenjualanDto {
             kendaraanId = penjualan.getKendaraanId();
             metodePembayaran = penjualan.getMetodePembayaran();
             noPolisi = penjualan.getNoPolisi();
+            discount = penjualan.getDiscount();
         } else {
             // Set default values when penjualan is null
             alamatPelanggan = null;
@@ -105,6 +108,7 @@ public class RekapPenjualanDto {
             kendaraanId = null;
             metodePembayaran = null;
             noPolisi = null;
+            discount = null;
         }
     }
 }

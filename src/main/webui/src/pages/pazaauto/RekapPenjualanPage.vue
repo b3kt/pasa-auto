@@ -52,6 +52,10 @@
             {{ formatCurrency(props.row.kembalian) }}
           </template>
 
+          <template v-slot:body-cell-discount="props">
+            {{ formatCurrency(props.row.discount) }}
+          </template>
+
           <template v-slot:body-cell-grandTotal="props">
             {{ formatCurrency(props.row.grandTotal) }}
           </template>
@@ -158,6 +162,13 @@
                     <q-field label="Total Tagihan" outlined dense stack-label>
                       <template v-slot:control>
                         <div class="self-center full-width no-outline" tabindex="0">{{ formatCurrency(formData.grandTotal) }}</div>
+                      </template>
+                    </q-field>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <q-field label="Discount" outlined dense stack-label>
+                      <template v-slot:control>
+                        <div class="self-center full-width no-outline" tabindex="0">{{ formatCurrency(formData.discount) }}</div>
                       </template>
                     </q-field>
                   </div>
@@ -487,6 +498,13 @@ const columns = [
     label: 'No Faktur Penjualan',
     align: 'left',
     field: 'noPenjualan',
+    sortable: true
+  },
+  {
+    name: 'discount',
+    label: 'Diskon',
+    align: 'left',
+    field: 'discount',
     sortable: true
   },
   {
@@ -855,11 +873,15 @@ const printSpk = async () => {
     merk: formData.value.merk,
     model: formData.value.jenis,
     km: formData.value.km,
-    namaMekanik: selectedMekaniks.value.map(m => m.namaKaryawan).join(', '),
+    namaMekanik: selectedMekaniks.value.length > 0
+      ? selectedMekaniks.value.map(m => m.namaKaryawan).join(', ')
+      : (formData.value.mekanikList && Array.isArray(formData.value.mekanikList)
+        ? formData.value.mekanikList.map(m => m.namaKaryawan || `ID: ${m.id}`).join(', ')
+        : formData.value.namaKaryawan || ''),
     subTotal: grandTotal.value,
-    diskon: formData.value.diskon || 0,
+    diskon: formData.value.discount || 0,
     ppn: formData.value.ppn || 0,
-    grandTotal: grandTotal.value,
+    grandTotal: grandTotal.value - (formData.value.discount || 0),
     uangDibayar: 0,
     kembalian: 0,
     keterangan: formData.value.keterangan,

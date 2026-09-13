@@ -1,8 +1,0 @@
-// Prevents additional console window on Windows in release, DO NOT REMOVE!!
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
-fn main() {
-    env_logger::init();
-    log::info!("Starting PazaAuto Tauri application");
-    paza_auto_tauri_lib::run();
-}

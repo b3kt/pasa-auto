@@ -1,87 +1,187 @@
-# JWT Configuration Guide
+# JWT Setup Guide
 
-This project uses JWT (JSON Web Tokens) for authentication. The JWT signing requires a private key.
+## Overview
 
-## Generated Keys
+Pasa Auto uses JWT (JSON Web Tokens) with RSA asymmetric signing for authentication.
 
-The following keys have been generated for JWT signing and verification:
+---
 
-- **privateKey-pkcs8.pem** - Private key for signing JWT tokens (PKCS#8 format)
-- **publicKey.pem** - Public key for verifying JWT tokens
-- **privateKey.pem** - Original private key (can be deleted)
+## Key Files
+
+| File | Purpose | Secret? |
+|------|---------|---------|
+| `privateKey-pkcs8.pem` | Signs tokens (PKCS#8 format) | Yes |
+| `publicKey.pem` | Verifies tokens | No |
+| `privateKey.pem` | Original private key (can be deleted after conversion) | Yes |
+
+Keys are stored in `src/main/resources/` for development.
+
+---
 
 ## Configuration
 
-The JWT configuration is in `application.properties`:
+### application.properties
 
 ```properties
 # Signing key (for generating tokens)
-smallrye.jwt.sign.key.location=privateKey-pkcs8.pem
+smallrye.jwt.sign.key.location=${JWT_PRIVATE_KEY:classpath:privateKey-pkcs8.pem}
+
 # Verification key (for validating tokens)
-mp.jwt.verify.publickey.location=publicKey.pem
-mp.jwt.verify.issuer=https://quarkus-quasar.example.com
-jwt.issuer=https://quarkus-quasar.example.com
-jwt.expiration.hours=24
+mp.jwt.verify.publickey.location=${JWT_PUBLIC_KEY:classpath:publicKey.pem}
+
+# Token issuer
+mp.jwt.verify.issuer=${JWT_ISSUER:https://quarkus-quasar.example.com}
+jwt.issuer=${JWT_ISSUER:https://quarkus-quasar.example.com}
+
+# Token expiration (in hours)
+jwt.expiration.hours=2400
 ```
 
-## Security Notes
+### Environment Variables
 
-⚠️ **IMPORTANT:**
-- The private key files (`privateKey*.pem`) are in `.gitignore` and should **NEVER** be committed to version control
-- The public key (`publicKey.pem`) can be shared publicly
-- In production, use environment variables or a secrets manager for key storage
-- Rotate keys periodically for security
-
-## Regenerating Keys
-
-If you need to regenerate the keys:
+Set in `.env`:
 
 ```bash
-# Generate new private key
-openssl genrsa -out src/main/resources/privateKey.pem 2048
+JWT_PRIVATE_KEY=/path/to/privateKey-pkcs8.pem
+JWT_PUBLIC_KEY=/path/to/publicKey.pem
+JWT_ISSUER=https://your-domain.com
+```
+
+---
+
+## Generating Keys
+
+### Development
+
+```bash
+# Generate RSA key pair
+openssl genpkey -algorithm RSA \
+  -out src/main/resources/privateKey.pem \
+  -pkeyopt rsa_keygen_bits:2048
 
 # Extract public key
-openssl rsa -in src/main/resources/privateKey.pem -pubout -out src/main/resources/publicKey.pem
+openssl rsa -pubout \
+  -in src/main/resources/privateKey.pem \
+  -out src/main/resources/publicKey.pem
 
-# Convert to PKCS#8 format (required by Quarkus)
-openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt -in src/main/resources/privateKey.pem -out src/main/resources/privateKey-pkcs8.pem
+# Convert to PKCS#8 (required by Quarkus/SmallRye JWT)
+openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt \
+  -in src/main/resources/privateKey.pem \
+  -out src/main/resources/privateKey-pkcs8.pem
 ```
+
+### Production
+
+```bash
+# Generate stronger key
+openssl genpkey -algorithm RSA \
+  -out private.pem \
+  -pkeyopt rsa_keygen_bits:4096
+
+# Convert and store securely
+openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt \
+  -in private.pem -out private-pkcs8.pem
+
+# Store in secrets manager (AWS Secrets Manager, Vault, etc.)
+```
+
+---
+
+## Security
+
+### Rules
+
+- **Never** commit private keys to version control
+- Use different keys per environment (dev, staging, production)
+- Rotate keys periodically
+- Store production keys in a secrets manager
+
+### Git Ignore
+
+Private keys are excluded in `.gitignore`:
+
+```
+*.pem
+!src/main/resources/publicKey.pem
+```
+
+---
+
+## Authentication Flow
+
+```
+Client                          Server
+  |                               |
+  |-- POST /api/auth/login ------>|
+  |   {username, password}        |
+  |                               |
+  |<-- {token, refreshToken} -----|
+  |                               |
+  |-- GET /api/users ------------>|
+  |   Authorization: Bearer <tok> |
+  |                               |
+  |<-- [user data] ---------------|
+```
+
+1. Client sends credentials to `/api/auth/login`
+2. Server validates and returns JWT + refresh token
+3. Client includes `Authorization: Bearer <token>` in subsequent requests
+4. Server verifies token using public key
+5. On expiration, client refreshes via `POST /api/auth/refresh`
+
+---
 
 ## Troubleshooting
 
-### Error: SRJWT05009
+### Error: SRJWT05009 (Missing Signing Key)
 
-This error indicates that the JWT signing key is missing or incorrectly configured.
+**Cause**: Private key file not found or wrong format.
 
-**Solution:**
-1. Verify `privateKey-pkcs8.pem` exists in `src/main/resources/`
-2. Check that the file is in PKCS#8 format
-3. Verify the configuration property `smallrye.jwt.sign.key.location` points to the correct file
-4. Ensure the file is readable by the application
+**Fix**:
+1. Verify file exists: `ls src/main/resources/privateKey-pkcs8.pem`
+2. Verify PKCS#8 format: `head -1 src/main/resources/privateKey-pkcs8.pem`
+   - Should show: `-----BEGIN PRIVATE KEY-----`
+3. Check config: `grep smallrye.jwt.sign.key src/main/resources/application.properties`
 
-### Key Format Issues
+### Error: Invalid Key Format
 
-If you get key format errors, ensure the private key is in PKCS#8 format:
+**Cause**: Key not in PKCS#8 format.
+
+**Fix**:
 ```bash
-openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt -in privateKey.pem -out privateKey-pkcs8.pem
+openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt \
+  -in privateKey.pem -out privateKey-pkcs8.pem
 ```
 
-## Production Deployment
+### Token Verification Failed
 
-For production:
+**Cause**: Public key doesn't match private key, or issuer mismatch.
 
-1. **Use environment variables:**
-   ```properties
-   smallrye.jwt.sign.key.location=${JWT_PRIVATE_KEY_PATH}
-   mp.jwt.verify.publickey.location=${JWT_PUBLIC_KEY_PATH}
-   ```
+**Fix**:
+1. Regenerate both keys from same source
+2. Verify `JWT_ISSUER` matches the configured issuer
+3. Check token payload: https://jwt.io
 
-2. **Store keys securely:**
-   - Use a secrets manager (AWS Secrets Manager, HashiCorp Vault, etc.)
-   - Never commit keys to version control
-   - Use different keys for different environments
+---
 
-3. **Key rotation:**
-   - Implement a key rotation strategy
-   - Support multiple keys during rotation period
+## Token Structure
 
+```json
+{
+  "iss": "https://your-domain.com",
+  "sub": "admin",
+  "upn": "admin",
+  "groups": ["ADMIN", "USER"],
+  "iat": 1700000000,
+  "exp": 1700100000
+}
+```
+
+| Claim | Description |
+|-------|-------------|
+| `iss` | Issuer (must match `mp.jwt.verify.issuer`) |
+| `sub` | Subject (username) |
+| `upn` | User principal name |
+| `groups` | User roles |
+| `iat` | Issued at (timestamp) |
+| `exp` | Expiration (timestamp) |

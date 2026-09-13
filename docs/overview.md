@@ -1,198 +1,172 @@
 # Project Overview
 
-## Introduction
+## What is Pasa Auto?
 
-Pasa Auto is a comprehensive automotive workshop management system designed to modernize and streamline operations for automotive service centers. The system provides end-to-end management capabilities from customer intake to billing and reporting.
+Pasa Auto is an automotive workshop management system ("bengkel") built with Quarkus (Java) backend and Quasar (Vue.js) frontend. It digitizes workshop operations from customer intake to billing.
+
+**Version**: `0.0.28`
+
+---
 
 ## Business Problem
 
-Traditional automotive workshops often struggle with:
+Traditional automotive workshops struggle with:
 - Manual tracking of vehicles and services
 - Inefficient inventory management
-- Lack of real-time business insights
 - Poor customer experience due to disorganized processes
 - Inaccurate billing and invoicing
+- Lack of real-time business insights
 
-Pasa Auto addresses these challenges through a unified digital platform.
+Pasa Auto addresses these through a unified digital platform.
+
+---
 
 ## Core Features
 
-### Vehicle Management
-- Complete vehicle information tracking (make, model, year, VIN)
-- Service history maintenance
-- Vehicle categorization and search
-- Customer-vehicle relationship management
+| Module | Description |
+|--------|-------------|
+| **SPK** | Digital service work orders (Surat Perintah Kerja) |
+| **Penjualan** | Sales tracking and invoicing |
+| **Pembelian** | Purchase orders and supplier management |
+| **Pelanggan** | Customer database with vehicle records |
+| **Kendaraan** | Vehicle information and service history |
+| **Karyawan** | Employee profiles and position management |
+| **Absensi** | Attendance tracking |
+| **Barang/Sparepart** | Parts inventory and stock monitoring |
+| **Jasa** | Service catalog with pricing |
+| **RBAC** | Role-based access control |
+| **Audit Trail** | Change tracking for all entities |
 
-### Service Operations
-- Digital service order creation (SPK - Surat Perintah Kerja)
-- Service catalog with standardized pricing
-- Technician assignment and tracking
-- Service progress monitoring
-- Quality control checkpoints
+---
 
-### Employee Management
-- Employee profiles and roles
-- Attendance tracking (integrates with existing systems)
-- Performance metrics and reporting
-- Role-based access control
+## Tech Stack
 
-### Inventory & Parts
-- Parts inventory management
-- Stock level monitoring
-- Supplier management
-- Parts usage tracking per service
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | Java 25, Quarkus 3.34.0 |
+| **Frontend** | Vue 3.5, Quasar 2.18, Vite |
+| **Desktop** | Electron 28 |
+| **Database** | PostgreSQL 15 |
+| **ORM** | Hibernate + Panache |
+| **Auth** | JWT (RSA asymmetric) |
+| **Migrations** | Flyway (V1-V13) |
+| **API Docs** | OpenAPI 3.0 / Swagger |
+| **Monitoring** | OpenTelemetry |
 
-### Billing & Invoicing
-- Automated invoice generation
-- Service cost calculation
-- Payment tracking
-- Financial reporting
+---
 
-### Customer Management
-- Customer database
-- Service history
-- Communication tracking
-- Loyalty program support
+## Architecture
 
-## Architecture Overview
+Clean Architecture with 4 layers:
 
-### System Architecture
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Backend API   │    │   Database      │
-│   (Vue.js)      │◄──►│   (Quarkus)     │◄──►│   (PostgreSQL)  │
-│                 │    │                 │    │                 │
-│ - User Interface│    │ - REST APIs     │    │ - Business Data │
-│ - Forms         │    │ - JWT Auth      │    │ - Audit Trail   │
-│ - Reports       │    │ - Business Logic│    │ - Migrations    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+┌─────────────────────────────────────────────┐
+│  Presentation (REST Resources, Handlers)    │
+├─────────────────────────────────────────────┤
+│  Application (Services, DTOs, Mappers)      │
+├─────────────────────────────────────────────┤
+│  Domain (Business Models, Rules)            │
+├─────────────────────────────────────────────┤
+│  Infrastructure (Repositories, Security)    │
+└─────────────────────────────────────────────┘
 ```
 
-### Technology Stack
+Dependency flow: **Presentation → Application → Domain ← Infrastructure**
 
-#### Backend
-- **Quarkus**: Supersonic Subatomic Java framework for high-performance applications
-- **Java 21**: Latest LTS version with modern language features
-- **PostgreSQL**: Robust relational database with advanced features
-- **Hibernate ORM**: Industry-standard object-relational mapping
-- **JWT**: Stateless authentication for scalable security
-- **Flyway**: Database migration management
+See [architecture.md](architecture.md) for details.
 
-#### Frontend
-- **Vue.js**: Progressive JavaScript framework for building user interfaces
-- **Vite**: Fast build tool and development server
-- **Quinoa**: Quarkus integration for seamless frontend-backend deployment
-
-#### Infrastructure
-- **Docker**: Containerization for consistent deployments
-- **GitHub Actions**: CI/CD pipeline automation
-- **Maven**: Dependency management and build automation
+---
 
 ## Domain Model
 
 ### Core Entities
 
-#### User & Authentication
-- **User**: System users with authentication credentials
-- **Role**: Job functions and permissions (Admin, Mechanic, Service Advisor, etc.)
-- **Permission**: Granular access control to system features
+```
+Customer (tb_pelanggan)
+  └── Vehicle (tb_kendaraan)
+        └── ServiceOrder (tb_spk)
+              ├── SPKDetail (tb_spk_detail)
+              ├── Sale (tb_penjualan)
+              └── SalesRecap (tb_rekap_penjualan)
 
-#### Business Entities
-- **Customer**: Client information and contact details
-- **Vehicle**: Vehicle information linked to customers
-- **ServiceOrder (SPK)**: Work orders for vehicle services
-- **ServiceItem**: Individual services within an order
-- **Employee**: Workshop staff and their roles
-- **Parts**: Inventory items and components
-- **Invoice**: Billing information and payment status
+Employee (tb_karyawan)
+  └── Position (tb_karyawan_posisi)
+  └── Attendance (tb_absensi)
+
+Part (tb_barang)
+  └── SparePart (tb_sparepart)
+
+Supplier (tb_supplier)
+  └── Purchase (tb_pembelian)
+        └── PurchaseDetail (tb_pembelian_detail)
+
+User → Role → Permission (RBAC)
+```
 
 ### Key Relationships
+
 - Customers have multiple Vehicles
-- Vehicles have multiple Service Orders
-- Service Orders contain multiple Service Items
-- Employees are assigned to Service Orders
-- Invoices are generated from Service Orders
+- Vehicles have multiple Service Orders (SPK)
+- SPKs contain multiple Details (services + parts used)
+- SPKs generate Sales records
+- Employees are assigned to SPKs and have Attendance records
+- Suppliers provide Parts via Purchases
+
+---
 
 ## Security Model
 
 ### Authentication
-- JWT-based stateless authentication
-- Secure password hashing with salt
-- Token expiration and refresh mechanisms
+- JWT with RSA asymmetric signing (PKCS#8)
+- Token expiration: 2400 hours (~100 days)
+- Refresh token support
 
 ### Authorization
 - Role-Based Access Control (RBAC)
-- Granular permissions for different operations
-- Feature flags for enabling/disabling modules
+- Configurable via feature flag (`RBAC_ENABLED`)
+- Granular permissions per role
 
 ### Data Protection
-- Environment variable configuration for secrets
-- SSL/TLS encryption for data in transit
-- Database encryption for sensitive data
+- All secrets via environment variables
+- Password hashing with configurable salt
+- SSL/TLS support for HTTPS
 
-## Integration Points
+---
 
-### External Systems
-- **Accounting Software**: Financial data synchronization
-- **Parts Suppliers**: Inventory and ordering integration
-- **Vehicle Databases**: VIN lookup and vehicle information
-- **Payment Gateways**: Online payment processing
+## API
 
-### APIs
-- RESTful API design following OpenAPI specifications
-- Webhook support for real-time notifications
-- Batch processing for bulk operations
+- **Base path**: `/api/`
+- **Swagger UI**: `/swagger-ui` (disabled by default)
+- **OpenAPI JSON**: `/openapi`
 
-## Performance Considerations
+See [api.md](api.md) for full endpoint documentation.
 
-### Scalability
-- Horizontal scaling support through stateless design
-- Database connection pooling
-- Caching strategies for frequently accessed data
+---
 
-### Monitoring
-- Application performance metrics
-- Database query optimization
-- Error tracking and alerting
+## Deployment
 
-## Development Philosophy
+Two modes available:
 
-### Clean Architecture
-- Separation of concerns across layers
-- Domain-driven design principles
-- Test-driven development approach
+1. **Web App** - Quarkus serves Quasar SPA via Quinoa
+2. **Electron Desktop** - Quarkus native binary + Electron wrapper
 
-### Code Quality
-- Comprehensive test coverage (≥80%)
-- Automated security scanning
-- Code review processes
-- Continuous integration and deployment
+See [deployment.md](deployment.md) for details.
 
-## Future Roadmap
+---
 
-### Short Term (3-6 months)
-- Mobile application for technicians
-- Advanced reporting and analytics
-- Customer portal for self-service
+## Roadmap
 
-### Medium Term (6-12 months)
-- AI-powered service recommendations
-- Predictive maintenance scheduling
-- Multi-location support
+### Short Term
+- [ ] Mobile app for technicians
+- [ ] Advanced reporting dashboard
+- [ ] Customer self-service portal
 
-### Long Term (1+ years)
-- IoT integration for vehicle diagnostics
-- Machine learning for demand forecasting
-- Marketplace integration for parts sourcing
+### Medium Term
+- [ ] Predictive maintenance scheduling
+- [ ] Multi-branch support
+- [ ] Integration with accounting software
 
-## Compliance and Standards
-
-### Data Privacy
-- GDPR compliance for customer data
-- Data retention policies
-- Right to deletion implementation
-
-### Industry Standards
-- Automotive industry best practices
-- Accounting standard compliance
-- Security certifications (SOC 2, ISO 27001)
+### Long Term
+- [ ] IoT vehicle diagnostics integration
+- [ ] ML-powered demand forecasting
+- [ ] Parts marketplace integration

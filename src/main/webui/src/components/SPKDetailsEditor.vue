@@ -17,7 +17,7 @@
                 </q-th>
               </q-tr>
               <q-tr v-if="canEdit">
-                <q-th class="text-center" colspan="4">
+                <q-th class="text-center" colspan="5">
                   <q-select v-model="newJasa.item" :options="jasaOptions" option-label="namaJasa" dense outlined
                             label="Pilih Jasa" use-input input-debounce="300" @filter="filterJasa" emit-value
                             map-options @update:model-value="addJasa" :option-disable="isJasaDisabled">
@@ -39,14 +39,21 @@
                 <q-td key="namaJasa" :props="props">{{ props.row.namaItem }}</q-td>
                 <q-td key="harga" :props="props" class="text-right">
                   {{ formatCurrency(props.row.harga) }}
-                  <q-popup-edit :model-value="props.row.harga" auto-save v-slot="scope" @save="val => onHargaSave(props.row, val)">
+                  <q-tooltip v-if="canEdit" anchor="top middle" self="bottom middle">Klik dua kali untuk mengedit</q-tooltip>
+                  <q-popup-edit v-if="canEdit" :model-value="props.row.harga" auto-save v-slot="scope" @save="val => onHargaSave(props.row, val)">
                     <q-input v-model.number="scope.value" dense outlined autofocus counter @keyup.enter="scope.set"
                              type="number"
                              :rules="[(val) => val > 0 || 'Harga harus lebih dari 0']"/>
                   </q-popup-edit>
                 </q-td>
-                <q-td key="jumlah" :props="props">
+                <q-td key="jumlah" :props="props" class="text-center">
                   {{ props.row.jumlah }}
+                  <q-tooltip v-if="canEdit" anchor="top middle" self="bottom middle">Klik dua kali untuk mengedit</q-tooltip>
+                  <q-popup-edit v-if="canEdit" :model-value="props.row.jumlah" auto-save v-slot="scope" @save="val => onJumlahSave(props.row, val)">
+                    <q-input v-model.number="scope.value" type="number" dense outlined autofocus counter
+                             :rules="[(val) => val > 0 || 'Jumlah harus lebih dari 0']"
+                             @keyup.enter="scope.set" label="Jumlah"/>
+                  </q-popup-edit>
                 </q-td>
                 <q-td key="total" :props="props" class="text-right">
                   {{ formatCurrency(props.row.harga * props.row.jumlah) }}
@@ -105,14 +112,16 @@
                 <q-td key="namaBarang" :props="props">{{ props.row.namaItem }}</q-td>
                 <q-td key="harga" :props="props" class="text-right">
                   {{ formatCurrency(props.row.harga) }}
-                  <q-popup-edit :model-value="props.row.harga" auto-save v-slot="scope" @save="val => onHargaSave(props.row, val)">
+                  <q-tooltip v-if="canEdit" anchor="top middle" self="bottom middle">Klik dua kali untuk mengedit</q-tooltip>
+                  <q-popup-edit v-if="canEdit" :model-value="props.row.harga" auto-save v-slot="scope" @save="val => onHargaSave(props.row, val)">
                     <q-input v-model.number="scope.value" dense outlined autofocus counter @keyup.enter="scope.set"
                              type="number" label="Harga Barang Satuan"
                              :rules="[(val) => val > 0 || 'Harga harus lebih dari 0']"/>
                   </q-popup-edit>
                 </q-td>
-                <q-td key="jumlah" :props="props">
+                <q-td key="jumlah" :props="props" class="text-center">
                   {{ props.row.jumlah }}
+                  <q-tooltip v-if="canEdit" anchor="top middle" self="bottom middle">Klik dua kali untuk mengedit</q-tooltip>
                   <q-popup-edit v-if="canEdit" :model-value="props.row.jumlah" auto-save v-slot="scope" @save="val => onJumlahSave(props.row, val)">
                     <q-input v-model.number="scope.value" type="number" dense outlined autofocus counter
                              :rules="[(val) => val > 0 || 'Jumlah harus lebih dari 0']"
@@ -211,14 +220,15 @@ const jasaColumns = [
   {name: 'no', label: 'No', align: 'left', field: 'no', autoWidth: true},
   {name: 'namaJasa', label: 'Jasa', align: 'left', field: 'namaItem', autoWidth: false},
   {name: 'harga', label: 'Biaya', align: 'right', field: 'harga', autoWidth: true, minWidth: '200px'},
+  {name: 'jumlah', label: 'Jumlah', align: 'center', field: 'jumlah', minWidth: '100px'},
   {name: 'actions', label: '', align: 'center',autoWidth: true }
 ]
 
 const barangColumns = [
   {name: 'no', label: 'No', align: 'left', field: 'no', autoWidth: true},
-  {name: 'namaBarang', label: 'Barang', align: 'left', field: 'namaItem'},
-  {name: 'harga', label: 'Harga', align: 'right', field: 'harga'},
-  {name: 'jumlah', label: 'Jumlah', align: 'center', field: 'jumlah'},
+  {name: 'namaBarang', label: 'Barang', align: 'left', field: 'namaItem', autoWidth: false},
+  {name: 'harga', label: 'Harga', align: 'right', field: 'harga', autoWidth: true, minWidth: '200px'},
+  {name: 'jumlah', label: 'Jumlah', align: 'center', field: 'jumlah', minWidth: '100px'},
   {name: 'actions', label: '', align: 'center', autoWidth: true}
 ]
 
