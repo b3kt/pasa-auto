@@ -10,9 +10,12 @@ import com.github.b3kt.application.mapper.pazaauto.AbsensiMapper;
 import com.github.b3kt.application.service.pazaauto.TbAbsensiService;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbAbsensiEntity;
 import io.quarkus.security.identity.SecurityIdentity;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.net.SocketAddress;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -58,12 +61,11 @@ public class TbAbsensiResource {
     @Path("/clock-in")
     public Response clockIn(
             AbsensiDto dto,
-            @HeaderParam("X-Forwarded-For") String xForwardedFor,
-            @HeaderParam("X-Real-IP") String xRealIp) {
+            @Context HttpServerRequest request) {
         TbAbsensiEntity entity = absensiMapper.toEntity(dto);
         Long karyawanId = resolveKaryawanId(entity.getKaryawanId());
         try {
-            String ipAddress = getClientIpAddress(xForwardedFor, xRealIp);
+            String ipAddress = getClientIpAddress(request);
             TbAbsensiEntity result = service.clockIn(karyawanId, ipAddress, entity.getDeviceInfo(), entity.getLokasiMasuk());
             return Response.ok(ApiResponse.success("Clock-in successful", absensiMapper.toDto(result))).build();
         } catch (IllegalStateException | SecurityException e) {
@@ -84,12 +86,11 @@ public class TbAbsensiResource {
     @Path("/clock-out")
     public Response clockOut(
             AbsensiDto dto,
-            @HeaderParam("X-Forwarded-For") String xForwardedFor,
-            @HeaderParam("X-Real-IP") String xRealIp) {
+            @Context HttpServerRequest request) {
         TbAbsensiEntity entity = absensiMapper.toEntity(dto);
         Long karyawanId = resolveKaryawanId(entity.getKaryawanId());
         try {
-            String ipAddress = getClientIpAddress(xForwardedFor, xRealIp);
+            String ipAddress = getClientIpAddress(request);
             TbAbsensiEntity result = service.clockOut(karyawanId, ipAddress, entity.getLokasiKeluar());
             return Response.ok(ApiResponse.success("Clock-out successful", absensiMapper.toDto(result))).build();
         } catch (IllegalStateException | SecurityException e) {
@@ -286,16 +287,14 @@ public class TbAbsensiResource {
         return ownKaryawanId;
     }
 
-    private String getClientIpAddress(String xForwardedFor, String xRealIp) {
-        // Try X-Forwarded-For first (proxy/load balancer)
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        // Try X-Real-IP
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp.trim();
-        }
-        // Default to localhost if no headers present
-        return "127.0.0.1";
+    /**
+     * The address of the connecting client. Client-supplied headers such as X-Forwarded-For are not read
+     * here: they could be forged to pass the clock-in IP allowlist. Behind a reverse proxy, enable
+     * {@code quarkus.http.proxy.proxy-address-forwarding} with {@code trusted-proxies} so Quarkus resolves
+     * the client address from the proxy's headers.
+     */
+    private String getClientIpAddress(HttpServerRequest request) {
+        SocketAddress remoteAddress = request.remoteAddress();
+        return remoteAddress != null ? remoteAddress.hostAddress() : null;
     }
 }

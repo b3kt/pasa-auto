@@ -118,6 +118,30 @@ class TbAbsensiServiceTest {
     }
 
     @Test
+    @DisplayName("clockIn is rejected when IP restriction is enabled but no IPs are allowed")
+    void testClockIn_ipRestrictionEmptyAllowlist() {
+        when(configService.getBooleanConfig("ip.restriction.enabled", false)).thenReturn(true);
+        when(configService.getStringConfig("allowed.ips", "")).thenReturn(" ");
+
+        stubFindByKaryawanAndDate(null);
+
+        assertThrows(SecurityException.class,
+                () -> absensiService.clockIn(1L, "192.168.1.1", "iPhone", "Office"));
+    }
+
+    @Test
+    @DisplayName("clockIn is rejected when IP restriction is enabled and the client IP is unknown")
+    void testClockIn_ipRestrictionUnknownIp() {
+        when(configService.getBooleanConfig("ip.restriction.enabled", false)).thenReturn(true);
+        when(configService.getStringConfig("allowed.ips", "")).thenReturn("192.168.1.1");
+
+        stubFindByKaryawanAndDate(null);
+
+        assertThrows(SecurityException.class,
+                () -> absensiService.clockIn(1L, null, "iPhone", "Office"));
+    }
+
+    @Test
     @DisplayName("clockOut sets jamKeluar on existing attendance")
     void testClockOut_success() {
         TbAbsensiEntity existing = new TbAbsensiEntity();

@@ -48,6 +48,10 @@ cp .env.example .env
 |----------|---------|-------------|
 | `HTTP_PORT` | 8080 | HTTP port |
 | `HTTPS_PORT` | 443 | HTTPS port |
+| `JWT_EXPIRATION_MINUTES` | 30 | Access token lifetime |
+| `JWT_REFRESH_EXPIRATION_DAYS` | 7 | Refresh token lifetime (sliding) |
+| `PROXY_ADDRESS_FORWARDING` | false | Trust `X-Forwarded-*` headers; enable only behind a reverse proxy |
+| `TRUSTED_PROXIES` | 127.0.0.1 | Proxy addresses whose forwarding headers are honored |
 | `DB_MAX_SIZE` | 10 | Max DB connections |
 | `DB_MIN_SIZE` | 2 | Min DB connections |
 | `SWAGGER_ENABLED` | false | Enable Swagger UI |
@@ -234,6 +238,19 @@ GRANT ALL PRIVILEGES ON DATABASE pasa_auto TO pasa_user;
 ```
 
 ---
+
+## Reverse Proxy
+
+By default the app terminates TLS itself and uses the TCP peer address as the client IP (this is what the
+attendance clock-in IP allowlist checks). If you put nginx/Caddy/a load balancer in front:
+
+```bash
+PROXY_ADDRESS_FORWARDING=true
+TRUSTED_PROXIES=10.0.0.5   # the proxy's address as seen by the app
+```
+
+The proxy must overwrite (not append to) `X-Forwarded-For`. Without `PROXY_ADDRESS_FORWARDING`, every
+request appears to come from the proxy, so the IP allowlist would need the proxy's address.
 
 ## SSL/TLS
 

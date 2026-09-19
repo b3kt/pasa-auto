@@ -85,6 +85,25 @@ class TbAbsensiAuthorizationTest extends IntegrationTestBase {
     }
 
     @Test
+    @DisplayName("Clock-in IP is the connection address, not a client-supplied header")
+    void clockInIgnoresForwardedHeaders() {
+        given().auth().oauth2(employee()).contentType(ContentType.JSON)
+                .header("X-Forwarded-For", "203.0.113.10")
+                .header("X-Real-IP", "203.0.113.11")
+                .body(Map.of())
+                .when().post("/api/pazaauto/absensi/clock-in")
+                .then().statusCode(200);
+        given().auth().oauth2(employee()).contentType(ContentType.JSON)
+                .header("X-Forwarded-For", "203.0.113.10")
+                .body(Map.of())
+                .when().post("/api/pazaauto/absensi/clock-out")
+                .then().statusCode(200);
+
+        verify(service).clockIn(eq(OWN_ID), eq("127.0.0.1"), any(), any());
+        verify(service).clockOut(eq(OWN_ID), eq("127.0.0.1"), any());
+    }
+
+    @Test
     @DisplayName("Employee cannot clock in or out for someone else")
     void clockForOtherForbidden() {
         given().auth().oauth2(employee()).contentType(ContentType.JSON)

@@ -226,8 +226,9 @@ public class TbAbsensiService extends AbstractCrudService<TbAbsensiEntity, Long>
 
     private boolean isAllowedIp(String ipAddress) {
         String allowedIps = configService.getStringConfig("allowed.ips", "");
-        if (allowedIps.isEmpty()) {
-            return true; // If no IPs configured, allow all
+        if (ipAddress == null || allowedIps.isBlank()) {
+            // Restriction is enabled but nothing is allowed yet: fail closed rather than let everyone through
+            return false;
         }
         String[] ips = allowedIps.split(",");
         for (String ip : ips) {
