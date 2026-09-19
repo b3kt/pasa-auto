@@ -17,6 +17,7 @@
         <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
         <quarkus.platform.version>3.36.3</quarkus.platform.version>
         <skipITs>true</skipITs>
+        <testcontainers.docker.socket.override>/var/run/docker.sock</testcontainers.docker.socket.override>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
         <quarkus.application.version>${project.version}</quarkus.application.version>
         <testcontainers.version>1.21.4</testcontainers.version>
@@ -239,6 +240,12 @@
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
                     </systemPropertyVariables>
+                    <environmentVariables>
+                        <!-- Socket path as seen by the Docker daemon (inside the VM for Colima / Docker Desktop).
+                             Without it Colima mounts the host-side socket into Ryuk, which then never starts.
+                             Override with -Dtestcontainers.docker.socket.override=... for other setups. -->
+                        <TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE>${testcontainers.docker.socket.override}</TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE>
+                    </environmentVariables>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                     <printSummary>true</printSummary>
                     <useFile>true</useFile>
@@ -265,6 +272,9 @@
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
                     </systemPropertyVariables>
+                    <environmentVariables>
+                        <TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE>${testcontainers.docker.socket.override}</TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE>
+                    </environmentVariables>
                 </configuration>
             </plugin>
             <plugin>

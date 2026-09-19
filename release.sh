@@ -92,8 +92,10 @@ update_pom_version() {
     fi
     
     # Update only the project version (the <version> directly after the artifactId),
-    # leaving dependency and plugin versions untouched
-    sed -i "/<artifactId>pasa-auto<\/artifactId>/{n;s/<version>.*<\/version>/<version>$new_version<\/version>/;}" "$POM_FILE"
+    # leaving dependency and plugin versions untouched.
+    # "-i.bak" (suffix attached) works on both BSD/macOS and GNU sed; plain "-i" breaks on macOS.
+    sed -i.bak -e "/<artifactId>pasa-auto<\/artifactId>/{n;s/<version>.*<\/version>/<version>$new_version<\/version>/;}" "$POM_FILE"
+    rm -f "$POM_FILE.bak"
     
     if ! grep -q "<version>$new_version</version>" "$POM_FILE"; then
         echo "Error: Failed to update version in pom.xml"
@@ -281,7 +283,7 @@ main() {
     echo "=== Release completed successfully! ==="
     echo "Release version: $release_version"
     echo "Next development version: $next_snapshot_version"
-    echo "Native binary: target/quarkus-quasar-$release_version-runner"
+    echo "Native binary: target/pasa-auto-$release_version-runner"
     echo "Tag: v$release_version"
     echo ""
     

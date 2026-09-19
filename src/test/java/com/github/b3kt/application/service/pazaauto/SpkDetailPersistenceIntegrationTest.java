@@ -8,6 +8,7 @@ import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
 import com.github.b3kt.integration.IntegrationTestBase;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -98,6 +99,7 @@ class SpkDetailPersistenceIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("PUT update then GET reproduces the reported save flow through the real REST layer")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void testUpdateThenGet_matchesReportedPayload() {
         SpkMekanik mekanik = new SpkMekanik();
         mekanik.setTugas("Utama");
