@@ -5,35 +5,43 @@
         <q-splitter v-model="tableSplitterModel" horizontal :limits="[20, 80]" style="height: 100%">
           <template v-slot:before>
             <!-- Merk Kendaraan (master) -->
-            <div class="row items-center q-px-sm">
-              <div class="text-subtitle1 text-weight-medium">Merk Kendaraan</div>
-              <q-space/>
-              <q-btn flat dense icon="add" label="Merk" color="primary" @click="openMerkCreate"/>
-            </div>
             <GenericTable :rows="merkRows" :columns="merkColumns" :loading="merkLoading" :pagination="merkPagination"
                           @update:pagination="merkPagination = $event" @request="merkOnRequest" @search="merkOnSearch"
                           :on-edit="openMerkEdit" ref="merkTableRef" :table-height="merkTableHeight"
-                          search-placeholder="Cari merk..."/>
+                          search-placeholder="Cari merk...">
+              <template v-slot:title>
+              <div class="row items-center q-px-sm">
+                <div class="text-h6 q-mb-md">Master | Merk Kendaraan</div>
+                  <q-space/>
+                <q-btn flat dense icon="add" label="Merk" color="primary" @click="openMerkCreate"/>
+              </div>
+
+
+              </template>
+            </GenericTable>
           </template>
 
           <template v-slot:after>
             <!-- Kendaraan (detail, filtered by selected merk) -->
-            <div class="row items-center q-px-sm">
-              <div class="text-subtitle1 text-weight-medium">
-                Kendaraan
-                <span v-if="selectedMerk" class="text-primary">— {{ selectedMerk.nama }}</span>
-              </div>
-              <q-space/>
-              <q-btn flat dense icon="add" label="Kendaraan" color="primary" :disable="!selectedMerk"
-                     @click="openKendaraanCreate">
-                <q-tooltip v-if="!selectedMerk">Pilih merk terlebih dahulu</q-tooltip>
-              </q-btn>
-            </div>
             <GenericTable :key="selectedMerk?.id ?? 'none'" :rows="kendaraanRows" :columns="kendaraanColumns"
                           :loading="kendaraanLoading" :pagination="kendaraanPagination"
                           @update:pagination="kendaraanPagination = $event" @request="onKendaraanRequest"
                           @search="onKendaraanSearch" :on-edit="openKendaraanEdit" ref="kendaraanTableRef"
                           :table-height="kendaraanTableHeight" search-placeholder="Cari jenis / model...">
+              <template v-slot:title>
+              <div class="row items-center q-px-sm q-pt-md">
+
+                <div class="text-h6 q-mb-md">Master | Jenis Kendaraan |
+                  <span v-if="selectedMerk" class="text-primary"> {{ selectedMerk.nama }}</span>
+                </div>
+                <q-space/>
+                <q-btn flat dense icon="add" label="Kendaraan" color="primary" :disable="!selectedMerk"
+                       @click="openKendaraanCreate">
+                  <q-tooltip v-if="!selectedMerk">Pilih merk terlebih dahulu</q-tooltip>
+                </q-btn>
+              </div>
+
+              </template>
               <template v-slot:no-data>
                 <div class="full-width text-center text-grey q-pa-md">
                   {{ selectedMerk ? 'Belum ada kendaraan untuk merk ini' : 'Pilih merk untuk melihat kendaraan' }}
@@ -82,6 +90,7 @@
             <q-form @submit="handleKendaraanSave" class="q-gutter-md">
               <q-select v-model="kendaraanForm.merkId" label="Merk *" outlined dense
                         :options="merkOptions" option-value="id" option-label="nama" emit-value map-options
+                        :disable="kendaraanIsEditMode"
                         :rules="[val => !!val || 'Merk harus dipilih']" hide-bottom-space/>
               <q-input v-model="kendaraanForm.jenis" label="Jenis *" outlined dense
                        :rules="[val => !!val || 'Jenis harus diisi']" hide-bottom-space/>
@@ -135,8 +144,9 @@ const splitterModel = ref(60)
 // Horizontal split between the merk (top) and kendaraan (bottom) tables, in percent
 const tableSplitterModel = ref(40)
 
-// Each table fills its splitter pane: pane height minus section header + GenericTable toolbar/padding
-const PANE_CHROME = '130px'
+// Each table fills its splitter pane: pane height minus section header + GenericTable padding
+// (the search toolbar lives inside the table's top bar, so it's part of the table height)
+const PANE_CHROME = '80px'
 const paneTableHeight = (percent) => `calc((100vh - 100px) * ${percent / 100} - ${PANE_CHROME})`
 const merkTableHeight = computed(() => paneTableHeight(tableSplitterModel.value))
 const kendaraanTableHeight = computed(() => paneTableHeight(100 - tableSplitterModel.value))

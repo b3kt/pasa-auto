@@ -34,7 +34,7 @@ class MasterPriceUpdateIntegrationTest extends IntegrationTestBase {
     TbJasaService jasaService;
 
     @Test
-    @TestSecurity(user = "admin", roles = "ADMIN")
+    @TestSecurity(user = "admin", roles = "Admin")
     void updateKeduanya_barang_persistsHargaJual() {
         TbBarangEntity b = new TbBarangEntity();
         b.setNamaBarang("SCANER AIR BAG");
@@ -55,7 +55,7 @@ class MasterPriceUpdateIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    @TestSecurity(user = "admin", roles = "ADMIN")
+    @TestSecurity(user = "admin", roles = "Admin")
     void updateKeduanya_jasa_persistsHargaJasa() {
         TbJasaEntity j = new TbJasaEntity();
         j.setNamaJasa("SCANER AIR BAG");

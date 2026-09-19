@@ -1,5 +1,7 @@
 package com.github.b3kt.presentation.rest.pazaauto;
 
+import com.github.b3kt.infrastructure.security.Roles;
+import jakarta.annotation.security.RolesAllowed;
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
@@ -22,6 +24,7 @@ import java.util.List;
 
 @RequestScoped
 @Path("/api/pazaauto/kendaraan")
+@RolesAllowed({Roles.ADMIN, Roles.OWNER})
 public class TbKendaraanResource {
 
     @Inject

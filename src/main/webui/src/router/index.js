@@ -1,6 +1,7 @@
 import { defineRouter } from '#q-app/wrappers'
 import { createRouter, createMemoryHistory, createWebHistory, createWebHashHistory } from 'vue-router'
 import routes from './routes'
+import { useAuthStore } from 'stores/auth-store'
 
 /*
  * If not building with SSR mode, you can
@@ -28,9 +29,20 @@ export default defineRouter(function (/* { store, ssrContext } */) {
   })
 
   // Route guard for authentication
-  Router.beforeEach((to, from, next) => {
-    const token = localStorage.getItem('auth_token')
+  Router.beforeEach(async (to, from, next) => {
+    const authStore = useAuthStore()
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+
+    // Renew an expired access token; if that fails the session is over
+    let token = authStore.token
+    if (token && (requiresAuth || to.path === '/login') && !(await authStore.ensureValidToken())) {
+      authStore.clearSession()
+      token = null
+      if (requiresAuth) {
+        next({ path: '/login', query: { expired: 'true' } })
+        return
+      }
+    }
 
     if (requiresAuth && !token) {
       // Redirect to login if route requires auth and user is not authenticated
@@ -39,22 +51,12 @@ export default defineRouter(function (/* { store, ssrContext } */) {
       // Redirect to home if user is already logged in
       next('/')
     } else if (requiresAuth && token) {
-      // Check role-based access
-      const userJson = localStorage.getItem('auth_user')
-      if (userJson) {
-        try {
-          const user = JSON.parse(userJson)
-          const userRoles = user.roles || []
-          
-          // Check if route has role restrictions
-          
-          if (to.path.startsWith('/pazaauto/summary') && !userRoles.includes('owner')) {
-            next('/')
-            return
-          }
-        } catch (e) {
-          console.error('Failed to parse user data', e)
-        }
+      // Role-based access: routes declare meta.roles (see routes.js); the backend enforces the same rules
+      const allowedRoles = to.meta.roles
+      const userRoles = authStore.user?.roles || []
+      if (allowedRoles && !allowedRoles.some(role => userRoles.includes(role))) {
+        next(from.matched.length ? false : '/')
+        return
       }
       next()
     } else {

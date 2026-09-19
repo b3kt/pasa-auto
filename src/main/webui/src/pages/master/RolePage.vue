@@ -6,6 +6,10 @@
           @update:pagination="pagination = $event" @request="onRequest" @search="onSearch" :on-create="openCreateDialog"
           :on-edit="openEditDialog" create-label="Tambah data Role" ref="tableRef"
           search-placeholder="Search by name or description...">
+
+            <template v-slot:title>
+              <div class="text-h6 q-mb-md">Admin | Role</div>
+            </template>
           <template v-slot:body-cell-active="props">
               <q-badge :color="props.row.active ? 'green' : 'red'">
                 {{ props.row.active ? 'Active' : 'Inactive' }}

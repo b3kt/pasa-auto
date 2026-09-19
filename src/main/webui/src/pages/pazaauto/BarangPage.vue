@@ -6,6 +6,9 @@
                       @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
                       :on-create="openCreateDialog"
                       :on-edit="openEditDialog" v-model:search-value="searchText" ref="tableRef">
+            <template v-slot:title>
+              <div class="text-h6 q-mb-md">Master | Barang</div>
+          </template>
           <template v-slot:search-append>
             <q-btn round dense flat icon="qr_code_scanner" @click="openScanDialog('search')"/>
           </template>

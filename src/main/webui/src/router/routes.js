@@ -1,3 +1,10 @@
+import { Roles } from 'src/constants/roles'
+
+// Pages each role may open; mirrors the backend @RolesAllowed rules (the backend stays the source of truth)
+const ROLES_OWNER_ONLY = [Roles.OWNER]
+const ROLES_ADMIN_OWNER = [Roles.ADMIN, Roles.OWNER]
+const ROLES_ALL_STAFF = [Roles.ADMIN, Roles.OWNER, Roles.KARYAWAN]
+
 const routes = [
   {
     path: '/login',
@@ -13,28 +20,28 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       { path: '', component: () => import('pages/IndexPage.vue') },
-      { path: 'users', component: () => import('pages/master/UserPage.vue') },
-      { path: 'roles', component: () => import('pages/master/RolePage.vue') },
-      { path: 'roles/:id', component: () => import('pages/master/RoleViewPage.vue') },
-      { path: 'system-parameters', component: () => import('pages/master/SystemParameterPage.vue') },
-      { path: 'pazaauto/barang', component: () => import('pages/pazaauto/BarangPage.vue') },
-      { path: 'pazaauto/jasa', component: () => import('pages/pazaauto/JasaPage.vue') },
-      { path: 'pazaauto/karyawan', component: () => import('pages/pazaauto/KaryawanPage.vue') },
-      { path: 'pazaauto/karyawan-posisi', component: () => import('pages/pazaauto/KaryawanPosisiPage.vue') },
-      { path: 'pazaauto/kendaraan', component: () => import('pages/pazaauto/KendaraanPage.vue') },
-      { path: 'pazaauto/pelanggan', component: () => import('pages/pazaauto/PelangganPage.vue') },
-      { path: 'pazaauto/supplier', component: () => import('pages/pazaauto/SupplierPage.vue') },
-      { path: 'pazaauto/sparepart', component: () => import('pages/pazaauto/SparepartPage.vue') },
-      { path: 'pazaauto/spk', component: () => import('pages/pazaauto/SPKPage.vue') },
-      { path: 'pazaauto/pembelian', component: () => import('pages/pazaauto/PembelianPage.vue') },
-      { path: 'pazaauto/penjualan', component: () => import('pages/pazaauto/PenjualanPage.vue') },
-      { path: 'pazaauto/rekap-pembelian', component: () => import('pages/pazaauto/RekapPembelianPage.vue') },
-      { path: 'pazaauto/rekap-penjualan', component: () => import('pages/pazaauto/RekapPenjualanPage.vue') },
-      { path: 'pazaauto/summary', component: () => import('pages/pazaauto/SummaryPage.vue') },
-      { path: 'pazaauto/absensi', component: () => import('pages/pazaauto/AbsensiPage.vue') },
+      { path: 'users', meta: { roles: ROLES_OWNER_ONLY }, component: () => import('pages/master/UserPage.vue') },
+      { path: 'roles', meta: { roles: ROLES_OWNER_ONLY }, component: () => import('pages/master/RolePage.vue') },
+      { path: 'roles/:id', meta: { roles: ROLES_OWNER_ONLY }, component: () => import('pages/master/RoleViewPage.vue') },
+      { path: 'system-parameters', meta: { roles: ROLES_OWNER_ONLY }, component: () => import('pages/master/SystemParameterPage.vue') },
+      { path: 'pazaauto/barang', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/pazaauto/BarangPage.vue') },
+      { path: 'pazaauto/jasa', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/pazaauto/JasaPage.vue') },
+      { path: 'pazaauto/karyawan', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/pazaauto/KaryawanPage.vue') },
+      { path: 'pazaauto/karyawan-posisi', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/pazaauto/KaryawanPosisiPage.vue') },
+      { path: 'pazaauto/kendaraan', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/pazaauto/KendaraanPage.vue') },
+      { path: 'pazaauto/pelanggan', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/pazaauto/PelangganPage.vue') },
+      { path: 'pazaauto/supplier', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/pazaauto/SupplierPage.vue') },
+      { path: 'pazaauto/sparepart', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/pazaauto/SparepartPage.vue') },
+      { path: 'pazaauto/spk', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/pazaauto/SPKPage.vue') },
+      { path: 'pazaauto/pembelian', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/pazaauto/PembelianPage.vue') },
+      { path: 'pazaauto/penjualan', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/pazaauto/PenjualanPage.vue') },
+      { path: 'pazaauto/rekap-pembelian', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/pazaauto/RekapPembelianPage.vue') },
+      { path: 'pazaauto/rekap-penjualan', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/pazaauto/RekapPenjualanPage.vue') },
+      { path: 'pazaauto/summary', meta: { roles: ROLES_OWNER_ONLY }, component: () => import('pages/pazaauto/SummaryPage.vue') },
+      { path: 'pazaauto/absensi', meta: { roles: ROLES_ALL_STAFF }, component: () => import('pages/pazaauto/AbsensiPage.vue') },
       { path: 'offline-status', component: () => import('pages/OfflineStatusPage.vue') },
-      { path: 'admin/clear-cache', component: () => import('pages/admin/ClearCachePage.vue') },
-      { path: 'admin/audit-trail', component: () => import('pages/admin/AuditTrailPage.vue') }
+      { path: 'admin/clear-cache', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/admin/ClearCachePage.vue') },
+      { path: 'admin/audit-trail', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/admin/AuditTrailPage.vue') }
 
     ]
   },

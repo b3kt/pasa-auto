@@ -277,7 +277,6 @@ async function handleLogout() {
   $q.notify({
     type: 'info',
     message: 'Logged out successfully',
-    position: 'top'
   })
   router.push('/login')
 }

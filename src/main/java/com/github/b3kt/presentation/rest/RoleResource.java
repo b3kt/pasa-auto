@@ -1,5 +1,6 @@
 package com.github.b3kt.presentation.rest;
 
+import com.github.b3kt.infrastructure.security.Roles;
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.UpdateRoleUsersRequest;
 import com.github.b3kt.application.service.RoleService;
@@ -18,7 +19,7 @@ import java.util.List;
 
 @RequestScoped
 @Path("/api/roles")
-@RolesAllowed("Owner")
+@RolesAllowed(Roles.OWNER)
 public class RoleResource extends AbstractCrudResource<RoleEntity, Long> {
 
     @Inject
@@ -37,6 +38,16 @@ public class RoleResource extends AbstractCrudResource<RoleEntity, Long> {
     @Override
     protected String getEntityName() {
         return "Role";
+    }
+
+    /**
+     * Read-only role list for Admin as well (employee form); managing roles stays Owner-only.
+     */
+    @GET
+    @Path("/lookup")
+    @RolesAllowed({Roles.ADMIN, Roles.OWNER})
+    public Response lookup() {
+        return Response.ok(ApiResponse.success(service.findAll())).build();
     }
 
     /**

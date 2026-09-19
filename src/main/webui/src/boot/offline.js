@@ -20,7 +20,6 @@ export default defineBoot(async ({ app }) => {
         Notify.create({
           type: 'positive',
           message: 'Data synced successfully',
-          position: 'top-right',
           timeout: 3000
         })
       } catch (error) {

@@ -1,5 +1,7 @@
 package com.github.b3kt.presentation.rest;
 
+import com.github.b3kt.infrastructure.security.Roles;
+import jakarta.annotation.security.RolesAllowed;
 import com.github.b3kt.application.service.PermissionService;
 import com.github.b3kt.application.service.pazaauto.AbstractCrudService;
 import com.github.b3kt.infrastructure.persistence.entity.PermissionEntity;
@@ -10,6 +12,7 @@ import jakarta.ws.rs.Path;
 
 @RequestScoped
 @Path("/api/permissions")
+@RolesAllowed(Roles.OWNER)
 public class PermissionResource extends AbstractCrudResource<PermissionEntity, Long> {
 
     @Inject

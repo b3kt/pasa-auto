@@ -1,72 +1,37 @@
 <template>
   <q-page padding>
-    <div class="text-h6 q-mb-md">Log Aktivitas</div>
 
-    <!-- Filters -->
-    <q-card flat bordered class="q-mb-md">
-      <q-card-section>
-        <div class="row q-col-gutter-md items-end">
-          <div class="col-12 col-sm-3">
-            <q-input v-model="filters.tableName" dense outlined label="Nama Tabel" />
-          </div>
-          <div class="col-12 col-sm-3">
-            <q-input v-model="filters.recordId" dense outlined label="ID Record" type="number" />
-          </div>
-          <div class="col-12 col-sm-2">
-            <q-select v-model="filters.action" dense outlined label="Aksi" :options="actionOptions" clearable />
-          </div>
-          <div class="col-12 col-sm-2">
-            <q-select v-model="filters.username" dense outlined label="User" :options="userOptions" clearable />
-          </div>
-          <div class="col-12 col-sm-2">
-            <q-btn color="primary" label="Cari" icon="search" @click="loadData" :loading="loading" />
-          </div>
-        </div>
-      </q-card-section>
-    </q-card>
+    <!-- Results table: search box filters by table name, toolbar holds the action / user filters -->
+    <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
+                  @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
+                  :on-edit="showDiff" search-placeholder="Cari nama tabel...">
 
-    <!-- Results table -->
-    <q-table
-      :rows="rows"
-      :columns="columns"
-      row-key="id"
-      :loading="loading"
-      :pagination="pagination"
-      @request="onRequest"
-      flat
-      :rows-per-page-options="[10, 20, 50]"
-    >
+                    <template v-slot:title>
+                      <div class="text-h6 q-mb-md">Log Aktifitas</div>
+                    </template>
+      <template v-slot:toolbar-filters>
+        <q-select v-model="filters.action" dense outlined bg-color="white" label="Aksi" :options="actionOptions"
+                  clearable style="min-width: 140px"/>
+        <q-select v-model="filters.username" dense outlined bg-color="white" label="User" :options="userOptions"
+                  clearable style="min-width: 160px"/>
+      </template>
+
       <template v-slot:body-cell-action="props">
-        <q-td :props="props">
-          <q-chip
-            :color="getActionColor(props.value)"
-            text-color="white"
-            size="sm"
-          >
-            {{ props.value }}
-          </q-chip>
-        </q-td>
+        <q-chip :color="getActionColor(props.row.action)" text-color="white" size="sm">
+          {{ props.row.action }}
+        </q-chip>
       </template>
 
       <template v-slot:body-cell-changes="props">
-        <q-td :props="props">
-          <q-btn
-            flat dense size="sm"
-            icon="compare_arrows"
-            color="primary"
-            @click="showDiff(props.row)"
-          >
-            <q-tooltip>Lihat perubahan</q-tooltip>
-          </q-btn>
-        </q-td>
+        <q-btn flat dense size="sm" icon="compare_arrows" color="primary" @click.stop="showDiff(props.row)">
+          <q-tooltip>Lihat perubahan</q-tooltip>
+        </q-btn>
       </template>
 
       <template v-slot:body-cell-timestamp="props">
-        <q-td :props="props">
-          {{ formatDate(props.value) }}
-        </q-td>
+        {{ formatDate(props.row.timestamp) }}
       </template>
-    </q-table>
+    </GenericTable>
 
     <!-- Diff viewer dialog -->
     <q-dialog v-model="diffDialog" maximized>
@@ -81,17 +46,17 @@
           <q-space />
           <q-btn flat icon="close" v-close-popup />
         </q-card-section>
-        
+
         <q-card-section class="q-pa-none">
           <div class="text-caption q-mb-sm text-grey">
-            User: {{ selectedRow?.username || 'system' }} | 
-            Record ID: {{ selectedRow?.recordId }} | 
+            User: {{ selectedRow?.username || 'system' }} |
+            Record ID: {{ selectedRow?.recordId }} |
             Waktu: {{ formatDate(selectedRow?.timestamp) }}
           </div>
         </q-card-section>
-        
+
         <q-separator />
-        
+
         <q-card-section style="height: calc(100vh - 200px)">
           <div class="row q-col-gutter-md" style="height: 100%">
             <!-- Before value column -->
@@ -123,7 +88,7 @@
                 </template>
               </div>
             </div>
-            
+
             <!-- After value column -->
             <div class="col-12 col-md-6" style="height: 100%">
               <div class="text-subtitle2 q-mb-sm text-positive">
@@ -161,9 +126,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
+import GenericTable from 'components/GenericTable.vue'
 
 const $q = useQuasar()
 
@@ -173,7 +139,6 @@ const pagination = ref({ page: 1, rowsPerPage: 10, rowsNumber: 0 })
 
 const filters = ref({
   tableName: '',
-  recordId: null,
   action: null,
   username: ''
 })
@@ -200,6 +165,19 @@ function onRequest(props) {
   pagination.value = { page: Math.max(1, page), rowsPerPage: Math.max(1, Math.min(100, rowsPerPage)), rowsNumber: pagination.value.rowsNumber, sortBy, descending }
   loadData()
 }
+
+// Any filter change restarts from the first page
+function reloadFromFirstPage() {
+  pagination.value.page = 1
+  loadData()
+}
+
+function onSearch(val) {
+  filters.value.tableName = val || ''
+  reloadFromFirstPage()
+}
+
+watch(() => [filters.value.action, filters.value.username], reloadFromFirstPage)
 
 async function loadData() {
   loading.value = true

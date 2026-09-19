@@ -1,5 +1,6 @@
 package com.github.b3kt.presentation.rest;
 
+import io.quarkus.security.Authenticated;
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.LoginRequest;
 import com.github.b3kt.application.dto.LoginResponse;
@@ -7,7 +8,6 @@ import com.github.b3kt.application.dto.UserInfo;
 import com.github.b3kt.application.service.AuthService;
 import com.github.b3kt.domain.exception.AuthenticationException;
 import jakarta.annotation.security.PermitAll;
-import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -93,7 +93,7 @@ public class AuthResource {
 
     @POST
     @Path("/logout")
-    @RolesAllowed("user")
+    @Authenticated
     @Operation(
         summary = "User logout",
         description = "Logout the current user. In JWT systems, this is typically handled client-side."
@@ -121,7 +121,7 @@ public class AuthResource {
 
     @GET
     @Path("/me")
-    @RolesAllowed("user")
+    @Authenticated
     @Operation(
         summary = "Get current user info",
         description = "Retrieve information about the currently authenticated user from JWT token"

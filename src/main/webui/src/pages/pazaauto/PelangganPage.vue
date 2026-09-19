@@ -7,6 +7,9 @@
                       :on-create="openCreateDialog" ref="tableRef"
                       :on-edit="openEditDialog" create-label="Tambah data Pelanggan"
                       search-placeholder="Search by name, nopol, or email...">
+                        <template v-slot:title>
+                          <div class="text-h6 q-mb-md">Master | Pelanggan</div>
+                        </template>
         </GenericTable>
       </template>
 

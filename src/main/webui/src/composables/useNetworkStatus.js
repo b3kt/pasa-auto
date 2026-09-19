@@ -50,7 +50,6 @@ export function useNetworkStatus() {
       Notify.create({
         type: 'positive',
         message: 'Connection restored! Syncing data...',
-        position: 'top-right',
         timeout: 3000
       })
 
@@ -65,7 +64,6 @@ export function useNetworkStatus() {
     Notify.create({
       type: 'warning',
       message: 'Connection lost. Working in offline mode.',
-      position: 'top-right',
       timeout: 5000,
       actions: [
         {

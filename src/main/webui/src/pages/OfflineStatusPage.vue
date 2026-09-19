@@ -183,7 +183,6 @@ export default defineComponent({
         Notify.create({
           type: 'warning',
           message: 'Cannot sync while offline',
-          position: 'top-right'
         })
         return
       }
@@ -199,7 +198,6 @@ export default defineComponent({
         Notify.create({
           type: 'negative',
           message: 'Sync failed. Please try again.',
-          position: 'top-right'
         })
       } finally {
         isSyncing.value = false
@@ -227,14 +225,12 @@ export default defineComponent({
           Notify.create({
             type: 'info',
             message: `Storage: ${usedMB}MB used of ${quotaMB}MB`,
-            position: 'top-right',
             timeout: 5000
           })
         } else {
           Notify.create({
             type: 'info',
             message: 'Storage information not available',
-            position: 'top-right'
           })
         }
       } catch (error) {
