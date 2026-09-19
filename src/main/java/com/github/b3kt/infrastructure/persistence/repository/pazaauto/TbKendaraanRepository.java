@@ -23,7 +23,10 @@ public class TbKendaraanRepository implements PanacheRepositoryBase<TbKendaraanE
     }
 
     public java.util.List<String> findDistinctMerk() {
-        return find("SELECT DISTINCT merk FROM TbKendaraanEntity WHERE merk IS NOT NULL ORDER BY merk").project(String.class).list();
+        // Brand names now come from the merk master (tb_merk_kendaraan).
+        return getEntityManager()
+                .createQuery("SELECT m.nama FROM TbMerkKendaraanEntity m ORDER BY m.nama", String.class)
+                .getResultList();
     }
 
     public Optional<TbKendaraanEntity> findByMerkAndJenis(String merk, String jenis) {

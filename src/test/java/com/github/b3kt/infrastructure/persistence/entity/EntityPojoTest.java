@@ -205,8 +205,21 @@ class EntityPojoTest {
         TbKendaraanEntity e = new TbKendaraanEntity();
         e.setId(1L);
         e.setMerk("Honda");
+        e.setMerkId(2L);
         e.setJenis("Mobil");
         assertEquals("Honda", e.getMerk());
+        assertEquals(2L, e.getMerkId());
+    }
+
+    @Test
+    @DisplayName("TbMerkKendaraanEntity")
+    void tbMerkKendaraanEntity() {
+        TbMerkKendaraanEntity e = new TbMerkKendaraanEntity();
+        e.setId(1L);
+        e.setNama("HONDA");
+        e.setKeterangan("Jepang");
+        assertEquals("HONDA", e.getNama());
+        assertEquals("Jepang", e.getKeterangan());
     }
 
     @Test

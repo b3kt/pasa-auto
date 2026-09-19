@@ -186,6 +186,24 @@ class PelangganOwnershipSyncServiceTest {
     }
 
     @Test
+    @DisplayName("syncOnUpdate with master change opens ownership when pelanggan has none yet")
+    void testSyncOnUpdate_masterChanged_noOwnershipRow() {
+        TbKendaraanEntity toyotaAgya = new TbKendaraanEntity();
+        toyotaAgya.setId(30L);
+        toyotaAgya.setMerk("TOYOTA");
+        toyotaAgya.setJenis("Agya");
+
+        when(ownershipRepository.findCurrentByNopolAndPelanggan("B1234CD", 1L)).thenReturn(Optional.empty());
+        when(ownershipRepository.findCurrentByNopol("B1234CD")).thenReturn(Optional.empty());
+        when(kendaraanService.findOrCreateByMerkJenis("Toyota", "Agya")).thenReturn(toyotaAgya);
+
+        service.syncOnUpdate(1L, "B1234CD", "Toyota", "", "B1234CD", "Toyota", "Agya", null);
+
+        verify(kendaraanService).findOrCreateByMerkJenis("Toyota", "Agya");
+        verify(ownershipRepository).openOwnership(eq(1L), eq(30L), eq("B1234CD"), any(LocalDate.class), isNull());
+    }
+
+    @Test
     @DisplayName("syncOnUpdate with no changes does nothing")
     void testSyncOnUpdate_noop() {
         service.syncOnUpdate(1L, "B1234CD", "Toyota", "SUV", "B1234CD", "Toyota", "SUV", null);

@@ -34,12 +34,21 @@
             <q-input v-model="formData.tanggalJoin" label="Tanggal Join" outlined dense type="date"/>
 
             <div class="text-subtitle2 q-mt-md">Informasi Kendaraan</div>
-            <q-select v-model="formData.merk" label="Merk *" outlined dense use-input input-debounce="300"
+            <q-select :model-value="formData.merk" @update:model-value="onMerkChange" label="Merk *" outlined dense
+                      use-input input-debounce="300"
                       new-value-mode="add-unique" :options="filteredMerkOptions" @filter="filterMerk"
                       :rules="[val => !!val || 'Merk harus diisi']"
                       hide-bottom-space/>
-            <q-select v-model="formData.jenis" label="Jenis" outlined dense use-input input-debounce="300"
-                      new-value-mode="add-unique" :options="filteredJenisOptions" @filter="filterJenis"/>
+            <!-- Typed text is the value itself (fill-input + input-value), so a jenis not in the list is kept
+                 and the backend creates it as a new tb_kendaraan under the selected merk on save. -->
+            <q-select :model-value="formData.jenis" @input-value="val => formData.jenis = val"
+                      :label="formData.merk ? 'Jenis *' : 'Jenis'" outlined dense
+                      use-input fill-input hide-selected input-debounce="300"
+                      :options="filteredJenisOptions" @filter="filterJenis"
+                      @update:model-value="val => formData.jenis = val"
+                      :rules="[val => !formData.merk || !!(val && val.trim()) || 'Jenis harus diisi']"
+                      :hint="isNewJenis ? `Jenis baru, akan ditambahkan ke merk ${formData.merk}` : ''"
+                      hide-bottom-space/>
 
             <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea" rows="2"/>
 
@@ -104,7 +113,7 @@
 </template>
 
 <script setup>
-import {ref, onMounted, watch} from 'vue'
+import {ref, computed, onMounted, watch} from 'vue'
 import {useQuasar} from 'quasar'
 import {api} from 'boot/axios'
 import GenericTable from 'components/GenericTable.vue'
@@ -207,6 +216,11 @@ const handleSave = async () => {
   const result = await saveData(formData.value)
   if (result) {
     formData.value = {...result}
+    // A newly typed merk/jenis was just created as vehicle master: refresh the dropdowns.
+    await fetchAutocompleteData()
+    if (result.merk) {
+      await fetchFilteredJenis(result.merk)
+    }
     if (!isEditMode.value) {
       openEditDialog(result)
       tableRef.value?.selectRowByItem(result)
@@ -357,6 +371,11 @@ const filterJenis = (val, update) => {
   })
 }
 
+const isNewJenis = computed(() => {
+  const jenis = formData.value.jenis?.trim().toLowerCase()
+  return !!formData.value.merk && !!jenis && !jenisOptions.value.some(v => v?.toLowerCase() === jenis)
+})
+
 const fetchFilteredJenis = async (merk) => {
   try {
     const response = await api.get('/api/pazaauto/kendaraan/jenis/by-merk', {
@@ -369,6 +388,15 @@ const fetchFilteredJenis = async (merk) => {
   } catch (error) {
     console.error('Failed to fetch filtered jenis', error)
   }
+}
+
+// User picked a different merk: the previously selected jenis belongs to the old merk, so clear it.
+// (Handled on user input rather than in the watcher below, which also fires when a row is loaded.)
+const onMerkChange = (newMerk) => {
+  if (newMerk !== formData.value.merk) {
+    formData.value.jenis = ''
+  }
+  formData.value.merk = newMerk
 }
 
 watch(() => formData.value.merk, (newMerk) => {

@@ -17,7 +17,9 @@ export function useCrud(config) {
         transformPayload = (data) => data,
         onSuccess = () => { },
         onError = () => { },
-        enableCache = false
+        enableCache = false,
+        // Optional () => object of extra query params (e.g. a parent filter) sent on every fetch
+        extraParams = () => ({})
     } = config
 
     const $q = useQuasar()
@@ -43,6 +45,7 @@ export function useCrud(config) {
             const params = {
                 page: pagination.value.page,
                 rowsPerPage: pagination.value.rowsPerPage,
+                ...extraParams(),
                 ...customParams
             }
 

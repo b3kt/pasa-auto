@@ -78,6 +78,9 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
     TbKendaraanService tbKendaraanService;
 
     @InjectMock
+    TbMerkKendaraanService tbMerkKendaraanService;
+
+    @InjectMock
     TbPelangganService tbPelangganService;
 
     @InjectMock
@@ -964,8 +967,9 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
         when(tbKendaraanService.findAll()).thenReturn(List.of(k));
         given().when().get("/api/pazaauto/kendaraan").then().statusCode(200);
 
-        when(tbKendaraanService.findPaginated(any())).thenReturn(new PageResponse<>(List.of(k), 1, 10, 1));
+        when(tbKendaraanService.findPaginated(any(), any())).thenReturn(new PageResponse<>(List.of(k), 1, 10, 1));
         given().when().get("/api/pazaauto/kendaraan/paginated").then().statusCode(200);
+        given().queryParam("merkId", 1).when().get("/api/pazaauto/kendaraan/paginated").then().statusCode(200);
 
         when(tbKendaraanService.findById(1L)).thenReturn(k);
         given().when().get("/api/pazaauto/kendaraan/1").then().statusCode(200);
@@ -994,6 +998,33 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
         // without merk param
         when(tbKendaraanService.findDistinctJenis()).thenReturn(List.of("mobil"));
         given().when().get("/api/pazaauto/kendaraan/jenis/by-merk").then().statusCode(200);
+    }
+
+    @Test
+    void merkKendaraanFull() {
+        TbMerkKendaraanEntity m = new TbMerkKendaraanEntity();
+        m.setId(1L);
+        m.setNama("HONDA");
+
+        when(tbMerkKendaraanService.findAll()).thenReturn(List.of(m));
+        given().when().get("/api/pazaauto/merk-kendaraan").then().statusCode(200);
+
+        when(tbMerkKendaraanService.findPaginated(any())).thenReturn(new PageResponse<>(List.of(m), 1, 10, 1));
+        given().queryParam("search", "hon").when().get("/api/pazaauto/merk-kendaraan/paginated").then().statusCode(200);
+
+        when(tbMerkKendaraanService.findById(1L)).thenReturn(m);
+        given().when().get("/api/pazaauto/merk-kendaraan/1").then().statusCode(200);
+
+        when(tbMerkKendaraanService.create(any())).thenReturn(m);
+        given().contentType(ContentType.JSON).body(Map.of("nama", "honda"))
+            .when().post("/api/pazaauto/merk-kendaraan").then().statusCode(200);
+
+        when(tbMerkKendaraanService.update(anyLong(), any())).thenReturn(m);
+        given().contentType(ContentType.JSON).body(Map.of("nama", "HONDA"))
+            .when().put("/api/pazaauto/merk-kendaraan/1").then().statusCode(200);
+
+        doNothing().when(tbMerkKendaraanService).delete(1L);
+        given().when().delete("/api/pazaauto/merk-kendaraan/1").then().statusCode(200);
     }
 
     // ═══════════════════════════════════════════════════════════════════════

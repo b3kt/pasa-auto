@@ -13,24 +13,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 @RegisterForReflection
-public class KendaraanDto {
+public class MerkKendaraanDto {
 
     private Long id;
 
-    @NotBlank(message = "Jenis is required")
-    @Size(max = 50, message = "Jenis must not exceed 50 characters")
-    private String jenis;
-
-    private Long merkId;
-
-    /** @deprecated read-only mirror of the merk master's nama; set from {@link #merkId} on save. */
-    @Deprecated
-    @Size(max = 50, message = "Merk must not exceed 50 characters")
-    private String merk;
+    @NotBlank(message = "Nama merk is required")
+    @Size(max = 50, message = "Nama merk must not exceed 50 characters")
+    private String nama;
 
     @Size(max = 500, message = "Keterangan must not exceed 500 characters")
     private String keterangan;
-
-    @Size(max = 50, message = "Model must not exceed 50 characters")
-    private String model;
 }

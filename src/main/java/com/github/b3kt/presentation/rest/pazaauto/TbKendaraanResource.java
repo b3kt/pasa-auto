@@ -53,6 +53,7 @@ public class TbKendaraanResource {
             @QueryParam("sortBy") String sortBy,
             @QueryParam("descending") @DefaultValue("false") boolean descending,
             @QueryParam("search") String search,
+            @QueryParam("merkId") Long merkId,
             @QueryParam("statusFilter") String statusFilter,
             @QueryParam("filterToday") @DefaultValue("false") boolean filterToday,
             @QueryParam("startDate") String startDate,
@@ -67,7 +68,7 @@ public class TbKendaraanResource {
         pageRequest.setStartDate(startDate);
         pageRequest.setEndDate(endDate);
 
-        PageResponse<TbKendaraanEntity> pageResponse = service.findPaginated(pageRequest);
+        PageResponse<TbKendaraanEntity> pageResponse = service.findPaginated(pageRequest, merkId);
         return Response.ok(ApiResponse.success(
                 new PageResponse<>(
                         kendaraanMapper.toDtoList(pageResponse.getRows()),

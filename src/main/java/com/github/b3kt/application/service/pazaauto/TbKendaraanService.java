@@ -4,12 +4,15 @@ import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.helper.PageHelper;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKendaraanEntity;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbMerkKendaraanEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganKendaraanEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKendaraanRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbMerkKendaraanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganKendaraanRepository;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,6 +28,9 @@ public class TbKendaraanService extends AbstractCrudService<TbKendaraanEntity, L
     @Inject
     TbPelangganKendaraanRepository pelangganKendaraanRepository;
 
+    @Inject
+    TbMerkKendaraanRepository merkRepository;
+
     @Override
     protected PanacheRepositoryBase<TbKendaraanEntity, Long> getRepository() {
         return repository;
@@ -37,12 +43,48 @@ public class TbKendaraanService extends AbstractCrudService<TbKendaraanEntity, L
 
     @Override
     public PageResponse<TbKendaraanEntity> findPaginated(PageRequest pageRequest) {
-        if (pageRequest.getSearch() != null && !pageRequest.getSearch().isEmpty()) {
+        return findPaginated(pageRequest, null);
+    }
+
+    public PageResponse<TbKendaraanEntity> findPaginated(PageRequest pageRequest, Long merkId) {
+        boolean hasSearch = pageRequest.getSearch() != null && !pageRequest.getSearch().isEmpty();
+        String like = hasSearch ? "%" + pageRequest.getSearch().toLowerCase() + "%" : null;
+        if (merkId != null && hasSearch) {
             return PageHelper.paginate(repository, pageRequest,
-                    "lower(jenis) like ?1 or lower(merk) like ?1",
-                    "%" + pageRequest.getSearch().toLowerCase() + "%");
+                    "merkId = ?1 and (lower(jenis) like ?2 or lower(model) like ?2)", merkId, like);
+        }
+        if (merkId != null) {
+            return PageHelper.paginate(repository, pageRequest, "merkId = ?1", merkId);
+        }
+        if (hasSearch) {
+            return PageHelper.paginate(repository, pageRequest,
+                    "lower(jenis) like ?1 or lower(merk) like ?1", like);
         }
         return PageHelper.findAll(repository, pageRequest);
+    }
+
+    @Override
+    @Transactional
+    public TbKendaraanEntity create(TbKendaraanEntity entity) {
+        applyMerk(entity);
+        return super.create(entity);
+    }
+
+    @Override
+    @Transactional
+    public TbKendaraanEntity update(Long id, TbKendaraanEntity entity) {
+        applyMerk(entity);
+        return super.update(id, entity);
+    }
+
+    /** Resolves merkId against the merk master and syncs the deprecated merk string. */
+    private void applyMerk(TbKendaraanEntity entity) {
+        if (entity.getMerkId() == null) {
+            throw new IllegalArgumentException("Merk harus dipilih");
+        }
+        TbMerkKendaraanEntity merk = merkRepository.findByIdOptional(entity.getMerkId())
+                .orElseThrow(() -> new EntityNotFoundException("Merk kendaraan not found with id: " + entity.getMerkId()));
+        entity.setMerk(merk.getNama());
     }
 
     public List<String> findDistinctMerks() {
@@ -59,9 +101,11 @@ public class TbKendaraanService extends AbstractCrudService<TbKendaraanEntity, L
 
     public TbKendaraanEntity findOrCreateByMerkJenis(String merk, String jenis) {
         return repository.findByMerkAndJenis(merk, jenis).orElseGet(() -> {
+            TbMerkKendaraanEntity merkMaster = merkRepository.findOrCreateByNama(merk);
             TbKendaraanEntity entity = new TbKendaraanEntity();
-            entity.setMerk(merk);
-            entity.setJenis(jenis);
+            entity.setMerkId(merkMaster.getId());
+            entity.setMerk(merkMaster.getNama());
+            entity.setJenis(jenis == null ? "" : jenis.trim());
             return repository.getEntityManager().merge(entity);
         });
     }

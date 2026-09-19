@@ -5,11 +5,13 @@ import com.github.b3kt.application.dto.pazaauto.PelangganHistoryDto;
 import com.github.b3kt.application.dto.pazaauto.VehicleHistoryDto;
 import com.github.b3kt.application.dto.pazaauto.VehicleTransactionDto;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKendaraanEntity;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbMerkKendaraanEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganKendaraanEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKendaraanRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbMerkKendaraanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganKendaraanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPenjualanRepository;
@@ -35,6 +37,9 @@ public class KendaraanOwnershipService {
 
     @Inject
     TbKendaraanRepository kendaraanRepository;
+
+    @Inject
+    TbMerkKendaraanRepository merkRepository;
 
     @Inject
     TbPelangganRepository pelangganRepository;
@@ -275,9 +280,11 @@ public class KendaraanOwnershipService {
 
     private TbKendaraanEntity findOrCreateMaster(String merk, String jenis) {
         return kendaraanRepository.findByMerkAndJenis(merk, jenis).orElseGet(() -> {
+            TbMerkKendaraanEntity merkMaster = merkRepository.findOrCreateByNama(merk);
             TbKendaraanEntity e = new TbKendaraanEntity();
-            e.setMerk(merk);
-            e.setJenis(jenis);
+            e.setMerkId(merkMaster.getId());
+            e.setMerk(merkMaster.getNama());
+            e.setJenis(jenis == null ? "" : jenis.trim());
             return kendaraanRepository.getEntityManager().merge(e);
         });
     }

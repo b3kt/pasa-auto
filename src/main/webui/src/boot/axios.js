@@ -17,6 +17,7 @@ const LOOKUP_CACHE_URLS = new Set([
   '/api/pazaauto/kendaraan',
   '/api/pazaauto/kendaraan/merk/distinct',
   '/api/pazaauto/kendaraan/jenis/distinct',
+  '/api/pazaauto/merk-kendaraan',
   '/api/pazaauto/sparepart',
   '/api/pazaauto/karyawan',
   '/api/system-parameters'
@@ -28,10 +29,12 @@ const WRITE_INVALIDATION_MAP = [
   { prefix: '/api/pazaauto/jasa',          invalidate: ['/api/pazaauto/jasa'] },
   { prefix: '/api/pazaauto/barang',        invalidate: ['/api/pazaauto/barang', '/api/pazaauto/sparepart'] },
   { prefix: '/api/pazaauto/supplier',      invalidate: ['/api/pazaauto/supplier'] },
-  { prefix: '/api/pazaauto/pelanggan',     invalidate: ['/api/pazaauto/pelanggan'] },
+  // Saving a pelanggan may create a new merk / kendaraan master (typed-in merk or jenis)
+  { prefix: '/api/pazaauto/pelanggan',     invalidate: ['/api/pazaauto/pelanggan', '/api/pazaauto/kendaraan', '/api/pazaauto/kendaraan/merk/distinct', '/api/pazaauto/kendaraan/jenis/distinct', '/api/pazaauto/merk-kendaraan'] },
   { prefix: '/api/pazaauto/karyawan',      invalidate: ['/api/pazaauto/karyawan', '/api/pazaauto/karyawan-posisi'] },
   { prefix: '/api/pazaauto/karyawan-posisi', invalidate: ['/api/pazaauto/karyawan-posisi'] },
-  { prefix: '/api/pazaauto/kendaraan',     invalidate: ['/api/pazaauto/kendaraan', '/api/pazaauto/kendaraan/merk/distinct', '/api/pazaauto/kendaraan/jenis/distinct'] },
+  { prefix: '/api/pazaauto/kendaraan',     invalidate: ['/api/pazaauto/kendaraan', '/api/pazaauto/kendaraan/merk/distinct', '/api/pazaauto/kendaraan/jenis/distinct', '/api/pazaauto/merk-kendaraan'] },
+  { prefix: '/api/pazaauto/merk-kendaraan', invalidate: ['/api/pazaauto/merk-kendaraan', '/api/pazaauto/kendaraan', '/api/pazaauto/kendaraan/merk/distinct'] },
   { prefix: '/api/pazaauto/spk',          invalidate: ['/api/pazaauto/spk', '/api/pazaauto/spk_detail'] },
   { prefix: '/api/pazaauto/penjualan',    invalidate: ['/api/pazaauto/penjualan', '/api/pazaauto/penjualan_detail'] },
   { prefix: '/api/pazaauto/pembelian',   invalidate: ['/api/pazaauto/pembelian', '/api/pazaauto/pembelian_detail', '/api/pazaauto/pembelian_barang_detail'] },

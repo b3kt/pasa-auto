@@ -3,7 +3,9 @@ package com.github.b3kt.application.service.pazaauto;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKendaraanEntity;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbMerkKendaraanEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKendaraanRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbMerkKendaraanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganKendaraanRepository;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.panache.common.Page;
@@ -33,6 +35,9 @@ class TbKendaraanServiceTest {
     TbPelangganKendaraanRepository pelangganKendaraanRepository;
 
     @Mock
+    TbMerkKendaraanRepository merkRepository;
+
+    @Mock
     PanacheQuery<TbKendaraanEntity> query;
 
     @InjectMocks
@@ -46,7 +51,13 @@ class TbKendaraanServiceTest {
         kendaraan.setId(1L);
         kendaraan.setJenis("Sedan");
         kendaraan.setMerk("Toyota");
+        kendaraan.setMerkId(7L);
         kendaraan.setModel("Corolla");
+
+        TbMerkKendaraanEntity toyota = new TbMerkKendaraanEntity();
+        toyota.setId(7L);
+        toyota.setNama("TOYOTA");
+        lenient().when(merkRepository.findByIdOptional(7L)).thenReturn(Optional.of(toyota));
     }
 
     @Test
@@ -160,6 +171,48 @@ class TbKendaraanServiceTest {
     }
 
     @Test
+    @DisplayName("findPaginated filters by merkId")
+    void testFindPaginated_byMerkId() {
+        PageRequest pr = new PageRequest(1, 10);
+        when(repository.find(eq("merkId = ?1"), any(Object[].class))).thenReturn(query);
+        when(query.count()).thenReturn(1L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of(kendaraan));
+
+        PageResponse<TbKendaraanEntity> result = service.findPaginated(pr, 5L);
+
+        assertEquals(1, result.getRows().size());
+        verify(repository).find(eq("merkId = ?1"), any(Object[].class));
+    }
+
+    @Test
+    @DisplayName("create syncs deprecated merk from merk master")
+    void testCreate_syncsMerk() {
+        TbMerkKendaraanEntity toyota = new TbMerkKendaraanEntity();
+        toyota.setId(3L);
+        toyota.setNama("TOYOTA");
+        when(merkRepository.findByIdOptional(3L)).thenReturn(Optional.of(toyota));
+        TbKendaraanEntity input = new TbKendaraanEntity();
+        input.setMerkId(3L);
+        input.setJenis("Yaris");
+
+        TbKendaraanEntity result = service.create(input);
+
+        assertEquals("TOYOTA", result.getMerk());
+        verify(repository).persist(input);
+    }
+
+    @Test
+    @DisplayName("create without merkId is rejected")
+    void testCreate_requiresMerk() {
+        TbKendaraanEntity input = new TbKendaraanEntity();
+        input.setJenis("Yaris");
+
+        assertThrows(IllegalArgumentException.class, () -> service.create(input));
+        verify(repository, never()).persist(any(TbKendaraanEntity.class));
+    }
+
+    @Test
     @DisplayName("delete calls deleteById")
     void testDelete() {
         when(pelangganKendaraanRepository.findByKendaraanIdOrderByTanggalMulai(1L)).thenReturn(List.of());
@@ -183,6 +236,10 @@ class TbKendaraanServiceTest {
     @DisplayName("findOrCreateByMerkJenis persists a new master when none exists")
     void testFindOrCreateByMerkJenis_creates() {
         when(repository.findByMerkAndJenis("Honda", "Sedan")).thenReturn(Optional.empty());
+        TbMerkKendaraanEntity honda = new TbMerkKendaraanEntity();
+        honda.setId(5L);
+        honda.setNama("HONDA");
+        when(merkRepository.findOrCreateByNama("Honda")).thenReturn(honda);
         jakarta.persistence.EntityManager em = mock(jakarta.persistence.EntityManager.class);
         when(repository.getEntityManager()).thenReturn(em);
         when(em.merge(any(TbKendaraanEntity.class))).thenAnswer(inv -> {
@@ -193,7 +250,8 @@ class TbKendaraanServiceTest {
 
         TbKendaraanEntity result = service.findOrCreateByMerkJenis("Honda", "Sedan");
 
-        assertEquals("Honda", result.getMerk());
+        assertEquals("HONDA", result.getMerk());
+        assertEquals(5L, result.getMerkId());
         assertEquals("Sedan", result.getJenis());
         assertEquals(99L, result.getId());
         verify(em).merge(any(TbKendaraanEntity.class));

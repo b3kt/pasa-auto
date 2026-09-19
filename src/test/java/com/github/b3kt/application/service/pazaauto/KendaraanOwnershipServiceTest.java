@@ -5,11 +5,13 @@ import com.github.b3kt.application.dto.pazaauto.PelangganHistoryDto;
 import com.github.b3kt.application.dto.pazaauto.VehicleHistoryDto;
 import com.github.b3kt.application.dto.pazaauto.VehicleTransactionDto;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKendaraanEntity;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbMerkKendaraanEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganKendaraanEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKendaraanRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbMerkKendaraanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganKendaraanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPenjualanRepository;
@@ -47,6 +49,9 @@ class KendaraanOwnershipServiceTest {
 
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     TbKendaraanRepository kendaraanRepository;
+
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    TbMerkKendaraanRepository merkRepository;
 
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     TbPelangganRepository pelangganRepository;
@@ -224,6 +229,10 @@ class KendaraanOwnershipServiceTest {
         when(pelangganRepository.findByIdCached(1L)).thenReturn(Optional.of(john));
         when(ownershipRepository.findCurrentByNopol("B9999XX")).thenReturn(Optional.empty());
         when(kendaraanRepository.findByMerkAndJenis("Suzuki", "Hatchback")).thenReturn(Optional.empty());
+        TbMerkKendaraanEntity suzuki = new TbMerkKendaraanEntity();
+        suzuki.setId(8L);
+        suzuki.setNama("SUZUKI");
+        when(merkRepository.findOrCreateByNama("Suzuki")).thenReturn(suzuki);
 
         EntityManager em = mock(EntityManager.class);
         TbKendaraanEntity newMaster = new TbKendaraanEntity();
@@ -250,7 +259,7 @@ class KendaraanOwnershipServiceTest {
 
         KendaraanOwnershipDto dto = service.attach(1L, "B9999XX", "Suzuki", "Hatchback", null, null);
 
-        verify(em).merge(any(TbKendaraanEntity.class));
+        verify(em).merge(argThat((TbKendaraanEntity e) -> Long.valueOf(8L).equals(e.getMerkId())));
         assertEquals(77L, dto.getIdKendaraan());
         assertEquals("Suzuki", dto.getMerk());
     }

@@ -9,6 +9,7 @@ import jakarta.transaction.Transactional;
 
 import java.time.LocalDate;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Keeps the ownership junction table in sync with reads/writes to the legacy
@@ -61,11 +62,17 @@ public class PelangganOwnershipSyncService {
             }
         } else if (masterChanged && newNopol != null && !newNopol.isBlank()) {
             TbKendaraanEntity master = kendaraanService.findOrCreateByMerkJenis(newMerk, newJenis);
-            ownershipRepository.findCurrentByNopolAndPelanggan(newNopol, pelangganId)
-                    .ifPresent(r -> {
-                        r.setKendaraanId(master.getId());
-                        ownershipRepository.getEntityManager().merge(r);
-                    });
+            Optional<TbPelangganKendaraanEntity> current =
+                    ownershipRepository.findCurrentByNopolAndPelanggan(newNopol, pelangganId);
+            if (current.isPresent()) {
+                TbPelangganKendaraanEntity r = current.get();
+                r.setKendaraanId(master.getId());
+                ownershipRepository.getEntityManager().merge(r);
+            } else if (ownershipRepository.findCurrentByNopol(newNopol).isEmpty()) {
+                // Legacy pelanggan without an ownership row yet: link it to the (new) master now.
+                ownershipRepository.openOwnership(pelangganId, master.getId(), newNopol,
+                        tanggalMulai != null ? tanggalMulai : LocalDate.now(), null);
+            }
         }
     }
 

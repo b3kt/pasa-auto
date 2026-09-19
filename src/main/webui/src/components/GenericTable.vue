@@ -30,7 +30,7 @@
              @request="onRequest" @row-click="onRowClick" binary-state-sort :selected="selectedRows"
              @keydown="handleKeydown" tabindex="0" ref="tableRef"
              :rows-per-page-options="[5, 10, 25, 50]"
-             style="outline: none"
+             :style="{ outline: 'none', ...(tableHeight ? { height: tableHeight } : {}) }"
     >
       <!-- Pass through all slots -->
       <template v-for="(_, slot) in $slots" v-slot:[slot]="scope">
@@ -127,6 +127,11 @@ const props = defineProps({
   footerButtonAction: {
     type: Function,
     default: () => {}
+  },
+  // Overrides the default 75vh table height (e.g. when stacking tables)
+  tableHeight: {
+    type: String,
+    default: null
   }
 })
 
