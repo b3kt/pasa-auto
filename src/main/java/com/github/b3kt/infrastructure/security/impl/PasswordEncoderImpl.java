@@ -21,11 +21,8 @@ public class PasswordEncoderImpl implements PasswordEncoder {
             return false;
         }
         
-        if (encodedPassword.startsWith(BCRYPT_PREFIX)) {
-            return BcryptUtil.matches(rawPassword, encodedPassword);
-        }
-        
-        return rawPassword.equals(encodedPassword);
+        // Only bcrypt hashes are accepted; plaintext values left in the database (see V18) never match
+        return encodedPassword.startsWith(BCRYPT_PREFIX) && BcryptUtil.matches(rawPassword, encodedPassword);
     }
 
     public boolean isBcryptHash(String encodedPassword) {

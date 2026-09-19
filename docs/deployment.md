@@ -240,6 +240,15 @@ GRANT ALL PRIVILEGES ON DATABASE pasa_auto TO pasa_user;
 
 ---
 
+## Passwords
+
+- Passwords are stored as bcrypt hashes only. Migration V18 hashes any plaintext passwords left from older
+  versions with `pgcrypto` (a trusted extension on PostgreSQL 13+, so the database owner can create it) and
+  requires those users to choose a new password at their next login.
+- The seeded accounts (`admin`, `owner`, `karyawan`) have publicly known passwords (see `V2__initial_data.sql`).
+  After a fresh install or upgrade, log in with each one immediately and change its password, or deactivate it.
+- New employee logins get a random temporary password, shown once to the Admin/Owner who creates the employee.
+
 ## Reverse Proxy
 
 By default the app terminates TLS itself and uses the TCP peer address as the client IP (this is what the

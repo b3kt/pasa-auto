@@ -161,6 +161,39 @@ public class AuthResource {
     }
     
     @POST
+    @Path("/change-password")
+    @Authenticated
+    @Operation(
+        summary = "Change password",
+        description = "Change the current user's password. Also required after logging in with a temporary password. "
+                + "Returns new tokens; the user's other sessions are ended."
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @APIResponses({
+        @APIResponse(responseCode = "200", description = "Password changed",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ApiResponse.class))),
+        @APIResponse(responseCode = "400", description = "New password does not meet the password policy",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ApiResponse.class))),
+        @APIResponse(responseCode = "401", description = "Current password is incorrect or not authenticated",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public Response changePassword(@Valid com.github.b3kt.application.dto.ChangePasswordRequest request) {
+        try {
+            LoginResponse response = authService.changePassword(
+                identity.getPrincipal().getName(), request.getCurrentPassword(), request.getNewPassword());
+            return Response.ok(ApiResponse.success("Password changed successfully", response)).build();
+        } catch (AuthenticationException e) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(ApiResponse.<LoginResponse>error(e.getMessage()))
+                    .build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.<LoginResponse>error(e.getMessage()))
+                    .build();
+        }
+    }
+
+    @POST
     @Path("/refresh")
     @PermitAll
     @Operation(

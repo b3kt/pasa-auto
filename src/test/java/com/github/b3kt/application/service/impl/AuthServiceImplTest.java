@@ -88,6 +88,19 @@ class AuthServiceImplTest {
             assertEquals("refresh123", result.getRefreshToken());
             assertEquals("admin", result.getUsername());
             assertEquals(86400L, result.getExpiresIn());
+            assertFalse(result.isMustChangePassword());
+        }
+
+        @Test
+        @DisplayName("Should flag a login with a temporary password")
+        void testLogin_mustChangePassword() {
+            testUser.setMustChangePassword(true);
+            when(userRepository.findByUsername("admin")).thenReturn(Optional.of(testUser));
+            when(passwordEncoder.matches("password", "hashed_password")).thenReturn(true);
+
+            LoginResponse result = authService.login("admin", "password");
+
+            assertTrue(result.isMustChangePassword());
         }
 
         @Test
@@ -265,6 +278,65 @@ class AuthServiceImplTest {
             LoginResponse result = authService.refreshToken("refresh_token");
 
             assertNotNull(result);
+        }
+    }
+
+    @Nested
+    @DisplayName("changePassword")
+    class ChangePasswordTests {
+
+        @BeforeEach
+        void stubTokens() {
+            when(userRepository.findByUsername("admin")).thenReturn(Optional.of(testUser));
+            when(jwtTokenService.generateToken(any(User.class))).thenReturn("new_token");
+            when(refreshTokenService.issue(any(User.class))).thenReturn("new_refresh");
+        }
+
+        @Test
+        @DisplayName("Should store the new hash, clear the flag, end other sessions and return new tokens")
+        void testChangePassword_success() {
+            testUser.setMustChangePassword(true);
+            when(passwordEncoder.matches("old-password", "hashed_password")).thenReturn(true);
+            when(passwordEncoder.encode("New-password-1")).thenReturn("$2a$new");
+
+            LoginResponse result = authService.changePassword("admin", "old-password", "New-password-1");
+
+            verify(userRepository).updatePassword("admin", "$2a$new", false);
+            verify(refreshTokenService).revokeAllForUser("admin");
+            assertEquals("new_token", result.getToken());
+            assertEquals("new_refresh", result.getRefreshToken());
+            assertFalse(result.isMustChangePassword());
+        }
+
+        @Test
+        @DisplayName("Should reject a wrong current password")
+        void testChangePassword_wrongCurrent() {
+            when(passwordEncoder.matches("wrong", "hashed_password")).thenReturn(false);
+
+            assertThrows(AuthenticationException.class,
+                    () -> authService.changePassword("admin", "wrong", "New-password-1"));
+            verify(userRepository, never()).updatePassword(anyString(), anyString(), anyBoolean());
+        }
+
+        @Test
+        @DisplayName("Should reject a weak or unchanged new password")
+        void testChangePassword_policy() {
+            when(passwordEncoder.matches("old-password", "hashed_password")).thenReturn(true);
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> authService.changePassword("admin", "old-password", "short"));
+            assertThrows(IllegalArgumentException.class,
+                    () -> authService.changePassword("admin", "old-password", "old-password"));
+            verify(userRepository, never()).updatePassword(anyString(), anyString(), anyBoolean());
+        }
+
+        @Test
+        @DisplayName("Should reject an inactive user")
+        void testChangePassword_inactive() {
+            testUser.setActive(false);
+
+            assertThrows(AuthenticationException.class,
+                    () -> authService.changePassword("admin", "old-password", "New-password-1"));
         }
     }
 

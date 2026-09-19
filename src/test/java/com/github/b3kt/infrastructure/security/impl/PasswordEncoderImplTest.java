@@ -46,9 +46,10 @@ class PasswordEncoderImplTest {
     }
 
     @Test
-    @DisplayName("matches returns true for matching plaintext")
-    void testMatches_plaintextMatch() {
-        assertTrue(encoder.matches("hello", "hello"));
+    @DisplayName("matches rejects a stored plaintext value even when it is equal")
+    void testMatches_plaintextRejected() {
+        assertFalse(encoder.matches("hello", "hello"));
+        assertFalse(encoder.matches("!", "!"));
     }
 
     @Test

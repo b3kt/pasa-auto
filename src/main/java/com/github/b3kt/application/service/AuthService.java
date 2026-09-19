@@ -44,4 +44,16 @@ public interface AuthService {
      * @param refreshToken the session's refresh token; when null, all of the user's sessions are revoked
      */
     void logout(String username, String refreshToken);
+    
+    /**
+     * Change the password of an authenticated user. Ends all of the user's other sessions.
+     * 
+     * @param username the authenticated user
+     * @param currentPassword the password being replaced
+     * @param newPassword the new password
+     * @return a fresh token pair (without the password-change requirement)
+     * @throws com.github.b3kt.domain.exception.AuthenticationException if the current password is wrong
+     * @throws IllegalArgumentException if the new password violates the password policy
+     */
+    LoginResponse changePassword(String username, String currentPassword, String newPassword);
 }

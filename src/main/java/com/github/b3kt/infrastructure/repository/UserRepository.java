@@ -32,5 +32,9 @@ public interface UserRepository {
      * @return true if user exists
      */
     boolean existsByUsername(String username);
-}
 
+    /**
+     * Replace a user's password hash and set whether they must change it at next login.
+     */
+    void updatePassword(String username, String passwordHash, boolean mustChangePassword);
+}

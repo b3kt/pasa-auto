@@ -18,6 +18,7 @@ public class User {
     private String passwordHash;
     private Set<RoleEntity> roles;
     private boolean active;
+    private boolean mustChangePassword;
 
     private transient Long karyawanId;
     private transient String karyawanNama;

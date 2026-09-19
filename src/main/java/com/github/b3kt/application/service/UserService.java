@@ -1,5 +1,8 @@
 package com.github.b3kt.application.service;
 
+import com.github.b3kt.infrastructure.security.PasswordEncoder;
+import com.github.b3kt.infrastructure.security.PasswordPolicy;
+import jakarta.transaction.Transactional;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.service.pazaauto.AbstractCrudService;
@@ -25,9 +28,57 @@ public class UserService extends AbstractCrudService<UserEntity, Long> {
         return repository;
     }
 
+    @Inject
+    PasswordEncoder passwordEncoder;
+
+    @Inject
+    RefreshTokenService refreshTokenService;
+
     @Override
     protected void setEntityId(UserEntity entity, Long id) {
         entity.setId(id);
+    }
+
+    /**
+     * The password set here is a temporary one (the Owner knows it), so the user must change it at first login.
+     */
+    @Override
+    @Transactional
+    public UserEntity create(UserEntity entity) {
+        PasswordPolicy.validate(entity.getPassword(), entity.getUsername());
+        entity.setPasswordHash(passwordEncoder.encode(entity.getPassword()));
+        entity.setMustChangePassword(true);
+        entity.setPassword(null);
+        return super.create(entity);
+    }
+
+    /**
+     * Only profile fields are taken from the request; roles are managed through the RBAC endpoints and the
+     * password hash is never accepted from clients. A non-blank {@code password} resets the password
+     * (temporary, must be changed) and ends the user's sessions, as does deactivating the user.
+     */
+    @Override
+    @Transactional
+    public UserEntity update(Long id, UserEntity entity) {
+        UserEntity existing = findById(id);
+        String previousUsername = existing.getUsername();
+
+        existing.setUsername(entity.getUsername());
+        existing.setEmail(entity.getEmail());
+        existing.setKaryawanId(entity.getKaryawanId());
+        existing.setActive(entity.isActive());
+
+        boolean endSessions = !entity.isActive();
+        if (entity.getPassword() != null && !entity.getPassword().isBlank()) {
+            PasswordPolicy.validate(entity.getPassword(), existing.getUsername());
+            existing.setPasswordHash(passwordEncoder.encode(entity.getPassword()));
+            existing.setMustChangePassword(true);
+            endSessions = true;
+        }
+        if (endSessions) {
+            refreshTokenService.revokeAllForUser(previousUsername);
+        }
+        return existing;
     }
 
     @Override

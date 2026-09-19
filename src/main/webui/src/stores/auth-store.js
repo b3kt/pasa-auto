@@ -53,7 +53,9 @@ export const useAuthStore = defineStore('auth', {
         email: email || claims.email || this.user?.email,
         roles: claims.groups,
         karyawanId: claims.karyawanId,
-        karyawanNama: claims.karyawanNama
+        karyawanNama: claims.karyawanNama,
+        // Temporary password: the server refuses everything but changing it until it is changed
+        mustChangePassword: claims.pwd_change === true
       }
       this.isAuthenticated = true
 
@@ -122,6 +124,25 @@ export const useAuthStore = defineStore('auth', {
         console.error('Logout error:', error)
       } finally {
         await this.clearSession()
+      }
+    },
+
+    // Change the current user's password. The server ends other sessions and returns a fresh token pair.
+    async changePassword(currentPassword, newPassword) {
+      try {
+        const { api } = await import('boot/axios')
+        const response = await api.post('/api/auth/change-password', { currentPassword, newPassword })
+        const data = response.data?.data
+        if (data?.token) {
+          this.applySession(data)
+          return { success: true }
+        }
+        return { success: false, error: response.data?.message || 'Failed to change password' }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.message || error.response?.data?.error || 'Failed to change password'
+        }
       }
     },
 

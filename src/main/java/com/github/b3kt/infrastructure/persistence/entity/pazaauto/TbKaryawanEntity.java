@@ -49,4 +49,12 @@ public class TbKaryawanEntity extends BaseEntity {
 
     @Transient
     private java.util.List<String> roles;
+
+    /** Set only on the entity returned by create: the login created for this employee. */
+    @Transient
+    private String loginUsername;
+
+    /** Set only on the entity returned by create: the one-time password of that login. Never stored in plaintext. */
+    @Transient
+    private String initialPassword;
 }

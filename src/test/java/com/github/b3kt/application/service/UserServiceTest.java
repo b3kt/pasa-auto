@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
+import com.github.b3kt.infrastructure.security.impl.PasswordEncoderImpl;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -38,6 +40,12 @@ class UserServiceTest {
 
     @Mock
     PanacheQuery<UserEntity> sortedQuery;
+
+    @Spy
+    PasswordEncoderImpl passwordEncoder = new PasswordEncoderImpl();
+
+    @Mock
+    RefreshTokenService refreshTokenService;
 
     @InjectMocks
     UserService userService;
@@ -82,19 +90,86 @@ class UserServiceTest {
         @DisplayName("create persists and returns entity")
         void create() {
             doNothing().when(repository).persist(any(UserEntity.class));
+            testEntity.setPassword("Temporary-1");
+
             UserEntity result = userService.create(testEntity);
+
             assertNotNull(result);
+            assertTrue(passwordEncoder.matches("Temporary-1", result.getPasswordHash()));
+            assertTrue(result.isMustChangePassword());
+            assertNull(result.getPassword());
         }
 
         @Test
-        @DisplayName("update merges entity")
-        void update() {
-            when(repository.findByIdOptional(1L)).thenReturn(Optional.of(testEntity));
-            when(repository.getEntityManager()).thenReturn(mock(jakarta.persistence.EntityManager.class));
-            when(repository.getEntityManager().merge(any(UserEntity.class))).thenReturn(testEntity);
+        @DisplayName("create rejects a missing or too short password")
+        void createRejectsWeakPassword() {
+            assertThrows(IllegalArgumentException.class, () -> userService.create(testEntity));
+            testEntity.setPassword("short");
+            assertThrows(IllegalArgumentException.class, () -> userService.create(testEntity));
+            verify(repository, never()).persist(any(UserEntity.class));
+        }
 
-            UserEntity result = userService.update(1L, testEntity);
-            assertNotNull(result);
+        @Test
+        @DisplayName("update copies profile fields and keeps the stored password hash")
+        void update() {
+            UserEntity existing = new UserEntity();
+            existing.setId(1L);
+            existing.setUsername("testuser");
+            existing.setPasswordHash("$2a$10$existing");
+            existing.setActive(true);
+            when(repository.findByIdOptional(1L)).thenReturn(Optional.of(existing));
+
+            UserEntity request = new UserEntity();
+            request.setUsername("testuser");
+            request.setEmail("new@example.com");
+            request.setActive(true);
+
+            UserEntity result = userService.update(1L, request);
+
+            assertEquals("new@example.com", result.getEmail());
+            assertEquals("$2a$10$existing", result.getPasswordHash());
+            assertFalse(result.isMustChangePassword());
+            verify(refreshTokenService, never()).revokeAllForUser(anyString());
+        }
+
+        @Test
+        @DisplayName("update with a new password resets it as temporary and ends sessions")
+        void updateResetsPassword() {
+            UserEntity existing = new UserEntity();
+            existing.setId(1L);
+            existing.setUsername("testuser");
+            existing.setPasswordHash("$2a$10$existing");
+            existing.setActive(true);
+            when(repository.findByIdOptional(1L)).thenReturn(Optional.of(existing));
+
+            UserEntity request = new UserEntity();
+            request.setUsername("testuser");
+            request.setActive(true);
+            request.setPassword("Temporary-2");
+
+            UserEntity result = userService.update(1L, request);
+
+            assertTrue(passwordEncoder.matches("Temporary-2", result.getPasswordHash()));
+            assertTrue(result.isMustChangePassword());
+            verify(refreshTokenService).revokeAllForUser("testuser");
+        }
+
+        @Test
+        @DisplayName("deactivating a user ends their sessions")
+        void updateDeactivateEndsSessions() {
+            UserEntity existing = new UserEntity();
+            existing.setId(1L);
+            existing.setUsername("testuser");
+            existing.setActive(true);
+            when(repository.findByIdOptional(1L)).thenReturn(Optional.of(existing));
+
+            UserEntity request = new UserEntity();
+            request.setUsername("testuser");
+            request.setActive(false);
+
+            userService.update(1L, request);
+
+            verify(refreshTokenService).revokeAllForUser("testuser");
         }
 
         @Test

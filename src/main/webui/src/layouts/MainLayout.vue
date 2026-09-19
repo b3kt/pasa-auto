@@ -65,6 +65,12 @@
                   </q-item-section>
                 </q-item>
                 <q-separator />
+                <q-item clickable v-close-popup to="/change-password">
+                  <q-item-section avatar>
+                    <q-icon name="key" />
+                  </q-item-section>
+                  <q-item-section>Ganti Password</q-item-section>
+                </q-item>
                 <q-item clickable v-close-popup @click="handleLogout">
                   <q-item-section avatar>
                     <q-icon name="logout" />

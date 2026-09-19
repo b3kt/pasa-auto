@@ -20,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
+import com.github.b3kt.infrastructure.security.impl.PasswordEncoderImpl;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
@@ -44,6 +46,9 @@ class TbKaryawanServiceTest {
 
     @Mock
     RoleEntityRepository roleRepository;
+
+    @Spy
+    PasswordEncoderImpl passwordEncoder = new PasswordEncoderImpl();
 
     @Mock
     PanacheQuery<TbKaryawanEntity> query;
@@ -274,7 +279,7 @@ class TbKaryawanServiceTest {
 
     @Test
     @DisplayName("create sets default password on user")
-    void create_setsDefaultPassword() {
+    void create_setsRandomTemporaryPassword() {
         doAnswer(inv -> {
             inv.getArgument(0, TbKaryawanEntity.class).setId(1L);
             return null;
@@ -283,11 +288,35 @@ class TbKaryawanServiceTest {
         when(userRepository.findByUsername("john@example.com")).thenReturn(Optional.empty());
         doNothing().when(userRepository).persist(any(UserEntity.class));
 
-        service.create(entity);
+        TbKaryawanEntity created = service.create(entity);
 
         ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
         verify(userRepository).persist(captor.capture());
-        assertEquals("password", captor.getValue().getPasswordHash());
+        UserEntity user = captor.getValue();
+
+        // The one-time password is handed back once and only its bcrypt hash is stored
+        assertEquals("john@example.com", created.getLoginUsername());
+        assertNotNull(created.getInitialPassword());
+        assertTrue(created.getInitialPassword().length() >= 12);
+        assertTrue(user.getPasswordHash().startsWith("$2"));
+        assertNotEquals(created.getInitialPassword(), user.getPasswordHash());
+        assertTrue(passwordEncoder.matches(created.getInitialPassword(), user.getPasswordHash()));
+        assertTrue(user.isMustChangePassword());
+    }
+
+    @Test
+    @DisplayName("create gives each employee a different temporary password")
+    void create_temporaryPasswordsDiffer() {
+        when(userRepository.findByUsername(anyString())).thenReturn(Optional.empty());
+
+        String first = service.create(entity).getInitialPassword();
+        TbKaryawanEntity other = new TbKaryawanEntity();
+        other.setId(2L);
+        other.setNamaKaryawan("Jane Doe");
+        other.setEmail("jane@example.com");
+        String second = service.create(other).getInitialPassword();
+
+        assertNotEquals(first, second);
     }
 
     // ==================== setRelationships() ====================

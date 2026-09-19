@@ -1,5 +1,6 @@
 package com.github.b3kt.application.dto.pazaauto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -54,4 +55,12 @@ public class KaryawanDto {
     private String namePosisi;
 
     private List<String> roles;
+
+    /** Only in the create response: the login created for the employee. */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private String loginUsername;
+
+    /** Only in the create response: the temporary password to hand to the employee (must be changed at first login). */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private String initialPassword;
 }

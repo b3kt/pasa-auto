@@ -1,5 +1,7 @@
 package com.github.b3kt.application.service.pazaauto;
 
+import com.github.b3kt.infrastructure.security.PasswordEncoder;
+import com.github.b3kt.infrastructure.security.PasswordPolicy;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.helper.PageHelper;
@@ -18,6 +20,9 @@ public class TbKaryawanService extends AbstractCrudService<TbKaryawanEntity, Lon
 
     @Inject
     TbKaryawanRepository repository;
+
+    @Inject
+    PasswordEncoder passwordEncoder;
 
     @Inject
     TbKaryawanPosisiRepository karyawanPosisiRepository;
@@ -55,7 +60,10 @@ public class TbKaryawanService extends AbstractCrudService<TbKaryawanEntity, Lon
         com.github.b3kt.infrastructure.persistence.entity.UserEntity user = new com.github.b3kt.infrastructure.persistence.entity.UserEntity();
         user.setUsername(username);
         user.setEmail(entity.getEmail() != null ? entity.getEmail() : username + "@example.com"); // Fallback email
-        user.setPasswordHash("password"); // Default password, plain text as per AuthServiceImpl logic
+        // Random one-time password: returned once to the Admin/Owner creating the employee, changed at first login
+        String initialPassword = PasswordPolicy.generateTemporary();
+        user.setPasswordHash(passwordEncoder.encode(initialPassword));
+        user.setMustChangePassword(true);
         user.setKaryawanId(entity.getId());
         user.setActive(true);
 
@@ -72,6 +80,8 @@ public class TbKaryawanService extends AbstractCrudService<TbKaryawanEntity, Lon
 
         userRepository.persist(user);
 
+        entity.setLoginUsername(username);
+        entity.setInitialPassword(initialPassword);
         return entity;
     }
 

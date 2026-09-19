@@ -40,6 +40,7 @@ public class JpaUserRepository implements UserRepository {
         entity.setPasswordHash(user.getPasswordHash());
         entity.setRoles(user.getRoles());
         entity.setActive(user.isActive());
+        entity.setMustChangePassword(user.isMustChangePassword());
         
         userEntityRepository.persist(entity);
         return entity.toDomain();
@@ -49,5 +50,11 @@ public class JpaUserRepository implements UserRepository {
     public boolean existsByUsername(String username) {
         return userEntityRepository.existsByUsername(username);
     }
-}
 
+    @Override
+    @Transactional
+    public void updatePassword(String username, String passwordHash, boolean mustChangePassword) {
+        userEntityRepository.update("passwordHash = ?1, mustChangePassword = ?2 where username = ?3",
+                passwordHash, mustChangePassword, username);
+    }
+}

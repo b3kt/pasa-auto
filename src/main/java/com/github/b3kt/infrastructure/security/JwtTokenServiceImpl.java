@@ -53,6 +53,9 @@ public class JwtTokenServiceImpl implements JwtTokenService {
                 .claim("email", user.getEmail())
                 .expiresIn(Duration.ofMinutes(expirationMinutes));
 
+        if (user.isMustChangePassword()) {
+            jwtBuilder.claim(PasswordChangeRequiredAugmentor.CLAIM, true);
+        }
         if (user.getKaryawanId() != null) {
             jwtBuilder.claim("karyawanId", user.getKaryawanId());
         }

@@ -22,6 +22,9 @@ public class LoginResponse {
     @Schema(description = "Refresh token for obtaining new access tokens", example = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...")
     private String refreshToken;
 
+    @Schema(description = "True when the user has a temporary password and must change it before using the app")
+    private boolean mustChangePassword;
+
     public LoginResponse() {
     }
 
@@ -78,6 +81,14 @@ public class LoginResponse {
     
     public void setRefreshToken(String refreshToken) {
         this.refreshToken = refreshToken;
+    }
+
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
     }
 }
 

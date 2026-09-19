@@ -40,8 +40,9 @@ public class InMemoryUserRepository implements UserRepository {
             User demoUser = new User(
                     "admin",
                     "admin@example.com",
-                    "admin123", // In production, this should be hashed
+                    io.quarkus.elytron.security.common.BcryptUtil.bcryptHash("admin123"),
                     roles.stream().map(this::toRoleEntity).collect(Collectors.toSet()));
+            demoUser.setMustChangePassword(true);
             users.put("admin", demoUser);
         }
     }
@@ -66,5 +67,14 @@ public class InMemoryUserRepository implements UserRepository {
     @Override
     public boolean existsByUsername(String username) {
         return users.containsKey(username);
+    }
+
+    @Override
+    public void updatePassword(String username, String passwordHash, boolean mustChangePassword) {
+        User user = users.get(username);
+        if (user != null) {
+            user.setPasswordHash(passwordHash);
+            user.setMustChangePassword(mustChangePassword);
+        }
     }
 }

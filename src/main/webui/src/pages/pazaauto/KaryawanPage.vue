@@ -70,11 +70,40 @@
         <q-btn flat label="Hapus saja" color="negative" @click="deleteItem" :loading="deleting"/>
       </template>
     </GenericDialog>
+
+    <!-- Login created for a new employee: the temporary password is shown only this once -->
+    <GenericDialog v-model="showCredentials" title="Akun login karyawan" min-width="400px" position="standard">
+      <p>Berikan data login ini kepada karyawan. Password hanya ditampilkan sekali dan harus diganti saat login pertama.</p>
+      <q-list bordered separator dense>
+        <q-item>
+          <q-item-section>
+            <q-item-label caption>Username</q-item-label>
+            <q-item-label>{{ credentials?.username }}</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-btn flat round dense icon="content_copy" @click="copy(credentials?.username)"/>
+          </q-item-section>
+        </q-item>
+        <q-item>
+          <q-item-section>
+            <q-item-label caption>Password sementara</q-item-label>
+            <q-item-label class="text-weight-bold" style="font-family: monospace">{{ credentials?.password }}</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-btn flat round dense icon="content_copy" @click="copy(credentials?.password)"/>
+          </q-item-section>
+        </q-item>
+      </q-list>
+      <template #actions>
+        <q-btn flat label="Selesai" color="primary" @click="closeCredentials"/>
+      </template>
+    </GenericDialog>
   </q-page>
 </template>
 
 <script setup>
 import {ref, onMounted} from 'vue'
+import {copyToClipboard, useQuasar} from 'quasar'
 import {api} from 'boot/axios'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
@@ -203,9 +232,34 @@ const openEditDialog = (row) => {
   })
 }
 
+// Login details of a just-created employee; cleared as soon as the dialog is closed
+const $q = useQuasar()
+const showCredentials = ref(false)
+const credentials = ref(null)
+
+const closeCredentials = () => {
+  showCredentials.value = false
+  credentials.value = null
+}
+
+const copy = async (text) => {
+  try {
+    await copyToClipboard(text)
+    $q.notify({ type: 'positive', message: 'Disalin', timeout: 1000 })
+  } catch {
+    $q.notify({ type: 'warning', message: 'Gagal menyalin' })
+  }
+}
+
 const handleSave = async () => {
-  const result = await saveData(formData.value)
-  if (result) {
+  const saved = await saveData(formData.value)
+  // Keep the one-time credentials out of the form state
+  const { loginUsername, initialPassword, ...result } = saved && typeof saved === 'object' ? saved : {}
+  if (initialPassword) {
+    credentials.value = { username: loginUsername, password: initialPassword }
+    showCredentials.value = true
+  }
+  if (saved) {
     formData.value = {...result}
     if (!isEditMode.value) {
       openEditDialog(result)

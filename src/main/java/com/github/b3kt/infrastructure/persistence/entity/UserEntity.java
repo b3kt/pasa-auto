@@ -1,5 +1,7 @@
 package com.github.b3kt.infrastructure.persistence.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.github.b3kt.domain.model.User;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -29,8 +31,19 @@ public class UserEntity extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String email;
 
+    /** Never serialized: API clients set passwords through {@link #password}. */
+    @JsonIgnore
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
+
+    /** Write-only plaintext from API requests; hashed into {@link #passwordHash} by the service, never stored. */
+    @Transient
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private String password;
+
+    /** Set for temporary passwords (issued by an admin or migrated); the user must choose a new one before doing anything else. */
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword = false;
 
     @ManyToMany(fetch = FetchType.EAGER, cascade = { CascadeType.PERSIST, CascadeType.MERGE })
     @JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
@@ -60,6 +73,7 @@ public class UserEntity extends BaseEntity {
         user.setPasswordHash(this.passwordHash);
         user.setRoles(this.roles);
         user.setActive(this.active);
+        user.setMustChangePassword(this.mustChangePassword);
         return user;
     }
 
@@ -73,6 +87,7 @@ public class UserEntity extends BaseEntity {
         entity.setPasswordHash(user.getPasswordHash());
         entity.setRoles(user.getRoles());
         entity.setActive(user.isActive());
+        entity.setMustChangePassword(user.isMustChangePassword());
         return entity;
     }
 }

@@ -50,6 +50,9 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     } else if (to.path === '/login' && token) {
       // Redirect to home if user is already logged in
       next('/')
+    } else if (requiresAuth && token && authStore.user?.mustChangePassword && to.path !== '/change-password') {
+      // A temporary password must be replaced before anything else (the server enforces this too)
+      next('/change-password')
     } else if (requiresAuth && token) {
       // Role-based access: routes declare meta.roles (see routes.js); the backend enforces the same rules
       const allowedRoles = to.meta.roles

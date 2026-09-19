@@ -33,8 +33,14 @@
             <q-input v-model="formData.email" label="Email *" outlined dense type="email"
               :rules="[val => !!val || 'Email harus diisi']" />
 
-            <q-input v-model="formData.passwordHash" label="Password *" outlined dense
-              :type="showPassword ? 'text' : 'password'" :rules="[val => !!val || 'Password harus diisi']">
+            <!-- Always a temporary password: the user must change it at their next login -->
+            <q-input v-model="newPassword" :label="isEditMode ? 'Reset password' : 'Temporary password *'" outlined dense
+              autocomplete="new-password" :type="showPassword ? 'text' : 'password'"
+              :hint="isEditMode ? 'Leave empty to keep the current password. Setting one logs the user out.' : 'The user must change it at first login'"
+              :rules="[
+                val => isEditMode || !!val || 'Password harus diisi',
+                val => !val || val.length >= 8 || 'Minimal 8 karakter'
+              ]">
               <template v-slot:append>
                 <q-icon :name="showPassword ? 'visibility_off' : 'visibility'" class="cursor-pointer"
                   @click="showPassword = !showPassword" />
@@ -57,7 +63,7 @@
 
             <div class="row justify-end q-mt-md q-gutter-sm">
               <q-btn v-if="isEditMode" label="Hapus" color="negative" flat @click="confirmDelete(formData)" :loading="deleting" />
-              <q-btn label="Simpan" type="submit" color="primary" :loading="saving" :disable="isEditMode && !isDirty(formData)" />
+              <q-btn label="Simpan" type="submit" color="primary" :loading="saving" :disable="isEditMode && !isDirty(formData) && !newPassword" />
             </div>
           </q-form>
         </div>
@@ -111,6 +117,8 @@ const tableRef = ref(null)
 
 // Additional State
 const showPassword = ref(false)
+// Kept out of formData: the API never returns passwords, and an empty value means "keep the current one"
+const newPassword = ref('')
 const karyawanOptions = ref([])
 const filteredKaryawanOptions = ref([])
 
@@ -119,7 +127,6 @@ const formData = ref({
   id: null,
   username: '',
   email: '',
-  passwordHash: '',
   karyawanId: null,
   active: true
 })
@@ -129,10 +136,10 @@ const resetForm = () => {
     id: null,
     username: '',
     email: '',
-    passwordHash: '',
     karyawanId: null,
     active: true
   }
+  newPassword.value = ''
   showPassword.value = false
 }
 
@@ -152,6 +159,7 @@ const openEditDialog = async (row) => {
   baseOpenEditDialog(row, (r) => {
     formData.value = { ...r }
   })
+  newPassword.value = ''
   await fetchKaryawan()
 
   // If editing a user with an assigned Karyawan, fetch that Karyawan's details
@@ -176,8 +184,10 @@ const openEditDialog = async (row) => {
 }
 
 const handleSave = async () => {
-  const result = await saveData(formData.value)
+  const payload = newPassword.value ? { ...formData.value, password: newPassword.value } : formData.value
+  const result = await saveData(payload)
   if (result) {
+    newPassword.value = ''
     formData.value = { ...result }
     if (!isEditMode.value) {
       openEditDialog(result)
@@ -189,7 +199,7 @@ const handleSave = async () => {
 // Keyboard Shortcuts
 useKeyboardShortcuts({
   onSave: () => {
-    if (!saving.value && !(isEditMode.value && !isDirty(formData.value))) {
+    if (!saving.value && !(isEditMode.value && !isDirty(formData.value) && !newPassword.value)) {
       handleSave()
     }
   },

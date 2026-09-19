@@ -11,6 +11,7 @@ import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawan
 import com.github.b3kt.infrastructure.repository.UserRepository;
 import com.github.b3kt.infrastructure.security.JwtTokenService;
 import com.github.b3kt.infrastructure.security.PasswordEncoder;
+import com.github.b3kt.infrastructure.security.PasswordPolicy;
 import com.github.b3kt.infrastructure.security.RefreshTokenClaims;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -61,17 +62,7 @@ public class AuthServiceImpl implements AuthService {
                     user.setKaryawanNama(karyawan.getNamaKaryawan());
                 });
 
-        // Generate tokens
-        String token = jwtTokenService.generateToken(user);
-        String refreshToken = refreshTokenService.issue(user);
-        UserInfo userInfo = UserMapper.toUserInfo(user);
-
-        return new LoginResponse(
-                token,
-                refreshToken,
-                userInfo.getUsername(),
-                userInfo.getEmail(),
-                jwtTokenService.getTokenExpirationSeconds());
+        return issueTokens(user, refreshTokenService.issue(user));
     }
 
     @Override
@@ -106,17 +97,7 @@ public class AuthServiceImpl implements AuthService {
                     user.setKaryawanNama(karyawan.getNamaKaryawan());
                 });
         
-        // Generate new tokens
-        String newToken = jwtTokenService.generateToken(user);
-        String newRefreshToken = refreshTokenService.issue(user, familyId);
-        UserInfo userInfo = UserMapper.toUserInfo(user);
-        
-        return new LoginResponse(
-                newToken,
-                newRefreshToken,
-                userInfo.getUsername(),
-                userInfo.getEmail(),
-                jwtTokenService.getTokenExpirationSeconds());
+        return issueTokens(user, refreshTokenService.issue(user, familyId));
     }
 
     @Override
@@ -129,5 +110,44 @@ public class AuthServiceImpl implements AuthService {
         if (claims != null && claims.username().equals(username)) {
             refreshTokenService.revokeSession(claims);
         }
+    }
+
+    @Override
+    public LoginResponse changePassword(String username, String currentPassword, String newPassword) {
+        User user = userRepository.findByUsername(username)
+                .filter(User::canAuthenticate)
+                .orElseThrow(() -> new AuthenticationException("User account is not active"));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new AuthenticationException("Current password is incorrect");
+        }
+        PasswordPolicy.validate(newPassword, username);
+        if (newPassword.equals(currentPassword)) {
+            throw new IllegalArgumentException("New password must be different from the current password");
+        }
+
+        user.setMustChangePassword(false);
+        userRepository.updatePassword(username, passwordEncoder.encode(newPassword), false);
+
+        // Sessions opened with the old password (e.g. on another device) end here; this one continues with new tokens
+        refreshTokenService.revokeAllForUser(username);
+        tbKaryawanRepository.findByUsername(username)
+                .ifPresent(karyawan -> {
+                    user.setKaryawanId(karyawan.getId());
+                    user.setKaryawanNama(karyawan.getNamaKaryawan());
+                });
+        return issueTokens(user, refreshTokenService.issue(user));
+    }
+
+    private LoginResponse issueTokens(User user, String refreshToken) {
+        UserInfo userInfo = UserMapper.toUserInfo(user);
+        LoginResponse response = new LoginResponse(
+                jwtTokenService.generateToken(user),
+                refreshToken,
+                userInfo.getUsername(),
+                userInfo.getEmail(),
+                jwtTokenService.getTokenExpirationSeconds());
+        response.setMustChangePassword(user.isMustChangePassword());
+        return response;
     }
 }

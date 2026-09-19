@@ -16,8 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Changed**: With IP restriction enabled, an empty `allowed.ips` list now rejects all clock-ins instead of allowing all
 - **Changed**: Access tokens now expire after 30 minutes (`jwt.expiration.minutes`, was 2400 hours)
 - **Added**: Server-side refresh token store (`refresh_tokens`, migration V17) with rotation on use, reuse detection and revocation on logout / for deactivated users
-- **Fixed**: Password verification in `AuthServiceImpl` now uses `PasswordEncoder.matches()` with backward compatibility for plain-text passwords
-- **Enhanced**: `PasswordEncoderImpl` supports both bcrypt-hashed and plain-text passwords for seamless migration
+- **Removed**: Plaintext password matching; only bcrypt hashes are accepted. Migration V18 (requires the `pgcrypto` extension) bcrypt-hashes remaining plaintext passwords and flags those users to change their password
+- **Fixed**: New employee logins were created with the plaintext password `password`; they now get a random one-time password shown once to the Admin/Owner and must change it at first login
+- **Fixed**: `/api/users` returned password hashes and stored the Owner-entered password in plaintext; hashes are never serialized, passwords are write-only and hashed, and an Owner-set password is temporary (the user's sessions end)
+- **Added**: `POST /api/auth/change-password` and a Change Password page; users with a temporary password can do nothing else until they change it (enforced server-side via the `pwd_change` token claim)
 - **Fixed**: `SecurityProperties` interface properly configured as SmallRye ConfigMapping (removed stub method)
 
 ### Code Quality
