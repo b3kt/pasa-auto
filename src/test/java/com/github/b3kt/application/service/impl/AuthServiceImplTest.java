@@ -2,6 +2,7 @@ package com.github.b3kt.application.service.impl;
 
 import com.github.b3kt.application.dto.LoginResponse;
 import com.github.b3kt.application.dto.UserInfo;
+import com.github.b3kt.application.service.RefreshTokenService;
 import com.github.b3kt.domain.exception.AuthenticationException;
 import com.github.b3kt.domain.model.User;
 import com.github.b3kt.infrastructure.persistence.entity.UserEntity;
@@ -11,6 +12,7 @@ import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawan
 import com.github.b3kt.infrastructure.repository.UserRepository;
 import com.github.b3kt.infrastructure.security.JwtTokenService;
 import com.github.b3kt.infrastructure.security.PasswordEncoder;
+import com.github.b3kt.infrastructure.security.RefreshTokenClaims;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -48,7 +50,12 @@ class AuthServiceImplTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
+    private RefreshTokenService refreshTokenService;
+
+    @Mock
     private JsonWebToken jwt;
+
+    private final RefreshTokenClaims refreshClaims = new RefreshTokenClaims("admin", "token-id");
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -71,7 +78,7 @@ class AuthServiceImplTest {
             when(userRepository.findByUsername("admin")).thenReturn(Optional.of(testUser));
             when(passwordEncoder.matches("password", "hashed_password")).thenReturn(true);
             when(jwtTokenService.generateToken(any(User.class))).thenReturn("token123");
-            when(jwtTokenService.generateRefreshToken(any(User.class))).thenReturn("refresh123");
+            when(refreshTokenService.issue(any(User.class))).thenReturn("refresh123");
             when(jwtTokenService.getTokenExpirationSeconds()).thenReturn(86400L);
 
             LoginResponse result = authService.login("admin", "password");
@@ -141,7 +148,7 @@ class AuthServiceImplTest {
             karyawan.setNamaKaryawan("Budi");
             when(tbKaryawanRepository.findByUsername("admin")).thenReturn(Optional.of(karyawan));
             when(jwtTokenService.generateToken(any(User.class))).thenReturn("token123");
-            when(jwtTokenService.generateRefreshToken(any(User.class))).thenReturn("refresh123");
+            when(refreshTokenService.issue(any(User.class))).thenReturn("refresh123");
             when(jwtTokenService.getTokenExpirationSeconds()).thenReturn(86400L);
 
             LoginResponse result = authService.login("admin", "password");
@@ -157,7 +164,7 @@ class AuthServiceImplTest {
             when(passwordEncoder.matches("password", "hashed_password")).thenReturn(true);
             when(tbKaryawanRepository.findByUsername("admin")).thenReturn(Optional.empty());
             when(jwtTokenService.generateToken(any(User.class))).thenReturn("token123");
-            when(jwtTokenService.generateRefreshToken(any(User.class))).thenReturn("refresh123");
+            when(refreshTokenService.issue(any(User.class))).thenReturn("refresh123");
             when(jwtTokenService.getTokenExpirationSeconds()).thenReturn(86400L);
 
             LoginResponse result = authService.login("admin", "password");
@@ -173,10 +180,11 @@ class AuthServiceImplTest {
         @Test
         @DisplayName("Should refresh token successfully")
         void testRefreshToken_success() {
-            when(jwtTokenService.validateRefreshToken("refresh_token")).thenReturn("admin");
+            when(jwtTokenService.validateRefreshToken("refresh_token")).thenReturn(refreshClaims);
+            when(refreshTokenService.consume(refreshClaims)).thenReturn("family-1");
             when(userRepository.findByUsername("admin")).thenReturn(Optional.of(testUser));
             when(jwtTokenService.generateToken(any(User.class))).thenReturn("new_token");
-            when(jwtTokenService.generateRefreshToken(any(User.class))).thenReturn("new_refresh");
+            when(refreshTokenService.issue(any(User.class), eq("family-1"))).thenReturn("new_refresh");
             when(jwtTokenService.getTokenExpirationSeconds()).thenReturn(86400L);
 
             LoginResponse result = authService.refreshToken("refresh_token");
@@ -184,6 +192,18 @@ class AuthServiceImplTest {
             assertNotNull(result);
             assertEquals("new_token", result.getToken());
             assertEquals("new_refresh", result.getRefreshToken());
+            verify(refreshTokenService).consume(refreshClaims);
+        }
+
+        @Test
+        @DisplayName("Should reject a rotated or revoked refresh token")
+        void testRefreshToken_consumeRejected() {
+            when(jwtTokenService.validateRefreshToken("refresh_token")).thenReturn(refreshClaims);
+            when(refreshTokenService.consume(refreshClaims))
+                    .thenThrow(new AuthenticationException("Invalid or expired refresh token"));
+
+            assertThrows(AuthenticationException.class, () -> authService.refreshToken("refresh_token"));
+            verify(jwtTokenService, never()).generateToken(any(User.class));
         }
 
         @Test
@@ -195,12 +215,15 @@ class AuthServiceImplTest {
                     () -> authService.refreshToken("invalid"));
 
             assertEquals("Invalid or expired refresh token", ex.getMessage());
+            verify(refreshTokenService, never()).consume(any());
         }
 
         @Test
         @DisplayName("Should throw when user not found after refresh")
         void testRefreshToken_userNotFound() {
-            when(jwtTokenService.validateRefreshToken("refresh_token")).thenReturn("nonexistent");
+            RefreshTokenClaims claims = new RefreshTokenClaims("nonexistent", "token-id");
+            when(jwtTokenService.validateRefreshToken("refresh_token")).thenReturn(claims);
+            when(refreshTokenService.consume(claims)).thenReturn("family-1");
             when(userRepository.findByUsername("nonexistent")).thenReturn(Optional.empty());
 
             AuthenticationException ex = assertThrows(AuthenticationException.class,
@@ -213,19 +236,22 @@ class AuthServiceImplTest {
         @DisplayName("Should throw when user inactive during refresh")
         void testRefreshToken_userInactive() {
             testUser.setActive(false);
-            when(jwtTokenService.validateRefreshToken("refresh_token")).thenReturn("admin");
+            when(jwtTokenService.validateRefreshToken("refresh_token")).thenReturn(refreshClaims);
+            when(refreshTokenService.consume(refreshClaims)).thenReturn("family-1");
             when(userRepository.findByUsername("admin")).thenReturn(Optional.of(testUser));
 
             AuthenticationException ex = assertThrows(AuthenticationException.class,
                     () -> authService.refreshToken("refresh_token"));
 
             assertEquals("User account is not active", ex.getMessage());
+            verify(refreshTokenService).revokeAllForUser("admin");
         }
 
         @Test
         @DisplayName("Should enrich with karyawan info during refresh")
         void testRefreshToken_withKaryawan() {
-            when(jwtTokenService.validateRefreshToken("refresh_token")).thenReturn("admin");
+            when(jwtTokenService.validateRefreshToken("refresh_token")).thenReturn(refreshClaims);
+            when(refreshTokenService.consume(refreshClaims)).thenReturn("family-1");
             when(userRepository.findByUsername("admin")).thenReturn(Optional.of(testUser));
 
             TbKaryawanEntity karyawan = new TbKaryawanEntity();
@@ -233,12 +259,48 @@ class AuthServiceImplTest {
             karyawan.setNamaKaryawan("Budi");
             when(tbKaryawanRepository.findByUsername("admin")).thenReturn(Optional.of(karyawan));
             when(jwtTokenService.generateToken(any(User.class))).thenReturn("new_token");
-            when(jwtTokenService.generateRefreshToken(any(User.class))).thenReturn("new_refresh");
+            when(refreshTokenService.issue(any(User.class), eq("family-1"))).thenReturn("new_refresh");
             when(jwtTokenService.getTokenExpirationSeconds()).thenReturn(86400L);
 
             LoginResponse result = authService.refreshToken("refresh_token");
 
             assertNotNull(result);
+        }
+    }
+
+    @Nested
+    @DisplayName("logout")
+    class LogoutTests {
+
+        @Test
+        @DisplayName("Should revoke the session of the given refresh token")
+        void testLogout_withRefreshToken() {
+            when(jwtTokenService.validateRefreshToken("refresh_token")).thenReturn(refreshClaims);
+
+            authService.logout("admin", "refresh_token");
+
+            verify(refreshTokenService).revokeSession(refreshClaims);
+            verify(refreshTokenService, never()).revokeAllForUser(anyString());
+        }
+
+        @Test
+        @DisplayName("Should revoke all sessions when no refresh token is given")
+        void testLogout_withoutRefreshToken() {
+            authService.logout("admin", null);
+
+            verify(refreshTokenService).revokeAllForUser("admin");
+        }
+
+        @Test
+        @DisplayName("Should not revoke another user's session")
+        void testLogout_otherUsersToken() {
+            when(jwtTokenService.validateRefreshToken("refresh_token"))
+                    .thenReturn(new RefreshTokenClaims("someone-else", "token-id"));
+
+            authService.logout("admin", "refresh_token");
+
+            verify(refreshTokenService, never()).revokeSession(any());
+            verify(refreshTokenService, never()).revokeAllForUser(anyString());
         }
     }
 

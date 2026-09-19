@@ -52,7 +52,7 @@ class JwtTokenServiceImplTest {
     @BeforeEach
     void setUp() {
         jwtTokenService.issuer = "test-issuer";
-        jwtTokenService.expirationHours = 24;
+        jwtTokenService.expirationMinutes = 1440;
         jwtTokenService.refreshExpirationDays = 7;
 
         RoleEntity roleEntity = new RoleEntity();
@@ -218,10 +218,16 @@ class JwtTokenServiceImplTest {
         @Test
         @DisplayName("Should generate refresh token")
         void testGenerateRefreshToken() {
-            String token = jwtTokenService.generateRefreshToken(testUser);
+            String token = jwtTokenService.generateRefreshToken(testUser, "token-id");
 
             assertNotNull(token);
             assertTrue(token.split("\\.").length == 3);
+        }
+
+        @Test
+        @DisplayName("Should report the configured refresh token lifetime")
+        void testGetRefreshTokenLifetime() {
+            assertEquals(java.time.Duration.ofDays(7), jwtTokenService.getRefreshTokenLifetime());
         }
     }
 
@@ -256,13 +262,25 @@ class JwtTokenServiceImplTest {
         }
 
         @Test
-        @DisplayName("Should return the subject of a verified refresh token")
+        @DisplayName("Should return null for a refresh token without a token id")
+        void testValidateRefreshToken_missingTokenId() throws Exception {
+            when(jwt.getClaim("type")).thenReturn("refresh");
+            when(jwt.getSubject()).thenReturn("admin");
+            when(jwt.getTokenID()).thenReturn(null);
+            when(jwtParser.parse("refresh")).thenReturn(jwt);
+
+            assertNull(jwtTokenService.validateRefreshToken("refresh"));
+        }
+
+        @Test
+        @DisplayName("Should return the subject and token id of a verified refresh token")
         void testValidateRefreshToken_valid() throws Exception {
             when(jwt.getClaim("type")).thenReturn("refresh");
             when(jwt.getSubject()).thenReturn("admin");
+            when(jwt.getTokenID()).thenReturn("token-id");
             when(jwtParser.parse("refresh")).thenReturn(jwt);
 
-            assertEquals("admin", jwtTokenService.validateRefreshToken("refresh"));
+            assertEquals(new RefreshTokenClaims("admin", "token-id"), jwtTokenService.validateRefreshToken("refresh"));
         }
     }
 }

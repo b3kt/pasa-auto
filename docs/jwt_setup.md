@@ -33,9 +33,27 @@ mp.jwt.verify.publickey.location=${JWT_PUBLIC_KEY:classpath:publicKey.pem}
 mp.jwt.verify.issuer=${JWT_ISSUER:https://quarkus-quasar.example.com}
 jwt.issuer=${JWT_ISSUER:https://quarkus-quasar.example.com}
 
-# Token expiration (in hours)
-jwt.expiration.hours=2400
+# Access token lifetime (minutes) - keep short; sessions are extended with refresh tokens
+jwt.expiration.minutes=${JWT_EXPIRATION_MINUTES:30}
+# Refresh token lifetime (days) - sliding: every refresh issues a new token
+jwt.refresh.expiration.days=${JWT_REFRESH_EXPIRATION_DAYS:7}
+# How long a just-rotated refresh token is still accepted (concurrent refresh from two tabs)
+jwt.refresh.reuse-grace-seconds=${JWT_REFRESH_REUSE_GRACE_SECONDS:30}
 ```
+
+### Refresh Token Rotation & Revocation
+
+Refresh tokens are tracked server-side in the `refresh_tokens` table (keyed by the token's `jti`):
+
+- **Rotation**: each `POST /api/auth/refresh` marks the presented token as used and returns a new pair.
+- **Reuse detection**: presenting an already-rotated token after the grace period revokes the whole
+  session (token family), since it indicates the token was copied.
+- **Logout**: `POST /api/auth/logout` with `{"refreshToken": "..."}` revokes that session; without a body,
+  all of the user's sessions are revoked.
+- **Deactivated users**: a refresh by an inactive user revokes all of their sessions.
+
+Access tokens are not tracked; after logout or a role change they stay valid until they expire
+(at most `jwt.expiration.minutes`).
 
 ### Environment Variables
 

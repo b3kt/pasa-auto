@@ -118,8 +118,8 @@ User → Role → Permission (RBAC)
 
 ### Authentication
 - JWT with RSA asymmetric signing (PKCS#8)
-- Token expiration: 2400 hours (~100 days)
-- Refresh token support
+- Access token expiration: 30 minutes (configurable)
+- Rotating refresh tokens (7 days), revoked on logout
 
 ### Authorization
 - Role-Based Access Control (RBAC)

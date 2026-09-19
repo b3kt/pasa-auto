@@ -35,16 +35,25 @@ public interface JwtTokenService {
      * Generate a refresh token for a user.
      * 
      * @param user the user
+     * @param tokenId the server-side id of the token, stored as its {@code jti} claim
      * @return the refresh token string
      */
-    String generateRefreshToken(User user);
+    String generateRefreshToken(User user, String tokenId);
     
     /**
-     * Validate a refresh token and return the username.
+     * Get how long a refresh token stays valid.
+     * 
+     * @return refresh token lifetime
+     */
+    java.time.Duration getRefreshTokenLifetime();
+    
+    /**
+     * Verify a refresh token's signature, issuer, expiry and type.
+     * This does not check whether the token was rotated or revoked.
      * 
      * @param refreshToken the refresh token to validate
-     * @return the username from the token, or null if invalid
+     * @return the token's username and id, or null if invalid
      */
-    String validateRefreshToken(String refreshToken);
+    RefreshTokenClaims validateRefreshToken(String refreshToken);
 }
 

@@ -159,9 +159,10 @@ See [api.md](api.md) for full documentation.
 ## Authentication Flow
 
 1. **Login**: `POST /api/auth/login` with username/password
-2. **Response**: JWT token + refresh token (expires in 2400h / ~100 days)
+2. **Response**: JWT access token (30 min) + refresh token (7 days, rotated on every refresh)
 3. **Subsequent requests**: `Authorization: Bearer <token>`
-4. **Refresh**: `POST /api/auth/refresh` with refresh token
+4. **Refresh**: `POST /api/auth/refresh` with refresh token (old one is invalidated)
+5. **Logout**: `POST /api/auth/logout` with refresh token (revokes the session server-side)
 
 JWT keys configured via environment variables (`JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY`) with classpath PEM fallback.
 

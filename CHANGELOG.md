@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- **Removed**: `CorsFilter`, which sent `Access-Control-Allow-Origin: *` with credentials on every response and overrode the `quarkus.http.cors.*` origin allowlist
+- **Changed**: Access tokens now expire after 30 minutes (`jwt.expiration.minutes`, was 2400 hours)
+- **Added**: Server-side refresh token store (`refresh_tokens`, migration V17) with rotation on use, reuse detection and revocation on logout / for deactivated users
 - **Fixed**: Password verification in `AuthServiceImpl` now uses `PasswordEncoder.matches()` with backward compatibility for plain-text passwords
 - **Enhanced**: `PasswordEncoderImpl` supports both bcrypt-hashed and plain-text passwords for seamless migration
 - **Fixed**: `SecurityProperties` interface properly configured as SmallRye ConfigMapping (removed stub method)

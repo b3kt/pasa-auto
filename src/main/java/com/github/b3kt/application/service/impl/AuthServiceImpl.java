@@ -4,12 +4,14 @@ import com.github.b3kt.application.dto.LoginResponse;
 import com.github.b3kt.application.dto.UserInfo;
 import com.github.b3kt.application.mapper.UserMapper;
 import com.github.b3kt.application.service.AuthService;
+import com.github.b3kt.application.service.RefreshTokenService;
 import com.github.b3kt.domain.exception.AuthenticationException;
 import com.github.b3kt.domain.model.User;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawanRepository;
 import com.github.b3kt.infrastructure.repository.UserRepository;
 import com.github.b3kt.infrastructure.security.JwtTokenService;
 import com.github.b3kt.infrastructure.security.PasswordEncoder;
+import com.github.b3kt.infrastructure.security.RefreshTokenClaims;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -33,6 +35,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Inject
     PasswordEncoder passwordEncoder;
+
+    @Inject
+    RefreshTokenService refreshTokenService;
 
     @Override
     public LoginResponse login(String username, String password) {
@@ -58,7 +63,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Generate tokens
         String token = jwtTokenService.generateToken(user);
-        String refreshToken = jwtTokenService.generateRefreshToken(user);
+        String refreshToken = refreshTokenService.issue(user);
         UserInfo userInfo = UserMapper.toUserInfo(user);
 
         return new LoginResponse(
@@ -76,11 +81,13 @@ public class AuthServiceImpl implements AuthService {
     
     @Override
     public LoginResponse refreshToken(String refreshToken) {
-        // Validate the refresh token and extract username
-        String username = jwtTokenService.validateRefreshToken(refreshToken);
-        if (username == null) {
+        // Validate the refresh token, then mark it used (rejects rotated or revoked tokens)
+        RefreshTokenClaims claims = jwtTokenService.validateRefreshToken(refreshToken);
+        if (claims == null) {
             throw new AuthenticationException("Invalid or expired refresh token");
         }
+        String familyId = refreshTokenService.consume(claims);
+        String username = claims.username();
         
         // Find user by username
         User user = userRepository.findByUsername(username)
@@ -88,6 +95,7 @@ public class AuthServiceImpl implements AuthService {
         
         // Check if user can still authenticate
         if (!user.canAuthenticate()) {
+            refreshTokenService.revokeAllForUser(username);
             throw new AuthenticationException("User account is not active");
         }
         
@@ -100,7 +108,7 @@ public class AuthServiceImpl implements AuthService {
         
         // Generate new tokens
         String newToken = jwtTokenService.generateToken(user);
-        String newRefreshToken = jwtTokenService.generateRefreshToken(user);
+        String newRefreshToken = refreshTokenService.issue(user, familyId);
         UserInfo userInfo = UserMapper.toUserInfo(user);
         
         return new LoginResponse(
@@ -109,5 +117,17 @@ public class AuthServiceImpl implements AuthService {
                 userInfo.getUsername(),
                 userInfo.getEmail(),
                 jwtTokenService.getTokenExpirationSeconds());
+    }
+
+    @Override
+    public void logout(String username, String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            refreshTokenService.revokeAllForUser(username);
+            return;
+        }
+        RefreshTokenClaims claims = jwtTokenService.validateRefreshToken(refreshToken);
+        if (claims != null && claims.username().equals(username)) {
+            refreshTokenService.revokeSession(claims);
+        }
     }
 }

@@ -201,6 +201,37 @@ class AuthResourceTest extends IntegrationTestBase {
             .statusCode(200)
             .body("success", equalTo(true))
             .body("message", containsString("Logged out"));
+
+        verify(authService).logout("testuser", null);
+    }
+
+    @Test
+    @DisplayName("Should revoke the given refresh token on logout")
+    @TestSecurity(user = "testuser", roles = {"user"})
+    void testLogoutWithRefreshToken() {
+        given()
+            .contentType(ContentType.JSON)
+            .body("{\"refreshToken\": \"refresh-token\"}")
+        .when()
+            .post("/api/auth/logout")
+        .then()
+            .statusCode(200);
+
+        verify(authService).logout("testuser", "refresh-token");
+    }
+
+    @Test
+    @DisplayName("Should reject a refresh request without a refresh token")
+    void testRefreshTokenMissing() {
+        given()
+            .contentType(ContentType.JSON)
+            .body("{}")
+        .when()
+            .post("/api/auth/refresh")
+        .then()
+            .statusCode(400);
+
+        verify(authService, never()).refreshToken(any());
     }
 
     @Test

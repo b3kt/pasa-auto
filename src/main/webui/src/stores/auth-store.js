@@ -107,10 +107,16 @@ export const useAuthStore = defineStore('auth', {
 
     async logout() {
       const token = this.token
+      const refreshToken = localStorage.getItem('refresh_token') || this.refreshToken
       try {
         const { api } = await import('boot/axios')
         if (token) {
-          await api.post('/api/auth/logout', null, { headers: { Authorization: `Bearer ${token}` } })
+          // Revokes this session's refresh token on the server
+          await api.post(
+            '/api/auth/logout',
+            refreshToken ? { refreshToken } : null,
+            { headers: { Authorization: `Bearer ${token}` } }
+          )
         }
       } catch (error) {
         console.error('Logout error:', error)
@@ -123,7 +129,8 @@ export const useAuthStore = defineStore('auth', {
     refreshAccessToken() {
       if (refreshPromise) return refreshPromise
 
-      const refreshToken = this.refreshToken || localStorage.getItem('refresh_token')
+      // Refresh tokens rotate on every use; another tab may already have replaced ours, so prefer the shared copy
+      const refreshToken = localStorage.getItem('refresh_token') || this.refreshToken
       if (!refreshToken) return Promise.resolve(false)
 
       refreshPromise = (async () => {

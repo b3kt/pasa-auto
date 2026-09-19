@@ -1,6 +1,7 @@
 package com.github.b3kt.presentation.rest;
 
 import io.quarkus.security.Authenticated;
+import io.quarkus.security.identity.SecurityIdentity;
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.LoginRequest;
 import com.github.b3kt.application.dto.LoginResponse;
@@ -43,6 +44,9 @@ public class AuthResource {
 
     @Inject
     JsonWebToken jwt;
+
+    @Inject
+    SecurityIdentity identity;
 
     @POST
     @Path("/login")
@@ -96,7 +100,7 @@ public class AuthResource {
     @Authenticated
     @Operation(
         summary = "User logout",
-        description = "Logout the current user. In JWT systems, this is typically handled client-side."
+        description = "Revoke the session of the given refresh token. Without a refresh token, all sessions of the current user are revoked."
     )
     @SecurityRequirement(name = "bearerAuth")
     @APIResponses({
@@ -113,9 +117,9 @@ public class AuthResource {
             description = "Unauthorized - Invalid or missing token"
         )
     })
-    public Response logout() {
-        // In a stateless JWT system, logout is typically handled client-side
-        // by removing the token. For server-side logout, you'd need a token blacklist.
+    public Response logout(com.github.b3kt.application.dto.RefreshTokenRequest request) {
+        // The access token stays valid until it expires (short-lived); revoking the refresh token ends the session
+        authService.logout(identity.getPrincipal().getName(), request != null ? request.getRefreshToken() : null);
         return Response.ok(ApiResponse.success("Logged out successfully", null)).build();
     }
 
@@ -181,7 +185,7 @@ public class AuthResource {
             )
         )
     })
-    public Response refreshToken(com.github.b3kt.application.dto.RefreshTokenRequest request) {
+    public Response refreshToken(@Valid com.github.b3kt.application.dto.RefreshTokenRequest request) {
         try {
             LoginResponse response = authService.refreshToken(request.getRefreshToken());
             return Response.ok(ApiResponse.success("Token refreshed successfully", response)).build();

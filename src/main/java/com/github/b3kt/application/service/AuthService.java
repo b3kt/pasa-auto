@@ -36,5 +36,12 @@ public interface AuthService {
      * @throws com.github.b3kt.domain.exception.AuthenticationException if refresh token is invalid
      */
     LoginResponse refreshToken(String refreshToken);
+    
+    /**
+     * End a session by revoking its refresh token family.
+     * 
+     * @param username the authenticated user
+     * @param refreshToken the session's refresh token; when null, all of the user's sessions are revoked
+     */
+    void logout(String username, String refreshToken);
 }
-

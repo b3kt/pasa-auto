@@ -13,6 +13,7 @@ import io.smallrye.jwt.build.Jwt;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.jwt.Claims;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import java.time.Duration;
@@ -28,8 +29,8 @@ public class JwtTokenServiceImpl implements JwtTokenService {
     @ConfigProperty(name = "jwt.issuer", defaultValue = "https://quarkus-quasar.example.com")
     String issuer;
 
-    @ConfigProperty(name = "jwt.expiration.hours", defaultValue = "24")
-    long expirationHours;
+    @ConfigProperty(name = "jwt.expiration.minutes", defaultValue = "30")
+    long expirationMinutes;
     
     @ConfigProperty(name = "jwt.refresh.expiration.days", defaultValue = "7")
     long refreshExpirationDays;
@@ -50,7 +51,7 @@ public class JwtTokenServiceImpl implements JwtTokenService {
                 .subject(user.getUsername())
                 .groups(user.getRoles().stream().map(RoleEntity::getName).collect(Collectors.toSet()))
                 .claim("email", user.getEmail())
-                .expiresIn(Duration.ofHours(expirationHours));
+                .expiresIn(Duration.ofMinutes(expirationMinutes));
 
         if (user.getKaryawanId() != null) {
             jwtBuilder.claim("karyawanId", user.getKaryawanId());
@@ -109,33 +110,38 @@ public class JwtTokenServiceImpl implements JwtTokenService {
 
     @Override
     public long getTokenExpirationSeconds() {
-        return Duration.ofHours(expirationHours).getSeconds();
+        return Duration.ofMinutes(expirationMinutes).getSeconds();
     }
     
     @Override
-    public String generateRefreshToken(User user) {
-        // Generate a refresh token with longer expiration (7 days by default)
-        // This token only contains the username and is used solely for refreshing access tokens
+    public String generateRefreshToken(User user, String tokenId) {
+        // Only carries the username and the server-side token id; it is used solely for refreshing access tokens
         return Jwt.issuer(issuer)
                 .upn(user.getUsername())
                 .subject(user.getUsername())
+                .claim(Claims.jti.name(), tokenId)
                 .claim("type", "refresh")
-                .expiresIn(Duration.ofDays(refreshExpirationDays))
+                .expiresIn(getRefreshTokenLifetime())
                 .sign();
+    }
+
+    @Override
+    public Duration getRefreshTokenLifetime() {
+        return Duration.ofDays(refreshExpirationDays);
     }
     
     @Override
-    public String validateRefreshToken(String refreshToken) {
+    public RefreshTokenClaims validateRefreshToken(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
             return null;
         }
         try {
             // Verifies signature, issuer and expiry against the mp.jwt.verify.* config
             JsonWebToken token = jwtParser.parse(refreshToken);
-            if (!"refresh".equals(token.getClaim("type"))) {
+            if (!"refresh".equals(token.getClaim("type")) || token.getTokenID() == null) {
                 return null;
             }
-            return token.getSubject();
+            return new RefreshTokenClaims(token.getSubject(), token.getTokenID());
         } catch (ParseException e) {
             return null;
         }
