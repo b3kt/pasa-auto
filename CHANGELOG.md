@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Removed**: `CorsFilter`, which sent `Access-Control-Allow-Origin: *` with credentials on every response and overrode the `quarkus.http.cors.*` origin allowlist
 - **Fixed**: Attendance endpoints let employees edit/delete any record and clock in or read attendance for other employees; employees are now limited to their own records (karyawanId from the JWT)
 - **Fixed**: Clock-in/out IP allowlist trusted the client-supplied `X-Forwarded-For`/`X-Real-IP` headers (and fell back to `127.0.0.1`); it now uses the connection address, with opt-in proxy support (`PROXY_ADDRESS_FORWARDING`, `TRUSTED_PROXIES`)
+- **Fixed**: Request/response body logging wrote login passwords and access/refresh tokens to the logs; `/api/auth/*` bodies are no longer logged and password/token/secret fields are masked elsewhere
+- **Changed**: App log level is now `INFO` by default (`APP_LOG_LEVEL`); the previous `quarkus.log.category."com.github.b3kt"=DEBUG` line was missing its `.level` suffix
 - **Changed**: With IP restriction enabled, an empty `allowed.ips` list now rejects all clock-ins instead of allowing all
 - **Changed**: Access tokens now expire after 30 minutes (`jwt.expiration.minutes`, was 2400 hours)
 - **Added**: Server-side refresh token store (`refresh_tokens`, migration V17) with rotation on use, reuse detection and revocation on logout / for deactivated users

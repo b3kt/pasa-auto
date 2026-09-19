@@ -1,5 +1,6 @@
 package com.github.b3kt.infrastructure.interceptor;
 
+import com.github.b3kt.infrastructure.logging.LogSanitizer;
 import com.github.b3kt.infrastructure.logging.TracingLogger;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
@@ -47,6 +48,23 @@ public class LoggingInterceptor implements ContainerRequestFilter, ContainerResp
 
     private static final String REQUEST_BODY_PROPERTY = "request.body";
     private static final String START_TIME_PROPERTY = "start.time";
+    private static final String OMITTED_BODY = "[omitted]";
+    private static final int MAX_LOGGED_BODY_LENGTH = 1000;
+
+    /** Auth requests and responses carry passwords and tokens; their bodies are never logged. */
+    private static boolean isAuthPath(ContainerRequestContext requestContext) {
+        String path = requestContext.getUriInfo().getPath();
+        return path != null && (path.startsWith("/api/auth") || path.startsWith("api/auth"));
+    }
+
+    /** Mask credentials first, then truncate, so a cut-off value can't slip past the mask. */
+    private static String sanitize(String body) {
+        String masked = LogSanitizer.mask(body);
+        if (masked.length() > MAX_LOGGED_BODY_LENGTH) {
+            return masked.substring(0, MAX_LOGGED_BODY_LENGTH) + "... [truncated]";
+        }
+        return masked;
+    }
 
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
@@ -94,7 +112,7 @@ public class LoggingInterceptor implements ContainerRequestFilter, ContainerResp
         long duration = startTime != null ? System.currentTimeMillis() - startTime : 0;
         
         // Get response body for logging (only for certain content types)
-        String responseBody = getResponseBody(responseContext);
+        String responseBody = isAuthPath(requestContext) ? OMITTED_BODY : getResponseBody(responseContext);
         
         // Create span for the response
         Span span = getTracer().spanBuilder(String.format("%s %s Response", 
@@ -136,6 +154,9 @@ public class LoggingInterceptor implements ContainerRequestFilter, ContainerResp
             
             if ((contentType != null && contentType.contains("application/json")) && 
                 ("POST".equals(method) || "PUT".equals(method) || "PATCH".equals(method))) {
+                if (isAuthPath(requestContext)) {
+                    return OMITTED_BODY;
+                }
                 
                 InputStream inputStream = requestContext.getEntityStream();
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -151,12 +172,7 @@ public class LoggingInterceptor implements ContainerRequestFilter, ContainerResp
                 // Reset the input stream so it can be read again
                 requestContext.setEntityStream(new ByteArrayInputStream(byteArrayOutputStream.toByteArray()));
                 
-                // Limit the size of logged request body
-                if (requestBody.length() > 1000) {
-                    requestBody = requestBody.substring(0, 1000) + "... [truncated]";
-                }
-                
-                return requestBody;
+                return sanitize(requestBody);
             }
         } catch (IOException e) {
             log.warn("Failed to read request body for logging", e);
@@ -172,14 +188,7 @@ public class LoggingInterceptor implements ContainerRequestFilter, ContainerResp
             if (entity != null && responseContext.getMediaType() != null && 
                 responseContext.getMediaType().toString().contains("application/json")) {
                 
-                String responseBody = entity.toString();
-                
-                // Limit the size of logged response body
-                if (responseBody.length() > 1000) {
-                    responseBody = responseBody.substring(0, 1000) + "... [truncated]";
-                }
-                
-                return responseBody;
+                return sanitize(entity.toString());
             }
         } catch (Exception e) {
             log.warn("Failed to read response body for logging", e);

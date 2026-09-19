@@ -52,6 +52,7 @@ cp .env.example .env
 | `JWT_REFRESH_EXPIRATION_DAYS` | 7 | Refresh token lifetime (sliding) |
 | `PROXY_ADDRESS_FORWARDING` | false | Trust `X-Forwarded-*` headers; enable only behind a reverse proxy |
 | `TRUSTED_PROXIES` | 127.0.0.1 | Proxy addresses whose forwarding headers are honored |
+| `APP_LOG_LEVEL` | INFO | App log level; `DEBUG` logs request/response bodies (credentials masked, `/api/auth/*` omitted) |
 | `DB_MAX_SIZE` | 10 | Max DB connections |
 | `DB_MIN_SIZE` | 2 | Min DB connections |
 | `SWAGGER_ENABLED` | false | Enable Swagger UI |

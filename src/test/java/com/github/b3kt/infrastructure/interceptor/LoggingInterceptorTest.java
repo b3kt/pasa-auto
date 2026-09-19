@@ -94,6 +94,67 @@ class LoggingInterceptorTest {
     }
 
     @Test
+    @DisplayName("request filter masks credentials in the logged body")
+    void testRequestFilter_masksCredentials() throws IOException {
+        when(requestContext.getMethod()).thenReturn("POST");
+        when(requestContext.getHeaderString("Content-Type")).thenReturn("application/json");
+        String json = "{\"username\":\"budi\",\"password\":\"s3cr3t\"}";
+        when(requestContext.getEntityStream()).thenReturn(new ByteArrayInputStream(json.getBytes()));
+
+        interceptor.filter(requestContext);
+
+        String logged = "{\"username\":\"budi\",\"password\":\"***\"}";
+        verify(requestContext).setProperty(eq("request.body"), eq(logged));
+        verify(tracingLogger).logRequest(eq("POST"), eq("/api/test"), eq(logged));
+        // The original body is still passed on to the endpoint
+        org.mockito.ArgumentCaptor<InputStream> forwarded = org.mockito.ArgumentCaptor.forClass(InputStream.class);
+        verify(requestContext).setEntityStream(forwarded.capture());
+        org.junit.jupiter.api.Assertions.assertEquals(json, new String(forwarded.getValue().readAllBytes()));
+    }
+
+    @Test
+    @DisplayName("request filter masks before truncating, so a cut-off secret is not logged")
+    void testRequestFilter_masksBeforeTruncating() throws IOException {
+        when(requestContext.getMethod()).thenReturn("POST");
+        when(requestContext.getHeaderString("Content-Type")).thenReturn("application/json");
+        String secret = "S".repeat(50);
+        String json = "{\"note\":\"" + "x".repeat(980) + "\",\"password\":\"" + secret + "\"}";
+        when(requestContext.getEntityStream()).thenReturn(new ByteArrayInputStream(json.getBytes()));
+
+        interceptor.filter(requestContext);
+
+        verify(requestContext).setProperty(eq("request.body"), argThat(s -> !((String) s).contains("SSSS")));
+    }
+
+    @Test
+    @DisplayName("request filter never reads or logs auth request bodies")
+    void testRequestFilter_omitsAuthBody() throws IOException {
+        when(uriInfo.getPath()).thenReturn("/api/auth/login");
+        when(requestContext.getMethod()).thenReturn("POST");
+        when(requestContext.getHeaderString("Content-Type")).thenReturn("application/json");
+
+        interceptor.filter(requestContext);
+
+        verify(requestContext, never()).getEntityStream();
+        verify(requestContext).setProperty(eq("request.body"), eq("[omitted]"));
+        verify(tracingLogger).logRequest(eq("POST"), eq("/api/auth/login"), eq("[omitted]"));
+    }
+
+    @Test
+    @DisplayName("response filter never logs auth response bodies")
+    void testResponseFilter_omitsAuthBody() throws IOException {
+        when(uriInfo.getPath()).thenReturn("/api/auth/refresh");
+        when(requestContext.getMethod()).thenReturn("POST");
+        when(requestContext.getProperty("start.time")).thenReturn(System.currentTimeMillis());
+        when(responseContext.getStatus()).thenReturn(200);
+
+        interceptor.filter(requestContext, responseContext);
+
+        verify(responseContext, never()).getEntity();
+        verify(tracingLogger).logResponse(eq("POST"), eq("/api/auth/refresh"), eq(200), eq("[omitted]"));
+    }
+
+    @Test
     @DisplayName("request filter handles GET (non-JSON) request")
     void testRequestFilter_getRequest() throws IOException {
         when(requestContext.getHeaderString("Content-Type")).thenReturn(null);
