@@ -1,11 +1,11 @@
 import { defineBoot } from '#q-app/wrappers'
 import { useAuthStore } from 'stores/auth-store'
 
-export default defineBoot(({ app, router }) => {
-  // Initialize auth store on app startup
+export default defineBoot(async ({ app, router }) => {
+  // Initialize auth store on app startup (renews or drops an expired stored session before the first navigation)
   console.debug('app', app)
   console.debug('router', router)
 
   const authStore = useAuthStore()
-  authStore.initializeAuth()
+  await authStore.initializeAuth()
 })

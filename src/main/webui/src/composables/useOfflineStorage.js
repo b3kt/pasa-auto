@@ -185,7 +185,6 @@ export function useOfflineStorage() {
       Notify.create({
         type: 'negative',
         message: 'Failed to initialize offline storage',
-        position: 'top-right'
       })
     }
   }
@@ -195,7 +194,6 @@ export function useOfflineStorage() {
     Notify.create({
       type: 'positive',
       message: 'Connection restored. Syncing data...',
-      position: 'top-right'
     })
     // Trigger sync when coming back online
     if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
@@ -210,7 +208,6 @@ export function useOfflineStorage() {
     Notify.create({
       type: 'warning',
       message: 'Connection lost. Working in offline mode.',
-      position: 'top-right',
       timeout: 3000
     })
   }

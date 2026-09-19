@@ -8,6 +8,9 @@
                       row-key="noPembelian" ref="tableRef"
                       search-placeholder="Search by No Pembelian..."
                       dense>
+                        <template v-slot:title>
+                          <div class="text-h6 q-mb-md">Transaksi | Pembelian</div>
+                        </template>
 
           <template v-slot:toolbar-filters>
             <div class="row items-center q-gutter-sm">

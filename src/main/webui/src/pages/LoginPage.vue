@@ -34,11 +34,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from 'stores/auth-store'
 import { useQuasar } from 'quasar'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const $q = useQuasar()
 
@@ -49,10 +50,8 @@ const error = ref('')
 
 // Clear all authentication data and cookies on mount
 const clearAuthData = () => {
-  // Clear localStorage
-  localStorage.removeItem('auth_token')
-  localStorage.removeItem('refresh_token')
-  localStorage.removeItem('auth_user')
+  // Clear tokens from the store and localStorage
+  authStore.clearSession()
 
   // Clear all cookies
   document.cookie.split(';').forEach(cookie => {
@@ -62,19 +61,12 @@ const clearAuthData = () => {
       document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`
     }
   })
-
-  // Reset auth store
-  authStore.$reset()
-
-  // Clear axios default headers
-  delete authStore.api.defaults.headers.common['Authorization']
 }
 
 // Check for expired token on mount
 onMounted(async () => {
-  const urlParams = new URLSearchParams(window.location.search)
-  const expired = urlParams.get('expired')
-  const logoutMessage = urlParams.get('message')
+  // Hash routing: the query lives in the route, not in window.location.search
+  const { expired, message: logoutMessage } = route.query
 
   if (expired === 'true') {
     clearAuthData()
@@ -88,11 +80,10 @@ onMounted(async () => {
     $q.notify({
       type: 'warning',
       message: 'Session expired, please login again',
-      position: 'top'
     })
 
     // Clean URL
-    window.history.replaceState({}, document.title, window.location.pathname)
+    router.replace({ path: '/login' })
   }
 })
 
@@ -107,7 +98,6 @@ const onSubmit = async () => {
         $q.notify({
           type: 'positive',
           message: 'Login successful!',
-          position: 'top'
         })
         router.push('/')
       } else {

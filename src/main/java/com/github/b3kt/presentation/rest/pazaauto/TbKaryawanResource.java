@@ -1,5 +1,7 @@
 package com.github.b3kt.presentation.rest.pazaauto;
 
+import com.github.b3kt.infrastructure.security.Roles;
+import jakarta.annotation.security.RolesAllowed;
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
@@ -20,6 +22,7 @@ import jakarta.ws.rs.core.Response;
 
 @RequestScoped
 @Path("/api/pazaauto/karyawan")
+@RolesAllowed({Roles.ADMIN, Roles.OWNER})
 public class TbKaryawanResource {
 
     @Inject
@@ -28,7 +31,9 @@ public class TbKaryawanResource {
     @Inject
     KaryawanMapper karyawanMapper;
 
+    // Employee list is also needed by staff on the attendance (absensi) page
     @GET
+    @RolesAllowed({Roles.ADMIN, Roles.OWNER, Roles.KARYAWAN})
     public Response findAll() {
         return Response.ok(ApiResponse.success(karyawanMapper.toDtoList(service.findAll()))).build();
     }

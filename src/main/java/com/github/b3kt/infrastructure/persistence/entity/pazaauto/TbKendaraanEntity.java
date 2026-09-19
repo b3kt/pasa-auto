@@ -14,6 +14,14 @@ public class TbKendaraanEntity extends BaseEntity {
     @Column(name = "jenis", length = 50, nullable = false)
     private String jenis;
 
+    @Column(name = "merk_id")
+    private Long merkId;
+
+    /**
+     * @deprecated use {@link #merkId} (tb_merk_kendaraan). Kept in sync with the
+     * merk master's nama until all consumers migrate; will be removed.
+     */
+    @Deprecated
     @Column(name = "merk", length = 50)
     private String merk;
 

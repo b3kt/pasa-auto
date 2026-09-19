@@ -7,6 +7,9 @@
                       :on-create="openCreateDialog" ref="tableRef"
                       :on-edit="openEditDialog" create-label="Tambah data Pelanggan"
                       search-placeholder="Search by name, nopol, or email...">
+                        <template v-slot:title>
+                          <div class="text-h6 q-mb-md">Master | Pelanggan</div>
+                        </template>
         </GenericTable>
       </template>
 
@@ -34,12 +37,21 @@
             <q-input v-model="formData.tanggalJoin" label="Tanggal Join" outlined dense type="date"/>
 
             <div class="text-subtitle2 q-mt-md">Informasi Kendaraan</div>
-            <q-select v-model="formData.merk" label="Merk *" outlined dense use-input input-debounce="300"
+            <q-select :model-value="formData.merk" @update:model-value="onMerkChange" label="Merk *" outlined dense
+                      use-input input-debounce="300"
                       new-value-mode="add-unique" :options="filteredMerkOptions" @filter="filterMerk"
                       :rules="[val => !!val || 'Merk harus diisi']"
                       hide-bottom-space/>
-            <q-select v-model="formData.jenis" label="Jenis" outlined dense use-input input-debounce="300"
-                      new-value-mode="add-unique" :options="filteredJenisOptions" @filter="filterJenis"/>
+            <!-- Typed text is the value itself (fill-input + input-value), so a jenis not in the list is kept
+                 and the backend creates it as a new tb_kendaraan under the selected merk on save. -->
+            <q-select :model-value="formData.jenis" @input-value="val => formData.jenis = val"
+                      :label="formData.merk ? 'Jenis *' : 'Jenis'" outlined dense
+                      use-input fill-input hide-selected input-debounce="300"
+                      :options="filteredJenisOptions" @filter="filterJenis"
+                      @update:model-value="val => formData.jenis = val"
+                      :rules="[val => !formData.merk || !!(val && val.trim()) || 'Jenis harus diisi']"
+                      :hint="isNewJenis ? `Jenis baru, akan ditambahkan ke merk ${formData.merk}` : ''"
+                      hide-bottom-space/>
 
             <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea" rows="2"/>
 
@@ -48,6 +60,28 @@
               <q-btn label="Simpan" type="submit" color="primary" :loading="saving" :disable="isEditMode && !isDirty(formData)"/>
             </div>
           </q-form>
+
+          <q-expansion-item v-if="isEditMode" icon="directions_car" label="Kendaraan Terdaftar" class="q-mt-md"
+                            expand-icon-toggle default-closed>
+            <div class="row items-center q-mb-sm q-gutter-sm">
+              <q-space/>
+              <q-btn label="Tambah Kendaraan" color="primary" dense unelevated icon="add" @click="openAttachDialog"/>
+            </div>
+            <q-table flat bordered :rows="vehicles" :columns="vehicleColumns" row-key="id"
+                     :pagination="{rowsPerPage: 5}" :loading="loadingVehicles" class="bg-white"
+                     :rows-per-page-options="[5]">
+              <template v-slot:body-cell-current="props">
+                <q-td :props="props">
+                  <q-chip :color="props.value ? 'positive' : 'grey'" text-color="white" size="sm" dense>
+                    {{ props.value ? 'Aktif' : 'Lama' }}
+                  </q-chip>
+                </q-td>
+              </template>
+              <template v-slot:no-data>
+                <div class="text-grey q-pa-md">Belum ada kendaraan terdaftar.</div>
+              </template>
+            </q-table>
+          </q-expansion-item>
         </div>
       </template>
     </q-splitter>
@@ -60,16 +94,37 @@
         <q-btn flat label="Hapus saja" color="negative" @click="deleteItem" :loading="deleting"/>
       </template>
     </GenericDialog>
+
+    <!-- Attach Vehicle Dialog -->
+    <GenericDialog v-model="showAttachDialog" title="Tambah Kendaraan" min-width="500px" position="standard">
+      <q-form @submit="doAttachVehicle" class="q-gutter-md q-mt-sm">
+        <q-input v-model="attachForm.nopol" label="Nopol *" outlined dense
+                 :rules="[val => !!val || 'Nopol harus diisi']" hide-bottom-space/>
+        <q-select v-model="attachForm.merk" label="Merk *" outlined dense use-input input-debounce="300"
+                  new-value-mode="add-unique" :options="filteredMerkOptions" @filter="filterMerk"
+                  :rules="[val => !!val || 'Merk harus diisi']" hide-bottom-space/>
+        <q-input v-model="attachForm.jenis" label="Jenis" outlined dense/>
+        <q-input v-model="attachForm.tanggalMulai" label="Tanggal Mulai" outlined dense type="date"/>
+        <q-input v-model="attachForm.keterangan" label="Keterangan" outlined dense type="textarea" rows="2"/>
+        <div class="row justify-end q-mt-md q-gutter-sm">
+          <q-btn flat label="Batalkan" color="primary" @click="showAttachDialog = false"/>
+          <q-btn label="Simpan" type="submit" color="primary" :loading="attaching"/>
+        </div>
+      </q-form>
+    </GenericDialog>
   </q-page>
 </template>
 
 <script setup>
-import {ref, onMounted, watch} from 'vue'
+import {ref, computed, onMounted, watch} from 'vue'
+import {useQuasar} from 'quasar'
 import {api} from 'boot/axios'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
 import {useCrud} from 'src/composables/useCrud'
 import { useKeyboardShortcuts } from 'src/composables/useKeyboardShortcuts'
+
+const $q = useQuasar()
 
 // Use CRUD Composable
 const {
@@ -155,16 +210,97 @@ const openEditDialog = (row) => {
   baseOpenEditDialog(row, (r) => {
     formData.value = {...r}
   })
+  if (row?.id) {
+    fetchVehicles(row.id)
+  }
 }
 
 const handleSave = async () => {
   const result = await saveData(formData.value)
   if (result) {
     formData.value = {...result}
+    // A newly typed merk/jenis was just created as vehicle master: refresh the dropdowns.
+    await fetchAutocompleteData()
+    if (result.merk) {
+      await fetchFilteredJenis(result.merk)
+    }
     if (!isEditMode.value) {
       openEditDialog(result)
       tableRef.value?.selectRowByItem(result)
+    } else {
+      fetchVehicles(result.id)
     }
+  }
+}
+
+// Vehicles owned by this pelanggan (via tb_pelanggan_kendaraan)
+const vehicles = ref([])
+const loadingVehicles = ref(false)
+const vehicleColumns = [
+  {name: 'nopol', label: 'Nopol', field: 'nopol', sortable: true},
+  {name: 'merk', label: 'Merk', field: 'merk'},
+  {name: 'jenis', label: 'Jenis', field: 'jenis'},
+  {name: 'tanggalMulai', label: 'Mulai', field: 'tanggalMulai'},
+  {name: 'tanggalAkhir', label: 'Berakhir', field: 'tanggalAkhir'},
+  {name: 'current', label: 'Status', field: 'current'}
+]
+
+const fetchVehicles = async (pelangganId) => {
+  if (!pelangganId) return
+  loadingVehicles.value = true
+  try {
+    const response = await api.get(`/api/pazaauto/pelanggan/${pelangganId}/vehicles`)
+    if (response.data.success) {
+      vehicles.value = response.data.data || []
+    }
+  } catch (error) {
+    console.error('Failed to fetch pelanggan vehicles', error)
+  } finally {
+    loadingVehicles.value = false
+  }
+}
+
+// Attach an additional vehicle
+const showAttachDialog = ref(false)
+const attaching = ref(false)
+const attachForm = ref({
+  nopol: '',
+  merk: '',
+  jenis: '',
+  tanggalMulai: '',
+  keterangan: ''
+})
+
+const openAttachDialog = () => {
+  attachForm.value = {nopol: '', merk: '', jenis: '', tanggalMulai: '', keterangan: ''}
+  filteredMerkOptions.value = merkOptions.value
+  showAttachDialog.value = true
+}
+
+const doAttachVehicle = async () => {
+  if (!formData.value.id) return
+  attaching.value = true
+  try {
+    const body = {
+      nopol: attachForm.value.nopol,
+      merk: attachForm.value.merk || null,
+      jenis: attachForm.value.jenis || null,
+      tanggalMulai: attachForm.value.tanggalMulai || null,
+      keterangan: attachForm.value.keterangan || null
+    }
+    const response = await api.post(`/api/pazaauto/pelanggan/${formData.value.id}/kendaraan`, body)
+    if (response.data.success) {
+      $q.notify({type: 'positive', message: response.data.message || 'Kendaraan ditambahkan'})
+      showAttachDialog.value = false
+      await fetchVehicles(formData.value.id)
+    } else {
+      $q.notify({type: 'negative', message: response.data.message || 'Gagal menambahkan kendaraan'})
+    }
+  } catch (error) {
+    console.error('Failed to attach vehicle', error)
+    $q.notify({type: 'negative', message: 'Gagal menambahkan kendaraan: ' + (error.response?.data?.message || error.message)})
+  } finally {
+    attaching.value = false
   }
 }
 
@@ -238,6 +374,11 @@ const filterJenis = (val, update) => {
   })
 }
 
+const isNewJenis = computed(() => {
+  const jenis = formData.value.jenis?.trim().toLowerCase()
+  return !!formData.value.merk && !!jenis && !jenisOptions.value.some(v => v?.toLowerCase() === jenis)
+})
+
 const fetchFilteredJenis = async (merk) => {
   try {
     const response = await api.get('/api/pazaauto/kendaraan/jenis/by-merk', {
@@ -250,6 +391,15 @@ const fetchFilteredJenis = async (merk) => {
   } catch (error) {
     console.error('Failed to fetch filtered jenis', error)
   }
+}
+
+// User picked a different merk: the previously selected jenis belongs to the old merk, so clear it.
+// (Handled on user input rather than in the watcher below, which also fires when a row is loaded.)
+const onMerkChange = (newMerk) => {
+  if (newMerk !== formData.value.merk) {
+    formData.value.jenis = ''
+  }
+  formData.value.merk = newMerk
 }
 
 watch(() => formData.value.merk, (newMerk) => {

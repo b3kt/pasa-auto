@@ -139,9 +139,17 @@ class OfflineStorage {
   }
 
   async clearAllData() {
+    return this.clearStores(['offlineData', 'pendingRequests', 'syncStatus'])
+  }
+
+  // Clear cached server data but keep pending (not yet synced) offline requests
+  async clearCachedData() {
+    return this.clearStores(['offlineData', 'syncStatus'])
+  }
+
+  async clearStores(stores) {
     if (!this.db) await this.initDB()
-    
-    const stores = ['offlineData', 'pendingRequests', 'syncStatus']
+
     const promises = stores.map(storeName => {
       return new Promise((resolve, reject) => {
         const transaction = this.db.transaction([storeName], 'readwrite')
@@ -199,7 +207,6 @@ class SyncService {
       Notify.create({
         type: 'info',
         message: `Syncing ${pendingRequests.length} pending requests...`,
-        position: 'top-right'
       })
 
       let successCount = 0
@@ -230,7 +237,6 @@ class SyncService {
         Notify.create({
           type: 'positive',
           message: `Successfully synced ${successCount} requests`,
-          position: 'top-right'
         })
       }
 
@@ -238,7 +244,6 @@ class SyncService {
         Notify.create({
           type: 'warning',
           message: `${failureCount} requests failed to sync`,
-          position: 'top-right'
         })
       }
 
@@ -248,7 +253,6 @@ class SyncService {
       Notify.create({
         type: 'negative',
         message: 'Sync failed. Please try again.',
-        position: 'top-right'
       })
       return false
     } finally {
@@ -342,7 +346,6 @@ class SyncService {
       Notify.create({
         type: 'warning',
         message: 'No internet connection available',
-        position: 'top-right'
       })
       return false
     }
@@ -350,7 +353,6 @@ class SyncService {
     Notify.create({
       type: 'info',
       message: 'Starting full sync...',
-      position: 'top-right'
     })
 
     const requestsSynced = await this.syncPendingRequests()
@@ -360,14 +362,12 @@ class SyncService {
       Notify.create({
         type: 'positive',
         message: 'Full sync completed successfully',
-        position: 'top-right'
       })
       return true
     } else {
       Notify.create({
         type: 'warning',
         message: 'No data to sync or sync failed',
-        position: 'top-right'
       })
       return false
     }
@@ -410,7 +410,6 @@ class SyncService {
       Notify.create({
         type: 'positive',
         message: 'All offline data cleared',
-        position: 'top-right'
       })
 
       return true
@@ -419,7 +418,6 @@ class SyncService {
       Notify.create({
         type: 'negative',
         message: 'Failed to clear offline data',
-        position: 'top-right'
       })
       return false
     }

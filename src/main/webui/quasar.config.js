@@ -131,7 +131,7 @@ export default defineConfig((ctx) => {
     framework: {
       config: {
         notify: {
-          position: 'top-right',
+          position: 'bottom-right',
           timeout: 5000
         }
       },

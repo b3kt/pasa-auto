@@ -4,6 +4,7 @@ import { Notify } from 'quasar'
 import syncService from '../services/syncService.js'
 import browserCache from '../utils/browserCache.js'
 import masterDataCache from '../utils/masterDataCache.js'
+import { useAuthStore } from 'stores/auth-store'
 
 // ── Lookup cache config ────────────────────────────────────────────────────
 // Exact GET URLs that should be transparently cached in IndexedDB
@@ -17,6 +18,7 @@ const LOOKUP_CACHE_URLS = new Set([
   '/api/pazaauto/kendaraan',
   '/api/pazaauto/kendaraan/merk/distinct',
   '/api/pazaauto/kendaraan/jenis/distinct',
+  '/api/pazaauto/merk-kendaraan',
   '/api/pazaauto/sparepart',
   '/api/pazaauto/karyawan',
   '/api/system-parameters'
@@ -28,10 +30,12 @@ const WRITE_INVALIDATION_MAP = [
   { prefix: '/api/pazaauto/jasa',          invalidate: ['/api/pazaauto/jasa'] },
   { prefix: '/api/pazaauto/barang',        invalidate: ['/api/pazaauto/barang', '/api/pazaauto/sparepart'] },
   { prefix: '/api/pazaauto/supplier',      invalidate: ['/api/pazaauto/supplier'] },
-  { prefix: '/api/pazaauto/pelanggan',     invalidate: ['/api/pazaauto/pelanggan'] },
+  // Saving a pelanggan may create a new merk / kendaraan master (typed-in merk or jenis)
+  { prefix: '/api/pazaauto/pelanggan',     invalidate: ['/api/pazaauto/pelanggan', '/api/pazaauto/kendaraan', '/api/pazaauto/kendaraan/merk/distinct', '/api/pazaauto/kendaraan/jenis/distinct', '/api/pazaauto/merk-kendaraan'] },
   { prefix: '/api/pazaauto/karyawan',      invalidate: ['/api/pazaauto/karyawan', '/api/pazaauto/karyawan-posisi'] },
   { prefix: '/api/pazaauto/karyawan-posisi', invalidate: ['/api/pazaauto/karyawan-posisi'] },
-  { prefix: '/api/pazaauto/kendaraan',     invalidate: ['/api/pazaauto/kendaraan', '/api/pazaauto/kendaraan/merk/distinct', '/api/pazaauto/kendaraan/jenis/distinct'] },
+  { prefix: '/api/pazaauto/kendaraan',     invalidate: ['/api/pazaauto/kendaraan', '/api/pazaauto/kendaraan/merk/distinct', '/api/pazaauto/kendaraan/jenis/distinct', '/api/pazaauto/merk-kendaraan'] },
+  { prefix: '/api/pazaauto/merk-kendaraan', invalidate: ['/api/pazaauto/merk-kendaraan', '/api/pazaauto/kendaraan', '/api/pazaauto/kendaraan/merk/distinct'] },
   { prefix: '/api/pazaauto/spk',          invalidate: ['/api/pazaauto/spk', '/api/pazaauto/spk_detail'] },
   { prefix: '/api/pazaauto/penjualan',    invalidate: ['/api/pazaauto/penjualan', '/api/pazaauto/penjualan_detail'] },
   { prefix: '/api/pazaauto/pembelian',   invalidate: ['/api/pazaauto/pembelian', '/api/pazaauto/pembelian_detail', '/api/pazaauto/pembelian_barang_detail'] },
@@ -75,19 +79,54 @@ const api = axios.create({
   }
 })
 
+// Auth endpoints that must never carry (or try to renew) an access token
+const PUBLIC_AUTH_URLS = ['/api/auth/login', '/api/auth/refresh']
+const isPublicAuthUrl = (url) => PUBLIC_AUTH_URLS.some(p => url.startsWith(p))
+
+// Set by the boot function below; used to send the user to the login page when the session ends
+let appRouter = null
+
+// Session could not be renewed: drop it locally and go to the login page
+const endSession = () => {
+  useAuthStore().clearSession()
+  const current = appRouter?.currentRoute.value
+  if (current?.path === '/login') return
+  if (appRouter) {
+    appRouter.replace({ path: '/login', query: { expired: 'true' } })
+  } else {
+    window.location.hash = '#/login?expired=true'
+  }
+}
+
+class SessionExpiredError extends Error {
+  constructor() {
+    super('Session expired')
+    this.name = 'SessionExpiredError'
+  }
+}
+
 // Add request interceptor to include auth token and handle offline mode
 api.interceptors.request.use(
   async (config) => {
     const url = config.url || ''
 
-    // Skip caching for auth endpoints
-    if (url.startsWith('/api/auth')) {
+    if (isPublicAuthUrl(url)) {
       return config
     }
 
-    const token = localStorage.getItem('auth_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+    // Renew an expired access token before sending, so requests don't fail with 401 first
+    const authStore = useAuthStore()
+    if (authStore.token && !(await authStore.ensureValidToken())) {
+      endSession()
+      throw new SessionExpiredError()
+    }
+    if (authStore.token) {
+      config.headers.Authorization = `Bearer ${authStore.token}`
+    }
+
+    // Skip caching for auth endpoints
+    if (url.startsWith('/api/auth')) {
+      return config
     }
 
     // Check IndexedDB lookup cache for specific GET endpoints
@@ -117,7 +156,6 @@ api.interceptors.request.use(
         Notify.create({
           type: 'info',
           message: 'Showing cached data (offline)',
-          position: 'top-right',
           timeout: 2000
         })
         
@@ -163,7 +201,6 @@ api.interceptors.request.use(
         Notify.create({
           type: 'info',
           message: 'Request saved for offline sync',
-          position: 'top-right',
           timeout: 2000
         })
         
@@ -188,21 +225,6 @@ api.interceptors.request.use(
     return Promise.reject(error)
   }
 )
-
-// Flag to prevent multiple simultaneous refresh attempts
-let isRefreshing = false
-let failedQueue = []
-
-const processQueue = (error, token = null) => {
-  failedQueue.forEach(prom => {
-    if (error) {
-      prom.reject(error)
-    } else {
-      prom.resolve(token)
-    }
-  })
-  failedQueue = []
-}
 
 // Add response interceptor to handle 401 errors, caching, and offline responses
 api.interceptors.response.use(
@@ -266,7 +288,6 @@ api.interceptors.response.use(
         Notify.create({
           type: 'info',
           message: 'Showing cached data (offline)',
-          position: 'top-right',
           timeout: 2000
         })
         return cachedResponse
@@ -282,7 +303,6 @@ api.interceptors.response.use(
             Notify.create({
               type: 'info',
               message: 'Showing cached data (offline)',
-              position: 'top-right',
               timeout: 2000
             })
             
@@ -314,7 +334,6 @@ api.interceptors.response.use(
           Notify.create({
             type: 'info',
             message: 'Request saved for offline sync',
-            position: 'top-right',
             timeout: 2000
           })
           
@@ -335,81 +354,40 @@ api.interceptors.response.use(
       Notify.create({
         type: 'negative',
         message: 'Network error. Working in offline mode.',
-        position: 'top-right',
         timeout: 3000
       })
     }
     
-    // If it's a 401 and not a refresh request itself, try to refresh
-    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/api/auth/refresh')) {
-      if (isRefreshing) {
-        // If already refreshing, queue this request
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject })
-        }).then(token => {
-          originalRequest.headers.Authorization = `Bearer ${token}`
-          return api(originalRequest)
-        }).catch(err => {
-          return Promise.reject(err)
-        })
+    // Access token rejected: try to extend the session with the refresh token, then retry once.
+    // If the session can't be renewed (or the retry is rejected too), log out.
+    if (error.response?.status === 401 && originalRequest && !isPublicAuthUrl(originalRequest.url || '')) {
+      if (originalRequest._retry) {
+        endSession()
+        return Promise.reject(error)
       }
-      
       originalRequest._retry = true
-      isRefreshing = true
-      
-      try {
-        // Try to refresh the token
-        const refreshToken = localStorage.getItem('refresh_token')
-        if (refreshToken) {
-          const response = await api.post('/api/auth/refresh', { refreshToken })
-          const tokenData = response.data?.data
-          
-          if (tokenData?.token) {
-            // Update tokens in localStorage
-            localStorage.setItem('auth_token', tokenData.token)
-            localStorage.setItem('refresh_token', tokenData.refreshToken)
-            
-            // Update the authorization header
-            api.defaults.headers.common['Authorization'] = `Bearer ${tokenData.token}`
-            originalRequest.headers.Authorization = `Bearer ${tokenData.token}`
-            
-            processQueue(null, tokenData.token)
-            
-            // Retry the original request
-            return api(originalRequest)
-          }
-        }
-      } catch (refreshError) {
-        processQueue(refreshError, null)
-        // Refresh failed, redirect to login
-        delete api.defaults.headers.common['Authorization']
-        localStorage.removeItem('auth_token')
-        localStorage.removeItem('refresh_token')
-        localStorage.removeItem('auth_user')
-        
-        // Use hash-based route for SPA
-        if (!window.location.hash.includes('/login')) {
-          window.location.href = '/#/login'
-        }
-        return Promise.reject(refreshError)
-      } finally {
-        isRefreshing = false
+
+      if (await useAuthStore().refreshAccessToken()) {
+        // The request interceptor attaches the new token
+        return api(originalRequest)
       }
-      
-      // If no refresh token, redirect to login
-      delete api.defaults.headers.common['Authorization']
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('refresh_token')
-      localStorage.removeItem('auth_user')
-      if (!window.location.hash.includes('/login')) {
-        window.location.href = '/#/login'
-      }
+      endSession()
+    }
+
+    // Authenticated but the role doesn't allow this endpoint
+    if (error.response?.status === 403) {
+      Notify.create({
+        type: 'warning',
+        message: 'Anda tidak memiliki akses untuk tindakan ini'
+      })
     }
     return Promise.reject(error)
   }
 )
 
-export default defineBoot(({ app }) => {
+export default defineBoot(({ app, router }) => {
+  appRouter = router
+
   // for use inside Vue files (Options API) through this.$axios and this.$api
 
   app.config.globalProperties.$axios = axios

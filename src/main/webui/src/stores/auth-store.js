@@ -1,5 +1,20 @@
 import { defineStore } from 'pinia'
 import { jwtDecode } from 'jwt-decode'
+import { clearUserCaches } from 'src/utils/clearUserCaches'
+
+// Refresh this many seconds before the access token actually expires
+const EXPIRY_SKEW_SECONDS = 30
+
+// Shared in-flight refresh, so concurrent callers (parallel 401s, guards) trigger a single request
+let refreshPromise = null
+
+const decodeToken = (token) => {
+  try {
+    return jwtDecode(token)
+  } catch {
+    return null
+  }
+}
 
 export const useAuthStore = defineStore('auth', {
   state: () => {
@@ -28,6 +43,44 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    // Store a freshly issued token pair and derive the user from the access token claims
+    applySession({ token, refreshToken, username, email }) {
+      const claims = decodeToken(token) || {}
+      this.token = token
+      this.refreshToken = refreshToken
+      this.user = {
+        username: username || claims.upn || claims.sub || this.user?.username,
+        email: email || claims.email || this.user?.email,
+        roles: claims.groups,
+        karyawanId: claims.karyawanId,
+        karyawanNama: claims.karyawanNama
+      }
+      this.isAuthenticated = true
+
+      localStorage.setItem('auth_token', this.token)
+      localStorage.setItem('refresh_token', this.refreshToken)
+      localStorage.setItem('auth_user', JSON.stringify(this.user))
+    },
+
+    // Drop the session locally without calling the server (used on logout and when the session can't be renewed).
+    // Also wipes the user's cached data; returns a promise that resolves once the caches are cleared.
+    clearSession() {
+      this.token = null
+      this.refreshToken = null
+      this.user = null
+      this.isAuthenticated = false
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('auth_user')
+      return clearUserCaches()
+    },
+
+    isTokenExpired() {
+      const exp = decodeToken(this.token)?.exp
+      if (!exp) return true
+      return Date.now() / 1000 >= exp - EXPIRY_SKEW_SECONDS
+    },
+
     async login(username, password) {
       try {
         // Import api dynamically to avoid circular dependency
@@ -37,30 +90,12 @@ export const useAuthStore = defineStore('auth', {
           password
         })
 
-        const tokenObject = response.data
-
-        if (tokenObject.data.token) {
-          this.token = tokenObject.data.token
-          this.refreshToken = tokenObject.data.refreshToken
-          this.user = {
-            username: tokenObject.data.username,
-            email: tokenObject.data.email,
-            roles: jwtDecode(tokenObject.data.token).groups,
-            karyawanId: jwtDecode(tokenObject.data.token).karyawanId,
-            karyawanNama: jwtDecode(tokenObject.data.token).karyawanNama
-          }
-          this.isAuthenticated = true
-
-          // Store tokens and user in localStorage
-          localStorage.setItem('auth_token', this.token)
-          localStorage.setItem('refresh_token', this.refreshToken)
-          localStorage.setItem('auth_user', JSON.stringify(this.user))
-
-          // Set default authorization header for all requests
-          api.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
-
+        const data = response.data?.data
+        if (data?.token) {
+          this.applySession(data)
           return { success: true }
         }
+        return { success: false, error: response.data?.message || 'Login failed' }
       } catch (error) {
         console.error('Login error:', error)
         return {
@@ -71,55 +106,54 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async logout() {
-      let api
+      const token = this.token
       try {
-        ({ api } = await import('boot/axios'))
-        await api.post('/api/auth/logout')
+        const { api } = await import('boot/axios')
+        if (token) {
+          await api.post('/api/auth/logout', null, { headers: { Authorization: `Bearer ${token}` } })
+        }
       } catch (error) {
         console.error('Logout error:', error)
       } finally {
-        if (api) {
-          delete api.defaults.headers.common['Authorization']
-        }
-        this.token = null
-        this.refreshToken = null
-        this.user = null
-        this.isAuthenticated = false
-        localStorage.removeItem('auth_token')
-        localStorage.removeItem('refresh_token')
-        localStorage.removeItem('auth_user')
+        await this.clearSession()
       }
     },
-    
-    async refreshAccessToken() {
+
+    // Exchange the refresh token for a new token pair. Resolves true when the session was extended.
+    refreshAccessToken() {
+      if (refreshPromise) return refreshPromise
+
       const refreshToken = this.refreshToken || localStorage.getItem('refresh_token')
-      if (!refreshToken) {
-        return false
-      }
-      
-      try {
-        const { api } = await import('boot/axios')
-        const response = await api.post('/api/auth/refresh', { refreshToken })
-        const tokenObject = response.data
-        
-        if (tokenObject.data.token) {
-          this.token = tokenObject.data.token
-          this.refreshToken = tokenObject.data.refreshToken
-          
-          // Update localStorage
-          localStorage.setItem('auth_token', this.token)
-          localStorage.setItem('refresh_token', this.refreshToken)
-          
-          // Update authorization header
-          api.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
-          
-          return true
+      if (!refreshToken) return Promise.resolve(false)
+
+      refreshPromise = (async () => {
+        try {
+          const { api } = await import('boot/axios')
+          const response = await api.post('/api/auth/refresh', { refreshToken })
+          const data = response.data?.data
+          if (data?.token) {
+            this.applySession(data)
+            return true
+          }
+          return false
+        } catch (error) {
+          console.error('Token refresh failed:', error)
+          return false
+        } finally {
+          refreshPromise = null
         }
-      } catch (error) {
-        console.error('Token refresh failed:', error)
-        return false
-      }
-      return false
+      })()
+      return refreshPromise
+    },
+
+    // Make sure a usable access token is available, refreshing it when it has expired.
+    // Resolves false when the session could not be renewed.
+    async ensureValidToken() {
+      if (!this.token) return false
+      if (!this.isTokenExpired()) return true
+      // Offline the refresh can't reach the server; keep the session for the offline mode
+      if (!navigator.onLine) return true
+      return this.refreshAccessToken()
     },
 
     async fetchUserInfo() {
@@ -131,35 +165,16 @@ export const useAuthStore = defineStore('auth', {
         return response.data
       } catch (error) {
         console.error('Fetch user info error:', error)
-        // If token is invalid, logout
-        if (error.response?.status === 401) {
-          this.logout()
-        }
         throw error
       }
     },
 
     async initializeAuth() {
-      // Restore token from localStorage on app initialization
-      if (this.token) {
-        try {
-          const { api } = await import('boot/axios')
-          api.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
-
-          // If we don't have user info, fetch it to verify token is still valid
-          if (!this.user) {
-            this.fetchUserInfo().catch(() => {
-              // Token is invalid, clear it
-              console.warn('Token is invalid or expired, logging out')
-              this.logout()
-            })
-          }
-        } catch (error) {
-          console.error('Failed to initialize auth:', error)
-          this.logout()
-        }
+      // Renew an expired token restored from localStorage right away; drop the session if that fails
+      if (this.token && !(await this.ensureValidToken())) {
+        console.warn('Stored session expired and could not be refreshed')
+        this.clearSession()
       }
     }
   }
 })
-

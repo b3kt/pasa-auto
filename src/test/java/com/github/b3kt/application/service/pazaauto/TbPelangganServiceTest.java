@@ -31,6 +31,9 @@ class TbPelangganServiceTest {
     @Mock
     private PelangganRepository pelangganRepository;
 
+    @Mock
+    private PelangganOwnershipSyncService ownershipSyncService;
+
     @InjectMocks
     private TbPelangganService pelangganService;
 

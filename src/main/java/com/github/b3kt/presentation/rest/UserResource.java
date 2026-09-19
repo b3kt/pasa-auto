@@ -1,5 +1,6 @@
 package com.github.b3kt.presentation.rest;
 
+import com.github.b3kt.infrastructure.security.Roles;
 import com.github.b3kt.application.service.UserService;
 import com.github.b3kt.application.service.pazaauto.AbstractCrudService;
 import com.github.b3kt.infrastructure.persistence.entity.UserEntity;
@@ -11,7 +12,7 @@ import jakarta.ws.rs.Path;
 
 @RequestScoped
 @Path("/api/users")
-@RolesAllowed("Owner")
+@RolesAllowed(Roles.OWNER)
 public class UserResource extends AbstractCrudResource<UserEntity, Long> {
 
     @Inject

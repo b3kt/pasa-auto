@@ -8,6 +8,9 @@
                       :on-create="openCreateDialog"
                       :on-edit="openEditDialog" create-label="Tambah data Karyawan" ref="tableRef"
                       search-placeholder="Search by name or email...">
+                        <template v-slot:title>
+                          <div class="text-h6 q-mb-md">Laporan | Riwayat Penjualan</div>
+                        </template>
           <template v-slot:toolbar-filters>
             <div class="row items-center q-gutter-sm">
               <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly>

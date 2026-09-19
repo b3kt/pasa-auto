@@ -6,6 +6,9 @@
           @update:pagination="pagination = $event" @request="onRequest" @search="onSearch" :on-create="openCreateDialog"
           :on-edit="openEditDialog" create-label="Tambah data Jasa" ref="tableRef"
           search-placeholder="Search by name...">
+            <template v-slot:title>
+              <div class="text-h6 q-mb-md">Master | Jasa</div>
+            </template>
           <template v-slot:body-cell-hargaJasa="props">
               {{ formatCurrency(props.row.hargaJasa) }}
           </template>

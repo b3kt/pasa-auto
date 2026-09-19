@@ -7,6 +7,9 @@
                       :on-create="openCreateDialog"
                       :on-edit="openEditDialog" create-label="Tambah data Karyawan" ref="tableRef"
                       search-placeholder="Search by name or email...">
+                        <template v-slot:title>
+                          <div class="text-h6 q-mb-md">Transaksi | Penjualan</div>
+                        </template>
           <template v-slot:toolbar-filters>
             <div class="row items-center q-gutter-sm">
               <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly>
@@ -776,7 +779,7 @@ const openEditDialog = async (row) => {
         if (!formData.value.details) {
           formData.value.details = []
         }
-        
+
         // If SPK status is SELESAI, fetch the corresponding penjualan record to get discount
         if (formData.value.statusSpk === 'SELESAI') {
           try {
@@ -1397,10 +1400,10 @@ const handlePelangganUpdated = async (payload) => {
   try {
     // Refresh pelanggan list to update dropdown options
     await fetchPelanggan()
-    
+
     // Refresh SPK table to show updated pelanggan data
     await fetchSpk()
-    
+
     // Update the current SPK form data with the new values
     const updatedPelanggan = pelangganOptions.value.find(p => p.nopol === payload.nopol)
     if (updatedPelanggan) {
@@ -1414,14 +1417,14 @@ const handlePelangganUpdated = async (payload) => {
       } else if (payload.field === 'jenis') {
         formData.value.jenis = payload.value
       }
-      
+
       // Also update the filtered pelanggan options to reflect changes
       const filteredIndex = filteredPelangganOptions.value.findIndex(p => p.nopol === payload.nopol)
       if (filteredIndex !== -1) {
         filteredPelangganOptions.value[filteredIndex] = {...updatedPelanggan}
       }
     }
-    
+
     $q.notify({
       type: 'positive',
       message: 'Data pelanggan berhasil diperbarui di form SPK dan tabel'

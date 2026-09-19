@@ -78,6 +78,9 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
     TbKendaraanService tbKendaraanService;
 
     @InjectMock
+    TbMerkKendaraanService tbMerkKendaraanService;
+
+    @InjectMock
     TbPelangganService tbPelangganService;
 
     @InjectMock
@@ -148,7 +151,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("POST /api/auth/logout returns 200 when authenticated")
-    @TestSecurity(user = "user", roles = {"user"})
+    @TestSecurity(user = "karyawan", roles = {"Karyawan"})
     void authLogout() {
         given()
             .contentType(ContentType.JSON)
@@ -176,7 +179,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET /api/auth/me returns 200 when authenticated")
-    @TestSecurity(user = "user", roles = {"user"})
+    @TestSecurity(user = "karyawan", roles = {"Karyawan"})
     void authMe() {
         com.github.b3kt.application.dto.UserInfo info = new com.github.b3kt.application.dto.UserInfo();
         info.setUsername("u");
@@ -212,7 +215,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    //  AuditTrailResource  (all require Admin role)
+    //  AuditTrailResource  (Admin or Owner)
     // ═══════════════════════════════════════════════════════════════════════
 
     @Test
@@ -227,7 +230,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET /api/audit-trail — 403 without Admin role")
-    @TestSecurity(user = "user", roles = {"user"})
+    @TestSecurity(user = "karyawan", roles = {"Karyawan"})
     void auditTrailListForbidden() {
         given()
             .when().get("/api/audit-trail")
@@ -286,12 +289,12 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    //  RbacResource  (all methods require admin and rbac enabled)
+    //  RbacResource  (Owner only, rbac enabled)
     // ═══════════════════════════════════════════════════════════════════════
 
     @Test
     @DisplayName("POST /api/rbac/roles")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacCreateRole() {
         when(rbacService.createRole(any(), any())).thenReturn(new Role());
         given()
@@ -302,7 +305,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("POST /api/rbac/roles — duplicate name returns 400")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacCreateRoleDuplicate() {
         when(rbacService.createRole(any(), any())).thenThrow(new IllegalArgumentException("already exists"));
         given()
@@ -313,7 +316,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET /api/rbac/roles")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacGetAllRoles() {
         when(rbacService.getAllRoles()).thenReturn(List.of());
         given()
@@ -323,7 +326,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET /api/rbac/roles/{id}")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacGetRoleById() {
         when(rbacService.getRoleById(1L)).thenReturn(new Role());
         given()
@@ -333,7 +336,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET /api/rbac/roles/{id} — not found returns 404")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacGetRoleByIdNotFound() {
         when(rbacService.getRoleById(1L)).thenThrow(new IllegalArgumentException("not found"));
         given()
@@ -343,7 +346,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("PUT /api/rbac/roles/{id}")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacUpdateRole() {
         when(rbacService.updateRole(anyLong(), any(), any())).thenReturn(new Role());
         given()
@@ -354,7 +357,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("DELETE /api/rbac/roles/{id}")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacDeleteRole() {
         doNothing().when(rbacService).deleteRole(1L);
         given()
@@ -364,7 +367,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("DELETE /api/rbac/roles/{id} — not found returns 404")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacDeleteRoleNotFound() {
         doThrow(new IllegalArgumentException("not found")).when(rbacService).deleteRole(1L);
         given()
@@ -374,7 +377,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("POST /api/rbac/roles/{id}/activate")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacActivateRole() {
         doNothing().when(rbacService).activateRole(1L);
         given()
@@ -385,7 +388,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("POST /api/rbac/roles/{id}/deactivate")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacDeactivateRole() {
         doNothing().when(rbacService).deactivateRole(1L);
         given()
@@ -398,7 +401,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("POST /api/rbac/permissions")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacCreatePermission() {
         when(rbacService.createPermission(any(), any(), any(), any())).thenReturn(new Permission());
         given()
@@ -409,7 +412,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("POST /api/rbac/permissions — duplicate 400")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacCreatePermissionDuplicate() {
         when(rbacService.createPermission(any(), any(), any(), any()))
                 .thenThrow(new IllegalArgumentException("already exists"));
@@ -421,7 +424,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET /api/rbac/permissions")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacGetAllPermissions() {
         when(rbacService.getAllPermissions()).thenReturn(List.of());
         given()
@@ -431,7 +434,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET /api/rbac/permissions/{id}")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacGetPermissionById() {
         when(rbacService.getPermissionById(1L)).thenReturn(new Permission());
         given()
@@ -441,7 +444,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET /api/rbac/permissions/{id} — not found 404")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacGetPermissionByIdNotFound() {
         when(rbacService.getPermissionById(1L)).thenThrow(new IllegalArgumentException("not found"));
         given()
@@ -453,7 +456,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("POST /api/rbac/roles/{roleId}/permissions/{permId}")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacAssignPermission() {
         doNothing().when(rbacService).assignPermissionToRole(1L, 2L);
         given()
@@ -464,7 +467,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("DELETE /api/rbac/roles/{roleId}/permissions/{permId}")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacRemovePermission() {
         doNothing().when(rbacService).removePermissionFromRole(1L, 2L);
         given()
@@ -474,7 +477,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET /api/rbac/roles/{roleId}/permissions")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacGetRolePermissions() {
         when(rbacService.getRolePermissions(1L)).thenReturn(Set.of());
         given()
@@ -486,7 +489,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("POST /api/rbac/users/{username}/roles/{roleId}")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacAssignRoleToUser() {
         doNothing().when(rbacService).assignRoleToUser("u", 1L);
         given()
@@ -497,7 +500,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("DELETE /api/rbac/users/{username}/roles/{roleId}")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacRemoveRoleFromUser() {
         doNothing().when(rbacService).removeRoleFromUser("u", 1L);
         given()
@@ -507,7 +510,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET /api/rbac/users/{username}/roles")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacGetUserRoles() {
         when(rbacService.getUserRoles("u")).thenReturn(Set.of());
         given()
@@ -517,7 +520,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET /api/rbac/users/{username}/permissions")
-    @TestSecurity(user = "admin", roles = {"admin"})
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void rbacGetUserPermissions() {
         when(rbacService.getUserPermissions("u")).thenReturn(Set.of());
         given()
@@ -618,6 +621,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET /api/permissions")
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void permissionList() {
         when(permissionService.findAll()).thenReturn(List.of());
         given()
@@ -627,6 +631,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET /api/permissions/paginated")
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void permissionPaginated() {
         when(permissionService.findPaginated(any())).thenReturn(new PageResponse<>(List.of(), 1, 10, 0));
         given()
@@ -636,6 +641,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET/POST/PUT/DELETE /api/permissions")
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void permissionCrud() {
         when(permissionService.findById(1L)).thenReturn(new PermissionEntity());
         given().when().get("/api/permissions/1").then().statusCode(200);
@@ -708,7 +714,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET /api/users — 403 without Owner")
-    @TestSecurity(user = "user", roles = {"user"})
+    @TestSecurity(user = "karyawan", roles = {"Karyawan"})
     void userForbidden() {
         given().when().get("/api/users").then().statusCode(403);
     }
@@ -719,6 +725,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("SystemParameter CRUD")
+    @TestSecurity(user = "owner", roles = {"Owner"})
     void systemParamCrud() {
         when(systemParameterService.findAll()).thenReturn(List.of());
         given().when().get("/api/system-parameters").then().statusCode(200);
@@ -747,6 +754,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("TbAbsensi CRUD + custom endpoints")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void absensiFull() {
         TbAbsensiEntity absen = new TbAbsensiEntity();
         absen.setId(1L);
@@ -827,6 +835,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("TbBarang CRUD + search")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void barangCrud() {
         TbBarangEntity b = new TbBarangEntity();
         b.setId(1L);
@@ -861,6 +870,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("TbJasa CRUD")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void jasaCrud() {
         TbJasaEntity j = new TbJasaEntity();
         j.setId(1L);
@@ -892,6 +902,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("TbKaryawanPosisi CRUD")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void karyawanPosisiCrud() {
         TbKaryawanPosisiEntity p = new TbKaryawanPosisiEntity();
         p.setId(1L);
@@ -923,6 +934,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("TbKaryawan CRUD + unregistered")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void karyawanCrud() {
         TbKaryawanEntity k = new TbKaryawanEntity();
         k.setId(1L);
@@ -957,6 +969,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("TbKendaraan CRUD + distinct")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void kendaraanFull() {
         TbKendaraanEntity k = new TbKendaraanEntity();
         k.setId(1L);
@@ -964,8 +977,9 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
         when(tbKendaraanService.findAll()).thenReturn(List.of(k));
         given().when().get("/api/pazaauto/kendaraan").then().statusCode(200);
 
-        when(tbKendaraanService.findPaginated(any())).thenReturn(new PageResponse<>(List.of(k), 1, 10, 1));
+        when(tbKendaraanService.findPaginated(any(), any())).thenReturn(new PageResponse<>(List.of(k), 1, 10, 1));
         given().when().get("/api/pazaauto/kendaraan/paginated").then().statusCode(200);
+        given().queryParam("merkId", 1).when().get("/api/pazaauto/kendaraan/paginated").then().statusCode(200);
 
         when(tbKendaraanService.findById(1L)).thenReturn(k);
         given().when().get("/api/pazaauto/kendaraan/1").then().statusCode(200);
@@ -996,12 +1010,41 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
         given().when().get("/api/pazaauto/kendaraan/jenis/by-merk").then().statusCode(200);
     }
 
+    @Test
+    @TestSecurity(user = "admin", roles = {"Admin"})
+    void merkKendaraanFull() {
+        TbMerkKendaraanEntity m = new TbMerkKendaraanEntity();
+        m.setId(1L);
+        m.setNama("HONDA");
+
+        when(tbMerkKendaraanService.findAll()).thenReturn(List.of(m));
+        given().when().get("/api/pazaauto/merk-kendaraan").then().statusCode(200);
+
+        when(tbMerkKendaraanService.findPaginated(any())).thenReturn(new PageResponse<>(List.of(m), 1, 10, 1));
+        given().queryParam("search", "hon").when().get("/api/pazaauto/merk-kendaraan/paginated").then().statusCode(200);
+
+        when(tbMerkKendaraanService.findById(1L)).thenReturn(m);
+        given().when().get("/api/pazaauto/merk-kendaraan/1").then().statusCode(200);
+
+        when(tbMerkKendaraanService.create(any())).thenReturn(m);
+        given().contentType(ContentType.JSON).body(Map.of("nama", "honda"))
+            .when().post("/api/pazaauto/merk-kendaraan").then().statusCode(200);
+
+        when(tbMerkKendaraanService.update(anyLong(), any())).thenReturn(m);
+        given().contentType(ContentType.JSON).body(Map.of("nama", "HONDA"))
+            .when().put("/api/pazaauto/merk-kendaraan/1").then().statusCode(200);
+
+        doNothing().when(tbMerkKendaraanService).delete(1L);
+        given().when().delete("/api/pazaauto/merk-kendaraan/1").then().statusCode(200);
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     //  TbPelangganResource — CRUD + by-nopol
     // ═══════════════════════════════════════════════════════════════════════
 
     @Test
     @DisplayName("TbPelanggan CRUD + by-nopol")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void pelangganFull() {
         TbPelangganEntity p = new TbPelangganEntity();
         p.setId(1L);
@@ -1053,6 +1096,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("TbPembelianDetail CRUD + by-pembelian")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void pembelianDetailFull() {
         TbPembelianDetailEntity d = new TbPembelianDetailEntity();
         d.setId(1L);
@@ -1088,6 +1132,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("TbPembelian full")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void pembelianFull() {
         TbPembelianEntity p = new TbPembelianEntity();
         p.setId(1L);
@@ -1159,6 +1204,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("TbPenjualanDetail CRUD")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void penjualanDetailCrud() {
         TbPenjualanDetailEntity d = new TbPenjualanDetailEntity();
         d.setId(1L);
@@ -1190,6 +1236,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("TbPenjualan full")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void penjualanFull() {
         TbPenjualanEntity p = new TbPenjualanEntity();
         p.setNoPenjualan("PJ20250101001");
@@ -1245,6 +1292,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("TbSpk full")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void spkFull() {
         TbSpkEntity s = new TbSpkEntity();
         s.setId(1L);
@@ -1304,6 +1352,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("TbSpkDetail CRUD")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void spkDetailCrud() {
         TbSpkDetailEntity d = new TbSpkDetailEntity();
         TbSpkDetailId id = new TbSpkDetailId("SPK001", "Cuci");
@@ -1336,6 +1385,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("TbRekapPenjualan full")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void rekapPenjualanFull() {
         // list
         when(tbSpkService.findAll()).thenReturn(List.of());
@@ -1387,6 +1437,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("TbSparepart full")
+    @TestSecurity(user = "admin", roles = {"Admin"})
     void sparepartFull() {
         TbSparepartEntity s = new TbSparepartEntity();
         s.setId(1L);
@@ -1430,7 +1481,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
 
     @Test
     @DisplayName("GET /api/pazaauto/summary — 403 without Owner role")
-    @TestSecurity(user = "user", roles = {"user"})
+    @TestSecurity(user = "karyawan", roles = {"Karyawan"})
     void summaryForbidden() {
         given()
             .when().get("/api/pazaauto/summary")
@@ -1445,5 +1496,57 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
         given()
             .when().get("/api/pazaauto/summary")
             .then().statusCode(200);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  Role-based access rules
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("Business endpoints reject unauthenticated requests")
+    void businessEndpointUnauthenticated() {
+        given().when().get("/api/pazaauto/supplier").then().statusCode(401);
+        given().when().get("/api/pazaauto/barang").then().statusCode(401);
+        given().when().get("/api/system-parameters").then().statusCode(401);
+        given().when().get("/api/permissions").then().statusCode(401);
+    }
+
+    @Test
+    @DisplayName("Karyawan cannot use master data or admin endpoints")
+    @TestSecurity(user = "karyawan", roles = {"Karyawan"})
+    void karyawanForbiddenOnMasterData() {
+        given().when().get("/api/pazaauto/supplier").then().statusCode(403);
+        given().when().get("/api/pazaauto/barang").then().statusCode(403);
+        given().when().get("/api/pazaauto/karyawan/1").then().statusCode(403);
+        given().when().get("/api/roles").then().statusCode(403);
+        given().when().get("/api/users").then().statusCode(403);
+    }
+
+    @Test
+    @DisplayName("Karyawan can read the employee list for attendance")
+    @TestSecurity(user = "karyawan", roles = {"Karyawan"})
+    void karyawanCanListEmployees() {
+        when(tbKaryawanService.findAll()).thenReturn(List.of());
+        given().when().get("/api/pazaauto/karyawan").then().statusCode(200);
+    }
+
+    @Test
+    @DisplayName("Admin can read the role list but not manage roles or users")
+    @TestSecurity(user = "admin", roles = {"Admin"})
+    void adminRoleLookupOnly() {
+        when(roleService.findAll()).thenReturn(List.of());
+        given().when().get("/api/roles/lookup").then().statusCode(200);
+        given().when().get("/api/roles").then().statusCode(403);
+        given().contentType(ContentType.JSON).body(Map.of("name", "X"))
+            .when().post("/api/roles").then().statusCode(403);
+        given().when().get("/api/users").then().statusCode(403);
+        given().when().get("/api/pazaauto/summary").then().statusCode(403);
+    }
+
+    @Test
+    @DisplayName("Role names are case-sensitive")
+    @TestSecurity(user = "admin", roles = {"admin"})
+    void lowercaseRoleRejected() {
+        given().when().get("/api/pazaauto/supplier").then().statusCode(403);
     }
 }

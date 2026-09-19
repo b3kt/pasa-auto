@@ -1,28 +1,9 @@
 <template>
   <div class="q-pa-sm">
-    <!-- Toolbar -->
-    <q-toolbar class="shadow-1 rounded-borders q-mb-lg ">
-      <div class="col q-mr-sm" v-if="enableSearch">
-        <q-input dense standout="bg-primary" v-model="internalSearch" input-class="search-field text-left"
-                 :placeholder="!searchPlaceholder ? searchPlaceholder : $t('search')">
-          <template v-slot:append>
-            <slot name="search-append"></slot>
-            <q-icon v-if="internalSearch === ''" name="search"/>
-            <q-icon v-else name="clear" class="cursor-pointer" @click="internalSearch = ''"/>
-          </template>
-        </q-input>
-      </div>
-      <slot name="toolbar-filters"></slot>
-      <div class="row justify-end q-ml-sm" v-if="footerButtonLabel && footerButtonAction">
-      <q-btn 
-        :label="footerButtonLabel" 
-        icon="print" 
-        color="primary" 
-        @click="footerButtonAction"
-        class="q-mr-sm"
-      />
+
+    <div v-if="$slots.title" class="col-auto text-subtitle1 text-weight-medium">
+      <slot name="title"></slot>
     </div>
-    </q-toolbar>
 
     <!-- Table -->
     <q-table class="my-sticky-header-table" :class="{ 'cursor-pointer-rows': !!onEdit }" flat bordered :rows="rows"
@@ -30,11 +11,31 @@
              @request="onRequest" @row-click="onRowClick" binary-state-sort :selected="selectedRows"
              @keydown="handleKeydown" tabindex="0" ref="tableRef"
              :rows-per-page-options="[5, 10, 25, 50]"
-             style="outline: none"
+             :style="{ outline: 'none', ...(effectiveHeight ? { height: effectiveHeight } : {}) }"
     >
-      <!-- Pass through all slots -->
-      <template v-for="(_, slot) in $slots" v-slot:[slot]="scope">
+      <!-- Pass through all slots except the toolbar-only ones -->
+      <template v-for="slot in passThroughSlots" v-slot:[slot]="scope">
         <slot :name="slot" v-bind="scope"/>
+      </template>
+
+      <!-- Toolbar (title + search + filters) inside the table's top bar -->
+      <template v-slot:top>
+        <div class="row items-center no-wrap full-width q-gutter-x-sm">
+          <div class="col" v-if="enableSearch">
+            <q-input dense outlined bg-color="white" v-model="internalSearch" input-class="search-field text-left"
+                     :placeholder="searchPlaceholder || $t('search')">
+              <template v-slot:append>
+                <slot name="search-append"></slot>
+                <q-icon v-if="internalSearch === ''" name="search"/>
+                <q-icon v-else name="clear" class="cursor-pointer" @click="internalSearch = ''"/>
+              </template>
+            </q-input>
+          </div>
+          <q-space v-else/>
+          <slot name="toolbar-filters"></slot>
+          <q-btn v-if="footerButtonLabel && footerButtonAction" :label="footerButtonLabel" icon="print"
+                 color="primary" @click="footerButtonAction"/>
+        </div>
       </template>
 
       <!-- Custom row slot for selection styling -->
@@ -67,7 +68,7 @@
 </template>
 
 <script setup>
-import {ref, watch, computed, nextTick, onMounted, getCurrentInstance} from 'vue'
+import {ref, watch, computed, nextTick, onMounted, onBeforeUnmount, getCurrentInstance} from 'vue'
 
 const instance = getCurrentInstance()
 
@@ -127,6 +128,11 @@ const props = defineProps({
   footerButtonAction: {
     type: Function,
     default: () => {}
+  },
+  // Fixed table height (e.g. when stacking tables); by default the table fills the space down to the viewport bottom
+  tableHeight: {
+    type: String,
+    default: null
   }
 })
 
@@ -172,6 +178,10 @@ const onRowClick = (evt, row, index) => {
     props.onEdit(row)
   }
 }
+
+// Slots rendered by the toolbar above; everything else is forwarded to q-table
+const TOOLBAR_SLOTS = ['top', 'title', 'search-append', 'toolbar-filters']
+const passThroughSlots = computed(() => Object.keys(instance.slots).filter(slot => !TOOLBAR_SLOTS.includes(slot)))
 
 const filteredColumns = computed(() => {
   if (!props.columns || !Array.isArray(props.columns)) {
@@ -272,10 +282,66 @@ watch(() => props.rows, (newRows) => {
   }
 }, {immediate: true})
 
+// ── Auto height: fill the space from the table's top down to the viewport bottom, without page scroll ──
+const MIN_AUTO_HEIGHT = 240
+const autoHeight = ref(null)
+const effectiveHeight = computed(() => props.tableHeight || autoHeight.value)
+
+const px = (value) => parseFloat(value) || 0
+
+const isInFlow = (style) => style.display !== 'none' && style.position !== 'absolute' && style.position !== 'fixed'
+
+// Vertical space the layout needs below the table: bottom margins, paddings and borders of every ancestor,
+// plus content stacked after it (side-by-side siblings in a row flex/grid container don't count)
+const spaceBelow = (el) => {
+  let space = 0
+  for (let node = el; node && node !== document.body; node = node.parentElement) {
+    space += px(getComputedStyle(node).marginBottom)
+    const parent = node.parentElement
+    if (!parent) break
+    const parentStyle = getComputedStyle(parent)
+    const stacksVertically = parentStyle.display.includes('grid')
+      ? false
+      : !parentStyle.display.includes('flex') || parentStyle.flexDirection.startsWith('column')
+    if (stacksVertically) {
+      for (let sib = node.nextElementSibling; sib; sib = sib.nextElementSibling) {
+        const sibStyle = getComputedStyle(sib)
+        if (isInFlow(sibStyle)) space += sib.offsetHeight + px(sibStyle.marginTop) + px(sibStyle.marginBottom)
+      }
+    }
+    space += px(parentStyle.paddingBottom) + px(parentStyle.borderBottomWidth)
+  }
+  return space
+}
+
+const updateAutoHeight = () => {
+  const el = tableRef.value?.$el
+  if (props.tableHeight || !el) return
+  const top = el.getBoundingClientRect().top + window.scrollY
+  const available = Math.floor(window.innerHeight - top - spaceBelow(el))
+  const height = `${Math.max(MIN_AUTO_HEIGHT, available)}px`
+  if (height !== autoHeight.value) autoHeight.value = height
+}
+
+// Content above the table (titles, filters, banners) can change size after mount
+let layoutObserver = null
+
 onMounted(() => {
   if (tableRef.value) {
     tableRef.value.$el.focus()
   }
+
+  nextTick(updateAutoHeight)
+  window.addEventListener('resize', updateAutoHeight)
+  if (typeof ResizeObserver !== 'undefined') {
+    layoutObserver = new ResizeObserver(updateAutoHeight)
+    layoutObserver.observe(document.body)
+  }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateAutoHeight)
+  layoutObserver?.disconnect()
 })
 
 // Select a row by item object (matching rowKey)

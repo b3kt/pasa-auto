@@ -7,6 +7,9 @@
                       :on-create="openCreateDialog"
                       :on-edit="openEditDialog" create-label="Tambah data Karyawan" ref="tableRef"
                       search-placeholder="Search by name or email...">
+          <template v-slot:title>
+            <div class="text-h6 q-mb-md">Master | Karyawan</div>
+          </template>
           <template v-slot:body-cell-jenisKelamin="props">
               <q-badge :color="props.row.jenisKelamin === 'L' ? 'blue' : 'pink'">
                 {{ props.row.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan' }}
@@ -145,7 +148,7 @@ const roleOptions = ref([])
 const fetchRoles = async () => {
   loadingRoles.value = true
   try {
-    const response = await api.get('/api/roles')
+    const response = await api.get('/api/roles/lookup')
     if (response.data.success) {
       roleOptions.value = response.data.data || []
     }

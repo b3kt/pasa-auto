@@ -1,5 +1,6 @@
 package com.github.b3kt.presentation.rest.pazaauto;
 
+import com.github.b3kt.infrastructure.security.Roles;
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.pazaauto.SummaryDto;
 import com.github.b3kt.application.service.pazaauto.SummaryService;
@@ -16,12 +17,12 @@ import java.time.format.DateTimeFormatter;
 @RequestScoped
 @Path("/api/pazaauto/summary")
 @RequiredArgsConstructor
+@RolesAllowed(Roles.OWNER)
 public class SummaryResource {
 
     final SummaryService summaryService;
 
     @GET
-    @RolesAllowed("Owner")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getSummary(
             @QueryParam("startDate") String startDate,

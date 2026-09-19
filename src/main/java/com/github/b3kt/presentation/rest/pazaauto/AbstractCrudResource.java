@@ -1,5 +1,7 @@
 package com.github.b3kt.presentation.rest.pazaauto;
 
+import com.github.b3kt.infrastructure.security.Roles;
+import jakarta.annotation.security.RolesAllowed;
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
@@ -15,6 +17,9 @@ import java.util.List;
 
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+// Inherited endpoints are checked against this class's annotation, not the subclass's, so keep it on the
+// most restrictive role; subclasses that need wider access declare separate methods of their own
+@RolesAllowed(Roles.OWNER)
 public abstract class AbstractCrudResource<T, ID> {
 
     protected abstract AbstractCrudService<T, ID> getService();

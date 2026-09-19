@@ -21,6 +21,10 @@ public class KendaraanDto {
     @Size(max = 50, message = "Jenis must not exceed 50 characters")
     private String jenis;
 
+    private Long merkId;
+
+    /** @deprecated read-only mirror of the merk master's nama; set from {@link #merkId} on save. */
+    @Deprecated
     @Size(max = 50, message = "Merk must not exceed 50 characters")
     private String merk;
 

@@ -1,5 +1,6 @@
 package com.github.b3kt.presentation.rest;
 
+import com.github.b3kt.infrastructure.security.Roles;
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
@@ -19,7 +20,7 @@ import java.util.List;
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
 @Path("/api/audit-trail")
-@RolesAllowed("Admin")
+@RolesAllowed({Roles.ADMIN, Roles.OWNER})
 public class AuditTrailResource {
 
     @Inject

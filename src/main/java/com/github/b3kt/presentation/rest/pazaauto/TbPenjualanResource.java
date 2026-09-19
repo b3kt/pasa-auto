@@ -1,5 +1,7 @@
 package com.github.b3kt.presentation.rest.pazaauto;
 
+import com.github.b3kt.infrastructure.security.Roles;
+import jakarta.annotation.security.RolesAllowed;
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
@@ -27,6 +29,7 @@ import jakarta.ws.rs.core.Response;
 @Path("/api/pazaauto/penjualan")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@RolesAllowed({Roles.ADMIN, Roles.OWNER})
 public class TbPenjualanResource {
 
     @Inject

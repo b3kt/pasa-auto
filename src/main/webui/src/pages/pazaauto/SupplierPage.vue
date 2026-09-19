@@ -7,6 +7,9 @@
                       :on-create="openCreateDialog" ref="tableRef"
                       :on-edit="openEditDialog" :create-label="$t('create') + ' supplier'"
                       search-placeholder="Search by name or email...">
+          <template v-slot:title>
+            <div class="text-h6 q-mb-md">Master | Supplier</div>
+          </template>
         </GenericTable>
       </template>
 

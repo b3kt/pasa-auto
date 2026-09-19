@@ -6,6 +6,8 @@ import com.github.b3kt.application.service.RbacService;
 import com.github.b3kt.domain.model.Permission;
 import com.github.b3kt.domain.model.User;
 import com.github.b3kt.infrastructure.persistence.entity.RoleEntity;
+import io.smallrye.jwt.auth.principal.JWTParser;
+import io.smallrye.jwt.auth.principal.ParseException;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,7 +20,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
-import java.util.Base64;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -39,6 +40,9 @@ class JwtTokenServiceImplTest {
 
     @Mock
     private JsonWebToken jwt;
+
+    @Mock
+    private JWTParser jwtParser;
 
     @InjectMocks
     private JwtTokenServiceImpl jwtTokenService;
@@ -226,66 +230,39 @@ class JwtTokenServiceImplTest {
     class ValidateRefreshTokenTests {
 
         @Test
-        @DisplayName("Should return null for invalid format")
-        void testValidateRefreshToken_invalidFormat() {
-            assertNull(jwtTokenService.validateRefreshToken("not.a.valid.jwt.token"));
+        @DisplayName("Should return null for blank token without parsing")
+        void testValidateRefreshToken_blank() throws Exception {
+            assertNull(jwtTokenService.validateRefreshToken(null));
+            assertNull(jwtTokenService.validateRefreshToken(" "));
+            verify(jwtParser, never()).parse(anyString());
         }
 
         @Test
-        @DisplayName("Should return null for non-refresh token")
-        void testValidateRefreshToken_notRefresh() {
-            // Create a valid JWT-like structure but without type=refresh
-            String header = Base64.getUrlEncoder().encodeToString("{\"alg\":\"RS256\"}".getBytes());
-            String payload = Base64.getUrlEncoder().encodeToString(
-                    "{\"sub\":\"admin\",\"exp\":9999999999}".getBytes());
-            String signature = "sig";
-            String token = header + "." + payload + "." + signature;
+        @DisplayName("Should return null when signature, issuer or expiry verification fails")
+        void testValidateRefreshToken_rejectedByParser() throws Exception {
+            when(jwtParser.parse("forged")).thenThrow(new ParseException("invalid signature"));
 
-            assertNull(jwtTokenService.validateRefreshToken(token));
+            assertNull(jwtTokenService.validateRefreshToken("forged"));
         }
 
         @Test
-        @DisplayName("Should return null for expired token")
-        void testValidateRefreshToken_expired() {
-            String header = Base64.getUrlEncoder().encodeToString("{\"alg\":\"RS256\"}".getBytes());
-            String payload = Base64.getUrlEncoder().encodeToString(
-                    "{\"sub\":\"admin\",\"type\":\"refresh\",\"exp\":1}".getBytes());
-            String signature = "sig";
-            String token = header + "." + payload + "." + signature;
+        @DisplayName("Should return null for a verified token that is not a refresh token")
+        void testValidateRefreshToken_notRefresh() throws Exception {
+            when(jwt.getClaim("type")).thenReturn(null);
+            when(jwt.getSubject()).thenReturn("admin");
+            when(jwtParser.parse("access")).thenReturn(jwt);
 
-            assertNull(jwtTokenService.validateRefreshToken(token));
+            assertNull(jwtTokenService.validateRefreshToken("access"));
         }
 
         @Test
-        @DisplayName("Should extract username from valid refresh token")
-        void testValidateRefreshToken_valid() {
-            long futureExp = System.currentTimeMillis() / 1000 + 86400;
-            String header = Base64.getUrlEncoder().encodeToString("{\"alg\":\"RS256\"}".getBytes());
-            String payload = Base64.getUrlEncoder().encodeToString(
-                    ("{\"sub\":\"admin\",\"type\":\"refresh\",\"exp\":" + futureExp + "}").getBytes());
-            String signature = "sig";
-            String token = header + "." + payload + "." + signature;
+        @DisplayName("Should return the subject of a verified refresh token")
+        void testValidateRefreshToken_valid() throws Exception {
+            when(jwt.getClaim("type")).thenReturn("refresh");
+            when(jwt.getSubject()).thenReturn("admin");
+            when(jwtParser.parse("refresh")).thenReturn(jwt);
 
-            String result = jwtTokenService.validateRefreshToken(token);
-
-            assertEquals("admin", result);
-        }
-
-        @Test
-        @DisplayName("Should return null for malformed payload")
-        void testValidateRefreshToken_malformed() {
-            String header = Base64.getUrlEncoder().encodeToString("{\"alg\":\"RS256\"}".getBytes());
-            String payload = Base64.getUrlEncoder().encodeToString("not json".getBytes());
-            String signature = "sig";
-            String token = header + "." + payload + "." + signature;
-
-            assertNull(jwtTokenService.validateRefreshToken(token));
-        }
-
-        @Test
-        @DisplayName("Should return null for only two parts")
-        void testValidateRefreshToken_twoParts() {
-            assertNull(jwtTokenService.validateRefreshToken("header.payload"));
+            assertEquals("admin", jwtTokenService.validateRefreshToken("refresh"));
         }
     }
 }

@@ -12,6 +12,10 @@
                       :footerButtonAction="printTable"
                       >
 
+                        <template v-slot:title>
+                          <div class="text-h6 q-mb-md">Laporan | Riwayat Pengeluaran</div>
+                        </template>
+
           <template v-slot:toolbar-filters>
             <div class="row items-center q-gutter-sm">
               <q-select v-model="filterJenisPembelian" :options="jenisPembelianOptions" label="Jenis Pembelian"
@@ -79,7 +83,7 @@
                   <q-input v-model="formData.tanggalPembelian" label="Tanggal Pembelian" outlined
                            dense type="datetime-local" stack-label :readonly="!isEditable"
                            :rules="[val => !!val || 'Tanggal pembelian harus diisi']"
-                           hide-bottom-space 
+                           hide-bottom-space
                   />
                 </div>
                 <div class="col-12">
@@ -1208,14 +1212,14 @@ const printTable = async () => {
         endDate: dateRange.value?.to ? dateRange.value.to.replace(/\//g, '-') : ''
       }
     })
-    
+
     if (response.data.success) {
       // Extract rows from paginated response
       const records = response.data.data.rows || response.data.data || []
-      
+
       const data = {
         noPenjualan: 'LAPORAN PEMBELIAN',
-        namaPelanggan: 'LAPORAN PEMBELIAN', 
+        namaPelanggan: 'LAPORAN PEMBELIAN',
         tanggal: new Date().toLocaleDateString('id-ID'),
         grandTotal: records.reduce((sum, item) => sum + (item.grandTotal || 0), 0),
         filters: {
