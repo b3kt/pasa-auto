@@ -9,11 +9,13 @@ import com.github.b3kt.application.dto.pazaauto.AbsensiDto;
 import com.github.b3kt.application.mapper.pazaauto.AbsensiMapper;
 import com.github.b3kt.application.service.pazaauto.TbAbsensiService;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbAbsensiEntity;
+import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -22,6 +24,10 @@ import java.util.Map;
 @Path("/api/pazaauto/absensi")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+/*
+ * Employees (Karyawan) may only clock in/out and read their own attendance; the karyawanId comes from
+ * their token. Listing, editing and marking absences is limited to Admin/Owner.
+ */
 @RolesAllowed({Roles.ADMIN, Roles.OWNER, Roles.KARYAWAN})
 public class TbAbsensiResource {
 
@@ -31,15 +37,17 @@ public class TbAbsensiResource {
     @Inject
     AbsensiMapper absensiMapper;
 
-    /**
-     * Clock in endpoint
-     */
+    @Inject
+    SecurityIdentity identity;
+
     @GET
+    @RolesAllowed({Roles.ADMIN, Roles.OWNER})
     public Response findAll() {
         return Response.ok(ApiResponse.success(absensiMapper.toDtoList(service.findAll()))).build();
     }
 
     @POST
+    @RolesAllowed({Roles.ADMIN, Roles.OWNER})
     public Response create(AbsensiDto dto) {
         TbAbsensiEntity entity = absensiMapper.toEntity(dto);
         TbAbsensiEntity created = service.create(entity);
@@ -52,10 +60,11 @@ public class TbAbsensiResource {
             AbsensiDto dto,
             @HeaderParam("X-Forwarded-For") String xForwardedFor,
             @HeaderParam("X-Real-IP") String xRealIp) {
+        TbAbsensiEntity entity = absensiMapper.toEntity(dto);
+        Long karyawanId = resolveKaryawanId(entity.getKaryawanId());
         try {
             String ipAddress = getClientIpAddress(xForwardedFor, xRealIp);
-            TbAbsensiEntity entity = absensiMapper.toEntity(dto);
-            TbAbsensiEntity result = service.clockIn(entity.getKaryawanId(), ipAddress, entity.getDeviceInfo(), entity.getLokasiMasuk());
+            TbAbsensiEntity result = service.clockIn(karyawanId, ipAddress, entity.getDeviceInfo(), entity.getLokasiMasuk());
             return Response.ok(ApiResponse.success("Clock-in successful", absensiMapper.toDto(result))).build();
         } catch (IllegalStateException | SecurityException e) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -77,10 +86,11 @@ public class TbAbsensiResource {
             AbsensiDto dto,
             @HeaderParam("X-Forwarded-For") String xForwardedFor,
             @HeaderParam("X-Real-IP") String xRealIp) {
+        TbAbsensiEntity entity = absensiMapper.toEntity(dto);
+        Long karyawanId = resolveKaryawanId(entity.getKaryawanId());
         try {
             String ipAddress = getClientIpAddress(xForwardedFor, xRealIp);
-            TbAbsensiEntity entity = absensiMapper.toEntity(dto);
-            TbAbsensiEntity result = service.clockOut(entity.getKaryawanId(), ipAddress, entity.getLokasiKeluar());
+            TbAbsensiEntity result = service.clockOut(karyawanId, ipAddress, entity.getLokasiKeluar());
             return Response.ok(ApiResponse.success("Clock-out successful", absensiMapper.toDto(result))).build();
         } catch (IllegalStateException | SecurityException e) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -102,11 +112,13 @@ public class TbAbsensiResource {
                     .entity(ApiResponse.error("Absensi not found"))
                     .build();
         }
+        resolveKaryawanId(entity.getKaryawanId());
         return Response.ok(ApiResponse.success(absensiMapper.toDto(entity))).build();
     }
 
     @GET
     @Path("/paginated")
+    @RolesAllowed({Roles.ADMIN, Roles.OWNER})
     public Response listPaginated(
             @QueryParam("page") @DefaultValue("1") int page,
             @QueryParam("rowsPerPage") @DefaultValue("10") int rowsPerPage,
@@ -142,8 +154,9 @@ public class TbAbsensiResource {
     @GET
     @Path("/today/{karyawanId}")
     public Response getTodayAttendance(@PathParam("karyawanId") Long karyawanId) {
+        Long ownKaryawanId = resolveKaryawanId(karyawanId);
         try {
-            TbAbsensiEntity result = service.getTodayAttendance(karyawanId);
+            TbAbsensiEntity result = service.getTodayAttendance(ownKaryawanId);
             if (result == null) {
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity(ApiResponse.error("No attendance found for today"))
@@ -171,6 +184,8 @@ public class TbAbsensiResource {
             @QueryParam("rowsPerPage") @DefaultValue("10") int rowsPerPage,
             @QueryParam("sortBy") String sortBy,
             @QueryParam("descending") @DefaultValue("true") boolean descending) {
+        // Admin/Owner may omit karyawanId to see everyone; employees always get their own history
+        Long historyKaryawanId = resolveKaryawanId(karyawanId);
         try {
             PageRequest pageRequest = new PageRequest(page, rowsPerPage);
             pageRequest.setSortBy(sortBy);
@@ -180,7 +195,7 @@ public class TbAbsensiResource {
             LocalDate end = endDate != null ? LocalDate.parse(endDate) : null;
 
             PageResponse<TbAbsensiEntity> result = service.getAttendanceHistory(
-                    karyawanId, start, end, status, pageRequest);
+                    historyKaryawanId, start, end, status, pageRequest);
             return Response.ok(ApiResponse.success("Attendance history retrieved",
                     new PageResponse<>(
                             absensiMapper.toDtoList(result.getRows()),
@@ -203,8 +218,9 @@ public class TbAbsensiResource {
             @PathParam("karyawanId") Long karyawanId,
             @QueryParam("month") int month,
             @QueryParam("year") int year) {
+        Long ownKaryawanId = resolveKaryawanId(karyawanId);
         try {
-            Map<String, Object> summary = service.getMonthlySummary(karyawanId, month, year);
+            Map<String, Object> summary = service.getMonthlySummary(ownKaryawanId, month, year);
             return Response.ok(ApiResponse.success("Monthly summary retrieved", summary)).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -218,6 +234,7 @@ public class TbAbsensiResource {
      */
     @POST
     @Path("/mark-absence")
+    @RolesAllowed({Roles.ADMIN, Roles.OWNER})
     public Response markAbsence(AbsensiDto dto) {
         try {
             TbAbsensiEntity entity = absensiMapper.toEntity(dto);
@@ -232,6 +249,7 @@ public class TbAbsensiResource {
 
     @PUT
     @Path("/{id}")
+    @RolesAllowed({Roles.ADMIN, Roles.OWNER})
     public Response update(@PathParam("id") String id, AbsensiDto dto) {
         TbAbsensiEntity entity = absensiMapper.toEntity(dto);
         TbAbsensiEntity updated = service.update(Long.valueOf(id), entity);
@@ -240,6 +258,7 @@ public class TbAbsensiResource {
 
     @jakarta.ws.rs.DELETE
     @Path("/{id}")
+    @RolesAllowed({Roles.ADMIN, Roles.OWNER})
     public Response delete(@PathParam("id") String id) {
         service.delete(Long.valueOf(id));
         return Response.ok(ApiResponse.success("Absensi deleted")).build();
@@ -248,6 +267,25 @@ public class TbAbsensiResource {
     /**
      * Get client IP address from headers
      */
+    /**
+     * Admin/Owner may act on any employee, so the requested id is used as-is.
+     * Employees may only act on themselves: returns their own karyawanId from the token,
+     * or 403 when the request targets someone else or their account isn't linked to an employee.
+     */
+    private Long resolveKaryawanId(Long requestedKaryawanId) {
+        if (identity.hasRole(Roles.ADMIN) || identity.hasRole(Roles.OWNER)) {
+            return requestedKaryawanId;
+        }
+        Long ownKaryawanId = null;
+        if (identity.getPrincipal() instanceof JsonWebToken jwt && jwt.getClaim("karyawanId") != null) {
+            ownKaryawanId = Long.valueOf(jwt.getClaim("karyawanId").toString());
+        }
+        if (ownKaryawanId == null || (requestedKaryawanId != null && !ownKaryawanId.equals(requestedKaryawanId))) {
+            throw new ForbiddenException("You can only access your own attendance");
+        }
+        return ownKaryawanId;
+    }
+
     private String getClientIpAddress(String xForwardedFor, String xRealIp) {
         // Try X-Forwarded-For first (proxy/load balancer)
         if (xForwardedFor != null && !xForwardedFor.isEmpty()) {

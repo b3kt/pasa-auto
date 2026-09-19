@@ -143,7 +143,7 @@
                         </template>
 
                         <template v-slot:body-cell-actions="props">
-                                <q-btn flat dense round icon="edit" color="primary"
+                                <q-btn v-if="isManager" flat dense round icon="edit" color="primary"
                                     @click="openMarkAbsenceDialog(props.row)">
                                     <q-tooltip>Mark Absence</q-tooltip>
                                 </q-btn>
@@ -185,6 +185,8 @@ const $q = useQuasar()
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 const role = computed(() => user.value.roles)
+// Only Admin/Owner may pick other employees and edit attendance; the server enforces the same rule
+const isManager = computed(() => role.value?.includes('Admin') || role.value?.includes('Owner'))
 
 // State
 const currentTime = ref('')
@@ -469,7 +471,7 @@ const watchSelectedKaryawan = () => {
 onMounted(() => {
     updateClock()
     clockInterval = setInterval(updateClock, 1000)
-    if (user.value.roles.includes('Admin')) {
+    if (isManager.value) {
         fetchKaryawan()
     } else {
         fetchTodayAttendance();
