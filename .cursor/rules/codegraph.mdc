@@ -1,5 +1,5 @@
 ---
-description: CodeGraph MCP usage guide — when to use which tool
+description: CodeGraph MCP usage guide — when to use which tool with fallback strategy
 alwaysApply: true
 ---
 <!-- CODEGRAPH_START -->

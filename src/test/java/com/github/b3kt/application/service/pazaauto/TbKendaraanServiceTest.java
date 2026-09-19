@@ -4,6 +4,7 @@ import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKendaraanEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKendaraanRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganKendaraanRepository;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.panache.common.Page;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,9 @@ class TbKendaraanServiceTest {
 
     @Mock
     TbKendaraanRepository repository;
+
+    @Mock
+    TbPelangganKendaraanRepository pelangganKendaraanRepository;
 
     @Mock
     PanacheQuery<TbKendaraanEntity> query;
@@ -158,6 +162,7 @@ class TbKendaraanServiceTest {
     @Test
     @DisplayName("delete calls deleteById")
     void testDelete() {
+        when(pelangganKendaraanRepository.findByKendaraanIdOrderByTanggalMulai(1L)).thenReturn(List.of());
         when(repository.deleteById(1L)).thenReturn(true);
         service.delete(1L);
         verify(repository).deleteById(1L);
