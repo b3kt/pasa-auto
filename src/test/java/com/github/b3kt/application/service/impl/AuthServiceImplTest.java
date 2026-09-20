@@ -115,10 +115,11 @@ class AuthServiceImplTest {
         }
 
         @Test
-        @DisplayName("Should throw when user inactive")
+        @DisplayName("Should throw when user inactive and the password is correct")
         void testLogin_userInactive() {
             testUser.setActive(false);
             when(userRepository.findByUsername("admin")).thenReturn(Optional.of(testUser));
+            when(passwordEncoder.matches("password", "hashed_password")).thenReturn(true);
 
             AuthenticationException ex = assertThrows(AuthenticationException.class,
                     () -> authService.login("admin", "password"));
@@ -127,10 +128,35 @@ class AuthServiceImplTest {
         }
 
         @Test
+        @DisplayName("Should not reveal that an account is inactive to a wrong password")
+        void testLogin_userInactiveWrongPassword() {
+            testUser.setActive(false);
+            when(userRepository.findByUsername("admin")).thenReturn(Optional.of(testUser));
+            when(passwordEncoder.matches("wrong", "hashed_password")).thenReturn(false);
+
+            AuthenticationException ex = assertThrows(AuthenticationException.class,
+                    () -> authService.login("admin", "wrong"));
+
+            assertEquals("Invalid username or password", ex.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should still check a password for unknown users, so they are not faster to reject")
+        void testLogin_unknownUserChecksDummyHash() {
+            when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+            when(passwordEncoder.encode(anyString())).thenReturn("$2a$10$dummy");
+
+            assertThrows(AuthenticationException.class, () -> authService.login("ghost", "password"));
+
+            verify(passwordEncoder).matches("password", "$2a$10$dummy");
+        }
+
+        @Test
         @DisplayName("Should throw when user has null username")
         void testLogin_nullUsername() {
             testUser.setUsername(null);
             when(userRepository.findByUsername("admin")).thenReturn(Optional.of(testUser));
+            when(passwordEncoder.matches("password", "hashed_password")).thenReturn(true);
 
             AuthenticationException ex = assertThrows(AuthenticationException.class,
                     () -> authService.login("admin", "password"));

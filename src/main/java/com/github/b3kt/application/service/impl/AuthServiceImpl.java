@@ -40,19 +40,23 @@ public class AuthServiceImpl implements AuthService {
     @Inject
     RefreshTokenService refreshTokenService;
 
+    /** Hash of a random value, checked for unknown usernames so they take as long as a wrong password. */
+    private volatile String dummyHash;
+
     @Override
     public LoginResponse login(String username, String password) {
-        // Find user
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new AuthenticationException("Invalid username or password"));
-
-        // Check if user can authenticate
-        if (!user.canAuthenticate()) {
-            throw new AuthenticationException("User account is not active");
+        User user = userRepository.findByUsername(username).orElse(null);
+        if (user == null) {
+            passwordEncoder.matches(password, dummyHash());
+            throw new AuthenticationException("Invalid username or password");
         }
 
+        // Password first: the account status is only revealed to someone who knows the password
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new AuthenticationException("Invalid username or password");
+        }
+        if (!user.canAuthenticate()) {
+            throw new AuthenticationException("User account is not active");
         }
 
         // Get related karyawan info
@@ -137,6 +141,13 @@ public class AuthServiceImpl implements AuthService {
                     user.setKaryawanNama(karyawan.getNamaKaryawan());
                 });
         return issueTokens(user, refreshTokenService.issue(user));
+    }
+
+    private String dummyHash() {
+        if (dummyHash == null) {
+            dummyHash = passwordEncoder.encode(java.util.UUID.randomUUID().toString());
+        }
+        return dummyHash;
     }
 
     private LoginResponse issueTokens(User user, String refreshToken) {

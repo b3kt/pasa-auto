@@ -2,6 +2,9 @@ package com.github.b3kt.presentation.rest;
 
 import io.quarkus.security.Authenticated;
 import io.quarkus.security.identity.SecurityIdentity;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.net.SocketAddress;
+import com.github.b3kt.application.service.LoginAttemptService;
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.LoginRequest;
 import com.github.b3kt.application.dto.LoginResponse;
@@ -17,6 +20,7 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -47,6 +51,12 @@ public class AuthResource {
 
     @Inject
     SecurityIdentity identity;
+
+    @Inject
+    LoginAttemptService loginAttemptService;
+
+    @Context
+    HttpServerRequest request;
 
     @POST
     @Path("/login")
@@ -82,13 +92,17 @@ public class AuthResource {
         )
     })
     public Response login(@Valid LoginRequest loginRequest) {
+        String clientIp = clientIp();
+        loginAttemptService.checkAllowed(loginRequest.getUsername(), clientIp);
         try {
             LoginResponse response = authService.login(
                 loginRequest.getUsername(),
                 loginRequest.getPassword()
             );
+            loginAttemptService.recordSuccess(loginRequest.getUsername());
             return Response.ok(ApiResponse.success("Login successful", response)).build();
         } catch (AuthenticationException e) {
+            loginAttemptService.recordFailure(loginRequest.getUsername(), clientIp);
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.<LoginResponse>error(e.getMessage()))
                     .build();
@@ -178,11 +192,17 @@ public class AuthResource {
             content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ApiResponse.class)))
     })
     public Response changePassword(@Valid com.github.b3kt.application.dto.ChangePasswordRequest request) {
+        // A stolen session must not be usable to guess the current password without limit
+        String username = identity.getPrincipal().getName();
+        String clientIp = clientIp();
+        loginAttemptService.checkAllowed(username, clientIp);
         try {
             LoginResponse response = authService.changePassword(
-                identity.getPrincipal().getName(), request.getCurrentPassword(), request.getNewPassword());
+                username, request.getCurrentPassword(), request.getNewPassword());
+            loginAttemptService.recordSuccess(username);
             return Response.ok(ApiResponse.success("Password changed successfully", response)).build();
         } catch (AuthenticationException e) {
+            loginAttemptService.recordFailure(username, clientIp);
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.<LoginResponse>error(e.getMessage()))
                     .build();
@@ -228,5 +248,10 @@ public class AuthResource {
                     .build();
         }
     }
-}
 
+    /** The connection address; see TbAbsensiResource for why forwarding headers aren't read here. */
+    private String clientIp() {
+        SocketAddress remoteAddress = request != null ? request.remoteAddress() : null;
+        return remoteAddress != null ? remoteAddress.hostAddress() : null;
+    }
+}

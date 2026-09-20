@@ -52,6 +52,9 @@ cp .env.example .env
 | `JWT_REFRESH_EXPIRATION_DAYS` | 7 | Refresh token lifetime (sliding) |
 | `PROXY_ADDRESS_FORWARDING` | false | Trust `X-Forwarded-*` headers; enable only behind a reverse proxy |
 | `TRUSTED_PROXIES` | 127.0.0.1 | Proxy addresses whose forwarding headers are honored |
+| `LOGIN_MAX_FAILURES_PER_USER` | 5 | Failed logins before an account is locked |
+| `LOGIN_MAX_FAILURES_PER_IP` | 20 | Failed logins before a client IP is locked |
+| `LOGIN_LOCKOUT_MINUTES` | 15 | Lock duration, counted from the last failure |
 | `APP_LOG_LEVEL` | INFO | App log level; `DEBUG` logs request/response bodies (credentials masked, `/api/auth/*` omitted) |
 | `DB_MAX_SIZE` | 10 | Max DB connections |
 | `DB_MIN_SIZE` | 2 | Min DB connections |
@@ -248,6 +251,9 @@ GRANT ALL PRIVILEGES ON DATABASE pasa_auto TO pasa_user;
 - The seeded accounts (`admin`, `owner`, `karyawan`) have publicly known passwords (see `V2__initial_data.sql`).
   After a fresh install or upgrade, log in with each one immediately and change its password, or deactivate it.
 - New employee logins get a random temporary password, shown once to the Admin/Owner who creates the employee.
+- Repeated failed logins lock the account (5 failures) or the client IP (20 failures) for 15 minutes after the
+  last failure. Counters are kept in memory: they reset on restart and are per instance. A locked-out user can
+  simply wait; there is no manual unlock.
 
 ## Reverse Proxy
 

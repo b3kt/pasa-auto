@@ -2,6 +2,7 @@ package com.github.b3kt.presentation.exception;
 
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.domain.exception.AuthenticationException;
+import com.github.b3kt.domain.exception.TooManyAttemptsException;
 import com.github.b3kt.domain.exception.UserNotFoundException;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolation;
@@ -24,6 +25,17 @@ public class GlobalExceptionHandler {
         @Override
         public Response toResponse(AuthenticationException exception) {
             return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(ApiResponse.error(exception.getMessage()))
+                    .build();
+        }
+    }
+
+    @Provider
+    public static class TooManyAttemptsExceptionMapper implements ExceptionMapper<TooManyAttemptsException> {
+        @Override
+        public Response toResponse(TooManyAttemptsException exception) {
+            return Response.status(Response.Status.TOO_MANY_REQUESTS)
+                    .header("Retry-After", exception.getRetryAfterSeconds())
                     .entity(ApiResponse.error(exception.getMessage()))
                     .build();
         }

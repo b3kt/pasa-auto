@@ -18,6 +18,8 @@ import org.junit.jupiter.api.DisplayName;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @QuarkusTest
@@ -25,6 +27,9 @@ class AuthResourceTest extends IntegrationTestBase {
 
     @InjectMock
     AuthService authService;
+
+    @io.quarkus.test.junit.mockito.InjectSpy
+    com.github.b3kt.application.service.LoginAttemptService loginAttemptService;
 
     @InjectMock
     JsonWebToken jwt;
@@ -218,6 +223,55 @@ class AuthResourceTest extends IntegrationTestBase {
             .statusCode(200);
 
         verify(authService).logout("testuser", "refresh-token");
+    }
+
+    @Test
+    @DisplayName("Should lock an account after repeated failed logins")
+    void testLoginLockout() {
+        // Unique username: the attempt counters are shared by every test in this app instance
+        String username = "lockout-" + System.nanoTime();
+        when(authService.login(eq(username), anyString()))
+            .thenThrow(new AuthenticationException("Invalid username or password"));
+        String body = "{\"username\": \"" + username + "\", \"password\": \"wrong\"}";
+
+        for (int i = 0; i < 5; i++) {
+            given().contentType(ContentType.JSON).body(body)
+                .when().post("/api/auth/login")
+                .then().statusCode(401);
+        }
+
+        given().contentType(ContentType.JSON).body(body)
+            .when().post("/api/auth/login")
+            .then()
+                .statusCode(429)
+                .header("Retry-After", notNullValue())
+                .body("success", equalTo(false))
+                .body("error", containsString("Too many failed attempts"));
+
+        // Locked out: the password is not even checked any more
+        verify(authService, times(5)).login(eq(username), anyString());
+        // Failures are counted against the connection's address too (per-IP limit)
+        verify(loginAttemptService, times(5)).recordFailure(username, "127.0.0.1");
+    }
+
+    @Test
+    @DisplayName("Should reset the failure count after a successful login")
+    void testLoginSuccessResetsFailures() {
+        String username = "reset-" + System.nanoTime();
+        String wrong = "{\"username\": \"" + username + "\", \"password\": \"wrong\"}";
+        String right = "{\"username\": \"" + username + "\", \"password\": \"right\"}";
+        when(authService.login(username, "wrong"))
+            .thenThrow(new AuthenticationException("Invalid username or password"));
+        when(authService.login(username, "right"))
+            .thenReturn(new LoginResponse("t", "r", username, "e@x.com", 1800L));
+
+        for (int i = 0; i < 4; i++) {
+            given().contentType(ContentType.JSON).body(wrong).when().post("/api/auth/login").then().statusCode(401);
+        }
+        given().contentType(ContentType.JSON).body(right).when().post("/api/auth/login").then().statusCode(200);
+        for (int i = 0; i < 4; i++) {
+            given().contentType(ContentType.JSON).body(wrong).when().post("/api/auth/login").then().statusCode(401);
+        }
     }
 
     @Test
