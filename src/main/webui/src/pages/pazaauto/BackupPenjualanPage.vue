@@ -191,7 +191,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick, computed } from 'vue'
+import { ref, onMounted, watch, nextTick, computed, onBeforeUnmount } from 'vue'
 import { api } from 'boot/axios'
 import { useQuasar, date } from 'quasar'
 import { useDateFilter } from 'src/composables/useDateFilter'
@@ -779,6 +779,11 @@ onMounted(() => {
     fetchJasa()
     fetchBarang()
     openCreateDialog()
+})
+
+// A search typed just before leaving would otherwise fire against a page that is gone
+onBeforeUnmount(() => {
+  clearTimeout(searchTimeout)
 })
 </script>
 

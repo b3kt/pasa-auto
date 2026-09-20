@@ -178,6 +178,49 @@ class OfflineStorage {
     })
   }
 
+  // Nothing else prunes offlineData: the axios interceptor writes a full copy of every GET
+  // response into it and only a logout clears the store. Drop what is past maxAge, then the
+  // oldest of what remains while the store is still over maxEntries.
+  async pruneCachedData({ maxAgeMs = 7 * 24 * 60 * 60 * 1000, maxEntries = 500 } = {}) {
+    if (!this.db) await this.initDB()
+
+    // Counted in its own transaction: an IndexedDB transaction closes as soon as it goes idle,
+    // which an await between two of its requests would do
+    const total = await new Promise((resolve, reject) => {
+      const request = this.db.transaction(['offlineData'], 'readonly')
+        .objectStore('offlineData')
+        .count()
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+
+    const cutoff = Date.now() - maxAgeMs
+    let remaining = total
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['offlineData'], 'readwrite')
+      // Oldest first, so anything dropped for the entry cap is taken off the far end
+      const request = transaction.objectStore('offlineData').index('timestamp').openCursor()
+      let removedCount = 0
+
+      request.onsuccess = (event) => {
+        const cursor = event.target.result
+        if (!cursor) return resolve(removedCount)
+
+        // `remaining` counts down as entries go, so expiring old ones can bring the store under
+        // the cap on its own and nothing is dropped that didn't need to be
+        const tooOld = (cursor.value?.timestamp || 0) < cutoff
+        if (tooOld || remaining > maxEntries) {
+          cursor.delete()
+          removedCount++
+          remaining--
+        }
+        cursor.continue()
+      }
+      request.onerror = () => reject(request.error)
+    })
+  }
+
   async clearAllData() {
     return this.clearStores(['offlineData', 'pendingRequests', 'syncStatus'])
   }

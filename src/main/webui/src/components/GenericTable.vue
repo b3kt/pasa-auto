@@ -342,6 +342,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateAutoHeight)
   layoutObserver?.disconnect()
+  clearTimeout(searchTimeout)
 })
 
 // Select a row by item object (matching rowKey)

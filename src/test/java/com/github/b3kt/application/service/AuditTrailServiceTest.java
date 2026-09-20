@@ -55,40 +55,47 @@ class AuditTrailServiceTest {
     @Test
     @DisplayName("findByTableName delegates to repository")
     void findByTableName() {
-        when(repository.findByTableName("users")).thenReturn(List.of(testEntity));
-        List<AuditTrailEntity> result = auditTrailService.findByTableName("users");
+        when(repository.findByTableName("users", 50)).thenReturn(List.of(testEntity));
+        List<AuditTrailEntity> result = auditTrailService.findByTableName("users", 50);
         assertEquals(1, result.size());
     }
 
     @Test
     @DisplayName("findByUserId delegates to repository")
     void findByUserId() {
-        when(repository.findByUserId(1L)).thenReturn(List.of(testEntity));
-        List<AuditTrailEntity> result = auditTrailService.findByUserId(1L);
+        when(repository.findByUserId(1L, 50)).thenReturn(List.of(testEntity));
+        List<AuditTrailEntity> result = auditTrailService.findByUserId(1L, 50);
         assertEquals(1, result.size());
     }
 
     @Test
     @DisplayName("findByRecordId delegates to repository")
     void findByRecordId() {
-        when(repository.findByRecordId(1L)).thenReturn(List.of(testEntity));
-        List<AuditTrailEntity> result = auditTrailService.findByRecordId(1L);
+        when(repository.findByRecordId(1L, 50)).thenReturn(List.of(testEntity));
+        List<AuditTrailEntity> result = auditTrailService.findByRecordId(1L, 50);
         assertEquals(1, result.size());
     }
 
     @Test
     @DisplayName("findByTableNameAndRecordId delegates to repository")
     void findByTableNameAndRecordId() {
-        when(repository.findByTableNameAndRecordId("users", 1L)).thenReturn(List.of(testEntity));
-        List<AuditTrailEntity> result = auditTrailService.findByTableNameAndRecordId("users", 1L);
+        when(repository.findByTableNameAndRecordId("users", 1L, 50)).thenReturn(List.of(testEntity));
+        List<AuditTrailEntity> result = auditTrailService.findByTableNameAndRecordId("users", 1L, 50);
         assertEquals(1, result.size());
     }
 
     @Test
-    @DisplayName("findAll returns all audit trails")
-    void findAll() {
-        when(repository.listAll()).thenReturn(List.of(testEntity));
-        assertEquals(1, auditTrailService.findAll().size());
+    @DisplayName("findRecent returns the newest audit trails up to the limit")
+    void findRecent() {
+        when(repository.listRecent(200)).thenReturn(List.of(testEntity));
+        assertEquals(1, auditTrailService.findRecent(200).size());
+    }
+
+    @Test
+    @DisplayName("findDistinctUsernames delegates to repository")
+    void findDistinctUsernames() {
+        when(repository.findDistinctUsernames()).thenReturn(List.of("admin", "owner"));
+        assertEquals(List.of("admin", "owner"), auditTrailService.findDistinctUsernames());
     }
 
     @Test

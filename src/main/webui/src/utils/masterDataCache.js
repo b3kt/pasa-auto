@@ -120,6 +120,34 @@ class MasterDataCache {
     }
   }
 
+  // Drop every entry whose TTL has passed. get() only evicts the key it was asked for, so an
+  // entry that is never read again would otherwise sit in IndexedDB for good.
+  async clearExpired() {
+    try {
+      const db = await this._getDb()
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite')
+        const idx = tx.objectStore(STORE_NAME).index('expiresAt')
+        const req = idx.openCursor(IDBKeyRange.upperBound(Date.now()))
+        let count = 0
+        req.onsuccess = (e) => {
+          const cursor = e.target.result
+          if (cursor) {
+            cursor.delete()
+            count++
+            cursor.continue()
+          } else {
+            resolve(count)
+          }
+        }
+        req.onerror = (e) => reject(e.target.error)
+      })
+    } catch (e) {
+      console.warn('[masterDataCache] clearExpired error:', e)
+      return 0
+    }
+  }
+
   async clearAll() {
     try {
       const db = await this._getDb()

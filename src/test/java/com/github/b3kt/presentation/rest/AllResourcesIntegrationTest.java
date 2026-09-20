@@ -222,7 +222,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
     @DisplayName("GET /api/audit-trail — Admin role required")
     @TestSecurity(user = "admin", roles = {"Admin"})
     void auditTrailList() {
-        when(auditTrailService.findAll()).thenReturn(List.of());
+        when(auditTrailService.findRecent(anyInt())).thenReturn(List.of());
         given()
             .when().get("/api/audit-trail")
             .then().statusCode(200).body("success", equalTo(true));
@@ -235,6 +235,16 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
         given()
             .when().get("/api/audit-trail")
             .then().statusCode(403);
+    }
+
+    @Test
+    @DisplayName("GET /api/audit-trail/usernames")
+    @TestSecurity(user = "admin", roles = {"Admin"})
+    void auditTrailUsernames() {
+        when(auditTrailService.findDistinctUsernames()).thenReturn(List.of("admin"));
+        given()
+            .when().get("/api/audit-trail/usernames")
+            .then().statusCode(200).body("success", equalTo(true));
     }
 
     @Test
@@ -252,7 +262,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
     @DisplayName("GET /api/audit-trail/table/{tableName}")
     @TestSecurity(user = "admin", roles = {"Admin"})
     void auditTrailByTable() {
-        when(auditTrailService.findByTableName("users")).thenReturn(List.of());
+        when(auditTrailService.findByTableName(eq("users"), anyInt())).thenReturn(List.of());
         given()
             .when().get("/api/audit-trail/table/users")
             .then().statusCode(200);
@@ -262,7 +272,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
     @DisplayName("GET /api/audit-trail/record/{recordId}")
     @TestSecurity(user = "admin", roles = {"Admin"})
     void auditTrailByRecord() {
-        when(auditTrailService.findByRecordId(1L)).thenReturn(List.of());
+        when(auditTrailService.findByRecordId(eq(1L), anyInt())).thenReturn(List.of());
         given()
             .when().get("/api/audit-trail/record/1")
             .then().statusCode(200);
@@ -272,7 +282,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
     @DisplayName("GET /api/audit-trail/table/{tableName}/record/{recordId}")
     @TestSecurity(user = "admin", roles = {"Admin"})
     void auditTrailByTableAndRecord() {
-        when(auditTrailService.findByTableNameAndRecordId("users", 1L)).thenReturn(List.of());
+        when(auditTrailService.findByTableNameAndRecordId(eq("users"), eq(1L), anyInt())).thenReturn(List.of());
         given()
             .when().get("/api/audit-trail/table/users/record/1")
             .then().statusCode(200);
@@ -282,7 +292,7 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
     @DisplayName("GET /api/audit-trail/user/{userId}")
     @TestSecurity(user = "admin", roles = {"Admin"})
     void auditTrailByUser() {
-        when(auditTrailService.findByUserId(1L)).thenReturn(List.of());
+        when(auditTrailService.findByUserId(eq(1L), anyInt())).thenReturn(List.of());
         given()
             .when().get("/api/audit-trail/user/1")
             .then().statusCode(200);
