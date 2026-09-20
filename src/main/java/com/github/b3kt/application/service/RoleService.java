@@ -84,7 +84,7 @@ public class RoleService extends AbstractCrudService<RoleEntity, Long> {
                 .orElseThrow(() -> new EntityNotFoundException("Role not found with id: " + roleId));
 
         // Find all users that have this role in their rbacRoles set
-        return userRepository.find("SELECT u FROM UserEntity u JOIN u.roles r WHERE r.id = ?1", roleId)
+        return userRepository.find("SELECT u FROM UserEntity u JOIN u.roles r WHERE r.id = ?1", role.getId())
                 .list();
     }
 

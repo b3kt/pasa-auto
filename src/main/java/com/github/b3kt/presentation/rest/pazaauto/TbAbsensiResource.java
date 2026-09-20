@@ -23,6 +23,7 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 import java.time.LocalDate;
 import java.util.Map;
 
+@lombok.extern.slf4j.Slf4j
 @RequestScoped
 @Path("/api/pazaauto/absensi")
 @Produces(MediaType.APPLICATION_JSON)
@@ -73,8 +74,9 @@ public class TbAbsensiResource {
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (Exception e) {
+            log.error("Failed to clock in", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to clock in: " + e.getMessage()))
+                    .entity(ApiResponse.error("Failed to clock in"))
                     .build();
         }
     }
@@ -98,8 +100,9 @@ public class TbAbsensiResource {
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (Exception e) {
+            log.error("Failed to clock out", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to clock out: " + e.getMessage()))
+                    .entity(ApiResponse.error("Failed to clock out"))
                     .build();
         }
     }
@@ -165,8 +168,9 @@ public class TbAbsensiResource {
             }
             return Response.ok(ApiResponse.success("Today's attendance retrieved", absensiMapper.toDto(result))).build();
         } catch (Exception e) {
+            log.error("Failed to get today's attendance", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get today's attendance: " + e.getMessage()))
+                    .entity(ApiResponse.error("Failed to get today's attendance"))
                     .build();
         }
     }
@@ -204,8 +208,9 @@ public class TbAbsensiResource {
                             result.getRowsPerPage(),
                             result.getTotalRows()))).build();
         } catch (Exception e) {
+            log.error("Failed to get attendance history", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get attendance history: " + e.getMessage()))
+                    .entity(ApiResponse.error("Failed to get attendance history"))
                     .build();
         }
     }
@@ -224,8 +229,9 @@ public class TbAbsensiResource {
             Map<String, Object> summary = service.getMonthlySummary(ownKaryawanId, month, year);
             return Response.ok(ApiResponse.success("Monthly summary retrieved", summary)).build();
         } catch (Exception e) {
+            log.error("Failed to get monthly summary", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get monthly summary: " + e.getMessage()))
+                    .entity(ApiResponse.error("Failed to get monthly summary"))
                     .build();
         }
     }
@@ -242,8 +248,9 @@ public class TbAbsensiResource {
             TbAbsensiEntity result = service.markAbsence(entity.getKaryawanId(), entity.getTanggal(), entity.getStatus(), entity.getKeterangan());
             return Response.ok(ApiResponse.success("Absence marked successfully", absensiMapper.toDto(result))).build();
         } catch (Exception e) {
+            log.error("Failed to mark absence", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to mark absence: " + e.getMessage()))
+                    .entity(ApiResponse.error("Failed to mark absence"))
                     .build();
         }
     }

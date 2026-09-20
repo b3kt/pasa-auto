@@ -1,18 +1,15 @@
 package com.github.b3kt.application.dto.pazaauto;
 
+import java.time.LocalDate;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.eclipse.microprofile.openapi.annotations.media.Schema;
-
-import java.time.LocalDate;
 
 @Data
 @AllArgsConstructor

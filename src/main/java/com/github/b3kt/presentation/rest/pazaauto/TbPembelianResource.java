@@ -27,6 +27,7 @@ import jakarta.ws.rs.core.Response;
 
 import java.util.Optional;
 
+@lombok.extern.slf4j.Slf4j
 @RequestScoped
 @Path("/api/pazaauto/pembelian")
 @Produces(MediaType.APPLICATION_JSON)
@@ -120,8 +121,9 @@ public class TbPembelianResource {
 
             return Response.ok(ApiResponse.success(pembelianMapper.toDto(entity))).build();
         } catch (Exception e) {
+            log.error("Failed to fetch pembelian", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to fetch pembelian: " + e.getMessage()))
+                    .entity(ApiResponse.error("Failed to fetch pembelian"))
                     .build();
         }
     }
@@ -169,8 +171,9 @@ public class TbPembelianResource {
             String noPembelian = service.generateNoPembelian(jenisPembelian);
             return Response.ok(ApiResponse.success(noPembelian)).build();
         } catch (Exception e) {
+            log.error("Failed to generate no pembelian", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to generate no pembelian: " + e.getMessage())).build();
+                    .entity(ApiResponse.error("Failed to generate no pembelian")).build();
         }
     }
 
@@ -181,8 +184,9 @@ public class TbPembelianResource {
              String noPembelian = service.generateNoPembelian(jenisPembelian);
              return Response.ok(ApiResponse.success(noPembelian)).build();
          } catch (Exception e) {
+             log.error("Failed to generate no pembelian", e);
              return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                     .entity(ApiResponse.error("Failed to generate no pembelian: " + e.getMessage())).build();
+                     .entity(ApiResponse.error("Failed to generate no pembelian")).build();
          }
     }
 
