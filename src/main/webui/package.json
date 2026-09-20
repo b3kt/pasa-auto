@@ -35,7 +35,7 @@
     "@quasar/vite-plugin": "^1.10.0",
     "@vue/eslint-config-prettier": "^10.1.0",
     "autoprefixer": "^10.4.2",
-    "baseline-browser-mapping": "^2.10.11",
+    "baseline-browser-mapping": "^2.11.24",
     "eslint": "^9.14.0",
     "eslint-plugin-vue": "^10.4.0",
     "globals": "^16.4.0",
