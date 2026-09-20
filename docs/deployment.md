@@ -58,7 +58,8 @@ cp .env.example .env
 | `APP_LOG_LEVEL` | INFO | App log level; `DEBUG` logs request/response bodies (credentials masked, `/api/auth/*` omitted) |
 | `DB_MAX_SIZE` | 10 | Max DB connections |
 | `DB_MIN_SIZE` | 2 | Min DB connections |
-| `SWAGGER_ENABLED` | false | Enable Swagger UI |
+| `SWAGGER_ENABLED` | false | Include Swagger UI (build-time; rebuild required) |
+| `OPENAPI_ENABLED` | false | Include the OpenAPI schema (build-time; rebuild required) |
 | `RBAC_ENABLED` | false | Enable RBAC module |
 | `LOG_PATH` | `./app.log` | Log file path |
 

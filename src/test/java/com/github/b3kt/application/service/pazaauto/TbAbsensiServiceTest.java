@@ -20,6 +20,7 @@ import org.mockito.quality.Strictness;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -279,8 +280,8 @@ class TbAbsensiServiceTest {
         PageRequest pr = new PageRequest(1, 10);
         pr.setDescending(true);
 
-        when(repository.count(anyString(), any(java.util.HashMap.class))).thenReturn(1L);
-        when(repository.find(anyString(), any(Sort.class), any(java.util.HashMap.class))).thenReturn(panacheQuery);
+        when(repository.count(anyString(), any(HashMap.class))).thenReturn(1L);
+        when(repository.find(anyString(), any(Sort.class), any(HashMap.class))).thenReturn(panacheQuery);
         when(panacheQuery.page(any(Page.class))).thenReturn(panacheQuery);
         when(panacheQuery.list()).thenReturn(List.of(entity));
 

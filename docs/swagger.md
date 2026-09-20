@@ -7,30 +7,31 @@
 | Swagger UI | http://localhost:8080/swagger-ui |
 | OpenAPI JSON | http://localhost:8080/openapi |
 
-**Note**: Swagger UI is disabled by default. Enable with `SWAGGER_ENABLED=true`.
+**Note**: Swagger UI and the OpenAPI schema are available in dev mode (`quarkus:dev`) and are **not
+included in packaged builds**, where both paths return 404. The schema lists every endpoint and its
+payloads, which is exactly the map an attacker wants.
 
 ---
 
 ## Enable/Disable
 
-### Via Environment Variable
+These are Quarkus **build-time** settings: setting the variables on an already-built application has no
+effect, you have to rebuild. Dev mode enables them through `%dev` overrides.
 
 ```bash
-# Enable
-SWAGGER_ENABLED=true
-
-# Disable (production default)
-SWAGGER_ENABLED=false
+# Include the docs in a packaged build (e.g. a staging deployment)
+./mvnw package -DOPENAPI_ENABLED=true -DSWAGGER_ENABLED=true -DSWAGGER_ALWAYS_INCLUDE=true
 ```
 
-### Via application.properties
-
 ```properties
+quarkus.smallrye-openapi.enabled=${OPENAPI_ENABLED:false}
 quarkus.swagger-ui.enabled=${SWAGGER_ENABLED:false}
-quarkus.swagger-ui.always-include=true
+quarkus.swagger-ui.always-include=${SWAGGER_ALWAYS_INCLUDE:false}
 quarkus.swagger-ui.path=/swagger-ui
 quarkus.smallrye-openapi.path=/openapi
 ```
+
+If you do expose them on a staging host, put them behind the reverse proxy's authentication.
 
 ---
 

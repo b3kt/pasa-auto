@@ -295,6 +295,9 @@ public class TbAbsensiResource {
      */
     private String getClientIpAddress(HttpServerRequest request) {
         SocketAddress remoteAddress = request.remoteAddress();
-        return remoteAddress != null ? remoteAddress.hostAddress() : null;
+        if (remoteAddress != null) {
+           return remoteAddress.hostAddress();
+        }
+        return null ;
     }
 }
