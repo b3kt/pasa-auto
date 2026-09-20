@@ -12,6 +12,7 @@ import io.smallrye.jwt.auth.principal.ParseException;
 import io.smallrye.jwt.build.Jwt;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.Claims;
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 /**
  * Implementation of JWT token service using SmallRye JWT.
  */
+@Slf4j
 @ApplicationScoped
 public class JwtTokenServiceImpl implements JwtTokenService {
 
@@ -72,10 +74,9 @@ public class JwtTokenServiceImpl implements JwtTokenService {
                         .collect(Collectors.toSet());
                 jwtBuilder.claim("permissions", permissionNames);
             } catch (Exception e) {
-                // If RBAC is enabled but user permissions can't be fetched, log and continue
-                // This allows the token to be generated without permissions
-                System.err.println(
-                        "Warning: Could not fetch permissions for user " + user.getUsername() + ": " + e.getMessage());
+                // The token is still issued, but without permissions: log it properly so the degraded
+                // access is visible in the logs rather than only on stderr
+                log.warn("Could not fetch permissions for user {}; issuing token without them", user.getUsername(), e);
             }
         }
 
