@@ -6,6 +6,7 @@ import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKaryawanEnti
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.InjectMock;
 import jakarta.inject.Inject;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -18,6 +19,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @QuarkusTest
+@Tag("quarkus")
 class UserRepositoryTest {
 
     @InjectMock

@@ -3,21 +3,23 @@ package com.github.b3kt.integration;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.BeforeEach;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.junit.jupiter.api.Tag;
 
+/**
+ * Base for the tests that boot the application against a real database.
+ *
+ * <p>The database comes from {@link PostgresTestResource}, which starts the container and hands
+ * Quarkus the JDBC url. This class deliberately does not declare a {@code @Container} of its own:
+ * a second container would be started for every subclass and then never connected to, since the
+ * datasource url always comes from the test resource.
+ *
+ * <p>The {@code quarkus} tag keeps these off the parallel unit-test fork - see the surefire
+ * executions in pom.xml.
+ */
 @QuarkusTest
-@Testcontainers
+@Tag("quarkus")
 @QuarkusTestResource(PostgresTestResource.class)
 public abstract class IntegrationTestBase {
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
-            .withDatabaseName("pasa_auto_test")
-            .withUsername("test")
-            .withPassword("test")
-            .withReuse(true);
 
     @BeforeEach
     void setUp() {

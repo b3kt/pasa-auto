@@ -14,6 +14,7 @@ import io.restassured.response.Response;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -36,6 +37,7 @@ import static org.mockito.Mockito.*;
  * <p>Google itself is replaced by mocks, so nothing here touches the network.
  */
 @QuarkusTest
+@Tag("quarkus")
 @TestProfile(GoogleAuthEnabledResourceTest.GoogleEnabledProfile.class)
 @DisplayName("Google sign-in (enabled)")
 class GoogleAuthEnabledResourceTest {

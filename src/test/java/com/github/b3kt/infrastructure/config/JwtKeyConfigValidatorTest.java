@@ -4,6 +4,7 @@ import io.quarkus.runtime.StartupEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.Isolated;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -11,6 +12,9 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+// Mutates the JWT key system properties, which every other test reads; it must not share the
+// JVM with a concurrently running class.
+@Isolated
 @DisplayName("JwtKeyConfigValidator Tests")
 class JwtKeyConfigValidatorTest {
 

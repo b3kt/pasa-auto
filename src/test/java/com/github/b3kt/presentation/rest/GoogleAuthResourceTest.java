@@ -1,6 +1,7 @@
 package com.github.b3kt.presentation.rest;
 
 import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +12,7 @@ import static org.hamcrest.Matchers.equalTo;
  * Google sign-in is off unless configured, and while it is off it must have no reachable surface.
  */
 @QuarkusTest
+@Tag("quarkus")
 class GoogleAuthResourceTest {
 
     @Test

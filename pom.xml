@@ -19,6 +19,8 @@
         <skipITs>true</skipITs>
         <testcontainers.docker.socket.override>/var/run/docker.sock</testcontainers.docker.socket.override>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
+        <!-- Threads per core for the parallel unit-test execution; 1 means one thread per core. -->
+        <unit.test.parallelism>1</unit.test.parallelism>
         <quarkus.application.version>${project.version}</quarkus.application.version>
         <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
@@ -265,6 +267,64 @@
                     <reportFormat>brief</reportFormat>
                     <trimStackTrace>true</trimStackTrace>
                 </configuration>
+                <!-- The suite is split in two so each half can be parallelised the way it tolerates.
+                     Membership is driven by the "quarkus" JUnit tag, which IntegrationTestBase
+                     carries for its subclasses and the standalone @QuarkusTest classes declare
+                     themselves; a new test lands in the right half by tagging alone. -->
+                <executions>
+                    <execution>
+                        <!-- Replaced by the two executions below, which together cover the suite. -->
+                        <id>default-test</id>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <!-- Mockito unit tests: no shared process state, so classes run concurrently
+                             in one JVM. Methods stay on one thread per class, which keeps @Nested
+                             fixtures and Mockito's per-instance mocks behaving as written. -->
+                        <id>unit-tests</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <excludedGroups>quarkus</excludedGroups>
+                            <properties>
+                                <configurationParameters>
+                                    junit.jupiter.execution.parallel.enabled=true
+                                    junit.jupiter.execution.parallel.mode.default=same_thread
+                                    junit.jupiter.execution.parallel.mode.classes.default=concurrent
+                                    junit.jupiter.execution.parallel.config.strategy=dynamic
+                                    junit.jupiter.execution.parallel.config.dynamic.factor=${unit.test.parallelism}
+                                </configurationParameters>
+                            </properties>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <!-- Deliberately NOT parallelised: one JVM, one shared application.
+                             Quarkus keeps a single booted instance alive across @QuarkusTest
+                             classes and only restarts it when the configuration changes, and a
+                             boot costs far more than these tests do. Measured on this suite:
+                             one fork = 2 boots (~35s), two forks = 12 boots (~161s), because
+                             surefire hands each fork its own instance to boot.
+
+                             The one restart that remains is GoogleAuthEnabledResourceTest, which
+                             needs @TestProfile to turn Google sign-in on. Adding another profile
+                             or test resource buys another boot, so prefer configuring through the
+                             shared application-test.properties where a test allows it. -->
+                        <id>quarkus-tests</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <groups>quarkus</groups>
+                            <forkCount>1</forkCount>
+                            <reuseForks>true</reuseForks>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <artifactId>maven-failsafe-plugin</artifactId>

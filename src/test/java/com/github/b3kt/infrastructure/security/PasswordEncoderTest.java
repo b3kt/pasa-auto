@@ -2,6 +2,7 @@ package com.github.b3kt.infrastructure.security;
 
 import com.github.b3kt.infrastructure.security.impl.PasswordEncoderImpl;
 import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +14,7 @@ import java.security.InvalidKeyException;
 import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
+@Tag("quarkus")
 class PasswordEncoderTest {
 
     private PasswordEncoder passwordEncoder;
