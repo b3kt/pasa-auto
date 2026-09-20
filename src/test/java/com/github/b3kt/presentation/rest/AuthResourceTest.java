@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 
 import static io.restassured.RestAssured.given;
+import static io.restassured.matcher.RestAssuredMatchers.detailedCookie;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -55,7 +56,9 @@ class AuthResourceTest extends IntegrationTestBase {
             .statusCode(200)
             .body("success", equalTo(true))
             .body("data.token", equalTo("jwt-token"))
-            .body("data.refreshToken", equalTo("refresh-token"))
+            // The refresh token goes into an HttpOnly cookie, never the body
+            .body("data.refreshToken", nullValue())
+            .cookie("refresh_token", detailedCookie().value("refresh-token").httpOnly(true).path("/api/auth"))
             .body("data.username", equalTo("testuser"))
             .body("data.email", equalTo("test@example.com"))
             .body("data.expiresIn", equalTo(3600));
@@ -124,7 +127,8 @@ class AuthResourceTest extends IntegrationTestBase {
             .statusCode(200)
             .body("success", equalTo(true))
             .body("data.token", equalTo("new-jwt-token"))
-            .body("data.refreshToken", equalTo("new-refresh-token"))
+            .body("data.refreshToken", nullValue())
+            .cookie("refresh_token", detailedCookie().value("new-refresh-token").httpOnly(true))
             .body("data.username", equalTo("testuser"))
             .body("data.email", equalTo("test@example.com"));
 
@@ -275,7 +279,42 @@ class AuthResourceTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("Should reject a refresh request without a refresh token")
+    @DisplayName("Should refresh using the cookie and ignore a body token")
+    void testRefreshUsesCookie() {
+        LoginResponse response = new LoginResponse("t2", "r2", "testuser", "test@example.com", 1800L);
+        when(authService.refreshToken("cookie-token")).thenReturn(response);
+
+        given()
+            .contentType(ContentType.JSON)
+            .cookie("refresh_token", "cookie-token")
+            .body("{\"refreshToken\": \"body-token\"}")
+        .when()
+            .post("/api/auth/refresh")
+        .then()
+            .statusCode(200);
+
+        verify(authService).refreshToken("cookie-token");
+        verify(authService, never()).refreshToken("body-token");
+    }
+
+    @Test
+    @DisplayName("Should revoke the cookie's session and clear the cookie on logout")
+    @TestSecurity(user = "testuser", roles = {"user"})
+    void testLogoutUsesCookie() {
+        given()
+            .contentType(ContentType.JSON)
+            .cookie("refresh_token", "cookie-token")
+        .when()
+            .post("/api/auth/logout")
+        .then()
+            .statusCode(200)
+            .cookie("refresh_token", detailedCookie().value("").maxAge(0));
+
+        verify(authService).logout("testuser", "cookie-token");
+    }
+
+    @Test
+    @DisplayName("Should reject a refresh request with neither cookie nor body token")
     void testRefreshTokenMissing() {
         given()
             .contentType(ContentType.JSON)
@@ -283,7 +322,7 @@ class AuthResourceTest extends IntegrationTestBase {
         .when()
             .post("/api/auth/refresh")
         .then()
-            .statusCode(400);
+            .statusCode(401);
 
         verify(authService, never()).refreshToken(any());
     }

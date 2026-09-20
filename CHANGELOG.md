@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Changed**: With IP restriction enabled, an empty `allowed.ips` list now rejects all clock-ins instead of allowing all
 - **Changed**: Access tokens now expire after 30 minutes (`jwt.expiration.minutes`, was 2400 hours)
 - **Added**: Server-side refresh token store (`refresh_tokens`, migration V17) with rotation on use, reuse detection and revocation on logout / for deactivated users
+- **Changed**: The refresh token is now issued as an HttpOnly, SameSite=Strict cookie scoped to `/api/auth` instead of being returned in the response body and stored in `localStorage`, so page scripts (and injected ones) cannot read it. The body token is still accepted on refresh for sessions issued before this change
 - **Fixed**: The `sortBy` query parameter went into ORDER BY unchecked; only plain field references are accepted now
 - **Added**: Security headers on every response (CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, HSTS)
 - **Changed**: Flyway now validates applied migrations by default (`FLYWAY_VALIDATE_ON_MIGRATE`) and `flyway clean` is disabled

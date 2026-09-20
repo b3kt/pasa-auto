@@ -32,7 +32,8 @@ export const useAuthStore = defineStore('auth', {
 
     return {
       token: token || null,
-      refreshToken: localStorage.getItem('refresh_token') || null,
+      // The refresh token lives in an HttpOnly cookie the browser sends to /api/auth; scripts cannot read it
+      refreshToken: null,
       user: user,
       isAuthenticated: !!token // Set to true if token exists
     }
@@ -44,10 +45,9 @@ export const useAuthStore = defineStore('auth', {
 
   actions: {
     // Store a freshly issued token pair and derive the user from the access token claims
-    applySession({ token, refreshToken, username, email }) {
+    applySession({ token, username, email }) {
       const claims = decodeToken(token) || {}
       this.token = token
-      this.refreshToken = refreshToken
       this.user = {
         username: username || claims.upn || claims.sub || this.user?.username,
         email: email || claims.email || this.user?.email,
@@ -60,7 +60,6 @@ export const useAuthStore = defineStore('auth', {
       this.isAuthenticated = true
 
       localStorage.setItem('auth_token', this.token)
-      localStorage.setItem('refresh_token', this.refreshToken)
       localStorage.setItem('auth_user', JSON.stringify(this.user))
     },
 
@@ -69,6 +68,7 @@ export const useAuthStore = defineStore('auth', {
     clearSession() {
       this.token = null
       this.refreshToken = null
+      // Older sessions kept it here; drop any leftover copy
       this.user = null
       this.isAuthenticated = false
       localStorage.removeItem('auth_token')
@@ -109,16 +109,11 @@ export const useAuthStore = defineStore('auth', {
 
     async logout() {
       const token = this.token
-      const refreshToken = localStorage.getItem('refresh_token') || this.refreshToken
       try {
         const { api } = await import('boot/axios')
         if (token) {
-          // Revokes this session's refresh token on the server
-          await api.post(
-            '/api/auth/logout',
-            refreshToken ? { refreshToken } : null,
-            { headers: { Authorization: `Bearer ${token}` } }
-          )
+          // The server reads the refresh cookie, revokes that session and clears the cookie
+          await api.post('/api/auth/logout', null, { headers: { Authorization: `Bearer ${token}` } })
         }
       } catch (error) {
         console.error('Logout error:', error)
@@ -150,14 +145,11 @@ export const useAuthStore = defineStore('auth', {
     refreshAccessToken() {
       if (refreshPromise) return refreshPromise
 
-      // Refresh tokens rotate on every use; another tab may already have replaced ours, so prefer the shared copy
-      const refreshToken = localStorage.getItem('refresh_token') || this.refreshToken
-      if (!refreshToken) return Promise.resolve(false)
-
       refreshPromise = (async () => {
         try {
           const { api } = await import('boot/axios')
-          const response = await api.post('/api/auth/refresh', { refreshToken })
+          // No body: the browser sends the HttpOnly refresh cookie
+          const response = await api.post('/api/auth/refresh', {})
           const data = response.data?.data
           if (data?.token) {
             this.applySession(data)

@@ -159,7 +159,7 @@ See [api.md](api.md) for full documentation.
 ## Authentication Flow
 
 1. **Login**: `POST /api/auth/login` with username/password
-2. **Response**: JWT access token (30 min) + refresh token (7 days, rotated on every refresh)
+2. **Response**: JWT access token (30 min) in the body + refresh token (7 days, rotated) in an HttpOnly cookie
 3. **Subsequent requests**: `Authorization: Bearer <token>`
 4. **Refresh**: `POST /api/auth/refresh` with refresh token (old one is invalidated)
 5. **Logout**: `POST /api/auth/logout` with refresh token (revokes the session server-side)

@@ -20,7 +20,9 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.CookieParam;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -52,8 +54,13 @@ public class AuthResource {
     @Inject
     SecurityIdentity identity;
 
+    static final String REFRESH_COOKIE = "refresh_token";
+
     @Inject
     LoginAttemptService loginAttemptService;
+
+    @Inject
+    com.github.b3kt.infrastructure.security.JwtTokenService jwtTokenService;
 
     @Context
     HttpServerRequest request;
@@ -100,7 +107,7 @@ public class AuthResource {
                 loginRequest.getPassword()
             );
             loginAttemptService.recordSuccess(loginRequest.getUsername());
-            return Response.ok(ApiResponse.success("Login successful", response)).build();
+            return withRefreshCookie(Response.ok(ApiResponse.success("Login successful", response)), response);
         } catch (AuthenticationException e) {
             loginAttemptService.recordFailure(loginRequest.getUsername(), clientIp);
             return Response.status(Response.Status.UNAUTHORIZED)
@@ -131,10 +138,16 @@ public class AuthResource {
             description = "Unauthorized - Invalid or missing token"
         )
     })
-    public Response logout(com.github.b3kt.application.dto.RefreshTokenRequest request) {
+    public Response logout(com.github.b3kt.application.dto.RefreshTokenRequest request,
+            @CookieParam(REFRESH_COOKIE) String refreshCookie) {
         // The access token stays valid until it expires (short-lived); revoking the refresh token ends the session
-        authService.logout(identity.getPrincipal().getName(), request != null ? request.getRefreshToken() : null);
-        return Response.ok(ApiResponse.success("Logged out successfully", null)).build();
+        String refreshToken = refreshCookie != null && !refreshCookie.isBlank()
+                ? refreshCookie
+                : (request != null ? request.getRefreshToken() : null);
+        authService.logout(identity.getPrincipal().getName(), refreshToken);
+        return Response.ok(ApiResponse.success("Logged out successfully", null))
+                .cookie(refreshCookie(null, 0))
+                .build();
     }
 
     @GET
@@ -200,7 +213,8 @@ public class AuthResource {
             LoginResponse response = authService.changePassword(
                 username, request.getCurrentPassword(), request.getNewPassword());
             loginAttemptService.recordSuccess(username);
-            return Response.ok(ApiResponse.success("Password changed successfully", response)).build();
+            return withRefreshCookie(
+                    Response.ok(ApiResponse.success("Password changed successfully", response)), response);
         } catch (AuthenticationException e) {
             loginAttemptService.recordFailure(username, clientIp);
             return Response.status(Response.Status.UNAUTHORIZED)
@@ -238,10 +252,20 @@ public class AuthResource {
             )
         )
     })
-    public Response refreshToken(@Valid com.github.b3kt.application.dto.RefreshTokenRequest request) {
+    public Response refreshToken(com.github.b3kt.application.dto.RefreshTokenRequest request,
+            @CookieParam(REFRESH_COOKIE) String refreshCookie) {
+        // The cookie is the normal path; the body is still accepted for sessions issued before this change
+        String refreshToken = refreshCookie != null && !refreshCookie.isBlank()
+                ? refreshCookie
+                : (request != null ? request.getRefreshToken() : null);
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(ApiResponse.<LoginResponse>error("Invalid or expired refresh token"))
+                    .build();
+        }
         try {
-            LoginResponse response = authService.refreshToken(request.getRefreshToken());
-            return Response.ok(ApiResponse.success("Token refreshed successfully", response)).build();
+            LoginResponse response = authService.refreshToken(refreshToken);
+            return withRefreshCookie(Response.ok(ApiResponse.success("Token refreshed successfully", response)), response);
         } catch (AuthenticationException e) {
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.<LoginResponse>error(e.getMessage()))
@@ -253,5 +277,36 @@ public class AuthResource {
     private String clientIp() {
         SocketAddress remoteAddress = request != null ? request.remoteAddress() : null;
         return remoteAddress != null ? remoteAddress.hostAddress() : null;
+    }
+
+    /**
+     * Puts the refresh token in an HttpOnly cookie and keeps it out of the response body, so page
+     * scripts (and anything injected into them) cannot read it. The body still carries the short-lived
+     * access token, which the SPA sends as a bearer header.
+     */
+    private Response withRefreshCookie(Response.ResponseBuilder builder, LoginResponse response) {
+        if (response == null) {
+            return builder.build();
+        }
+        String refreshToken = response.getRefreshToken();
+        response.setRefreshToken(null);
+        if (refreshToken == null) {
+            return builder.build();
+        }
+        return builder.cookie(refreshCookie(refreshToken, jwtTokenService.getRefreshTokenLifetime().toSeconds()))
+                .build();
+    }
+
+    private NewCookie refreshCookie(String value, long maxAgeSeconds) {
+        boolean https = request != null && "https".equalsIgnoreCase(request.scheme());
+        return new NewCookie.Builder(REFRESH_COOKIE)
+                .value(value == null ? "" : value)
+                // Only sent to the auth endpoints that need it
+                .path("/api/auth")
+                .httpOnly(true)
+                .secure(https)
+                .sameSite(NewCookie.SameSite.STRICT)
+                .maxAge((int) maxAgeSeconds)
+                .build();
     }
 }

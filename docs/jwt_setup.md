@@ -48,8 +48,10 @@ Refresh tokens are tracked server-side in the `refresh_tokens` table (keyed by t
 - **Rotation**: each `POST /api/auth/refresh` marks the presented token as used and returns a new pair.
 - **Reuse detection**: presenting an already-rotated token after the grace period revokes the whole
   session (token family), since it indicates the token was copied.
-- **Logout**: `POST /api/auth/logout` with `{"refreshToken": "..."}` revokes that session; without a body,
-  all of the user's sessions are revoked.
+- **Transport**: the refresh token is sent as an HttpOnly, SameSite=Strict cookie (`refresh_token`, path
+  `/api/auth`, Secure over HTTPS), so JavaScript cannot read it. `POST /api/auth/refresh` needs no body.
+- **Logout**: `POST /api/auth/logout` revokes the session the cookie belongs to and clears the cookie;
+  with neither cookie nor body token, all of the user's sessions are revoked.
 - **Deactivated users**: a refresh by an inactive user revokes all of their sessions.
 
 Access tokens are not tracked; after logout or a role change they stay valid until they expire
