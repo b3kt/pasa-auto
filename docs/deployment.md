@@ -52,6 +52,7 @@ cp .env.example .env
 | `JWT_REFRESH_EXPIRATION_DAYS` | 7 | Refresh token lifetime (sliding) |
 | `PROXY_ADDRESS_FORWARDING` | false | Trust `X-Forwarded-*` headers; enable only behind a reverse proxy |
 | `TRUSTED_PROXIES` | 127.0.0.1 | Proxy addresses whose forwarding headers are honored |
+| `FLYWAY_VALIDATE_ON_MIGRATE` | true | Verify applied migrations match the shipped files |
 | `LOGIN_MAX_FAILURES_PER_USER` | 5 | Failed logins before an account is locked |
 | `LOGIN_MAX_FAILURES_PER_IP` | 20 | Failed logins before a client IP is locked |
 | `LOGIN_LOCKOUT_MINUTES` | 15 | Lock duration, counted from the last failure |

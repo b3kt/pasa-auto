@@ -14,6 +14,9 @@ public class PageRequest {
     @Max(value = 100, message = "Rows per page must not exceed 100")
     private int rowsPerPage = 10;
     
+    private static final java.util.regex.Pattern SAFE_SORT_FIELD =
+            java.util.regex.Pattern.compile("[A-Za-z_][A-Za-z0-9_]{0,62}(\\.[A-Za-z_][A-Za-z0-9_]{0,62})?");
+
     private String sortBy;
     private boolean descending = false;
     private String search;
@@ -47,8 +50,12 @@ public class PageRequest {
         return sortBy;
     }
 
+    /**
+     * The value ends up in an ORDER BY clause, so anything that is not a plain field reference
+     * (letters, digits, underscore, dot) is dropped and the default ordering is used instead.
+     */
     public void setSortBy(String sortBy) {
-        this.sortBy = sortBy;
+        this.sortBy = sortBy != null && SAFE_SORT_FIELD.matcher(sortBy).matches() ? sortBy : null;
     }
 
     public boolean isDescending() {

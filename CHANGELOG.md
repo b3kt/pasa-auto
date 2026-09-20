@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Changed**: With IP restriction enabled, an empty `allowed.ips` list now rejects all clock-ins instead of allowing all
 - **Changed**: Access tokens now expire after 30 minutes (`jwt.expiration.minutes`, was 2400 hours)
 - **Added**: Server-side refresh token store (`refresh_tokens`, migration V17) with rotation on use, reuse detection and revocation on logout / for deactivated users
+- **Fixed**: The `sortBy` query parameter went into ORDER BY unchecked; only plain field references are accepted now
+- **Added**: Security headers on every response (CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, HSTS)
+- **Changed**: Flyway now validates applied migrations by default (`FLYWAY_VALIDATE_ON_MIGRATE`) and `flyway clean` is disabled
 - **Fixed**: Error responses leaked internals (Hibernate/SQL text, entity names and ids, parse failures); unexpected failures now return a generic message with a reference id that is logged with the stack trace, missing records return "Data not found", and optimistic-lock conflicts return a retry message
 - **Fixed**: Swagger UI and the OpenAPI schema were served by packaged builds by default (`/swagger-ui`, `/openapi`); both are now excluded from packaged builds and remain available in dev mode (`OPENAPI_ENABLED`, `SWAGGER_ENABLED`, `SWAGGER_ALWAYS_INCLUDE` are build-time settings)
 - **Fixed**: JWT signing/verification keys and TLS certificates placed in `src/main/resources` were packaged into the jar and native image; `*.pem`, `*.p12`, `*.jks` and `*.key` are now excluded from packaging and `JWT_PRIVATE_KEY`/`JWT_PUBLIC_KEY` are required (no classpath fallback), validated at startup
