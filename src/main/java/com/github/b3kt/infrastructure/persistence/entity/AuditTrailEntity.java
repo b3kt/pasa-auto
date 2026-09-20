@@ -13,10 +13,12 @@ import java.util.Map;
 
 @Entity
 @Table(name = "tb_audit_trail", indexes = {
-    @Index(name = "idx_audit_trail_table_name", columnList = "table_name"),
+    // Kept in step with V19__add_audit_trail_indexes.sql, which also adds the trigram indexes
+    // the page's search needs - those have no JPA equivalent and live in the migration only.
     @Index(name = "idx_audit_trail_timestamp", columnList = "timestamp"),
     @Index(name = "idx_audit_trail_user_id", columnList = "user_id"),
-    @Index(name = "idx_audit_trail_record_id", columnList = "record_id")
+    @Index(name = "idx_audit_trail_table_name_record_id", columnList = "table_name, record_id"),
+    @Index(name = "idx_audit_trail_record_id_timestamp", columnList = "record_id, timestamp DESC")
 })
 @Getter
 @Setter

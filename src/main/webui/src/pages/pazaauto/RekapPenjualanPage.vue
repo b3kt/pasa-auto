@@ -3,6 +3,7 @@
     <q-splitter v-model="splitterModel" :limits="$q.screen.xs ? [100, 100] : [50, 100]"
                 style="height: calc(100vh - 100px)">
       <template v-slot:before>
+        <RekapPenjualanStats :stats="summaryStats" :loading="loadingSummary" class="q-px-sm q-pt-sm"/>
         <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
                       @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
                       :on-create="openCreateDialog"
@@ -27,6 +28,18 @@
                   </q-icon>
                 </template>
               </q-input>
+              <q-select v-model="statusPembayaranFilter" :options="statusPembayaranOptions"
+                        label="Status pembayaran" outlined dense emit-value map-options
+                        style="min-width: 190px">
+                <template v-slot:option="{ itemProps, opt }">
+                  <q-item v-bind="itemProps">
+                    <q-item-section>
+                      <q-badge v-if="opt.value" :color="getPaymentStatusColor(opt.value)">{{ opt.label }}</q-badge>
+                      <q-item-label v-else>{{ opt.label }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
             </div>
             <q-btn :icon="showDetail ? 'chevron_left' : 'chevron_right'" @click="showDetailForm()" class="q-ml-sm">
               <q-tooltip>
@@ -272,6 +285,7 @@ import { useDateFilter } from 'src/composables/useDateFilter'
 import GenericDialog from 'components/GenericDialog.vue'
 import {useKeyboardShortcuts} from 'src/composables/useKeyboardShortcuts'
 import GenericTable from "components/GenericTable.vue";
+import RekapPenjualanStats from 'components/RekapPenjualanStats.vue'
 import SPKDetailsEditor from 'components/SPKDetailsEditor.vue'
 import SPKCustomerInfo from 'components/SPKCustomerInfo.vue'
 import fakturTemplate from 'assets/template/faktur.template?raw'
@@ -312,6 +326,18 @@ const isNewCustomer = ref(false)
 const searchText = ref('')
 const filterStatus = ref(loadFilterFromStorage())
 const filterToday = ref(false)
+// Values as stored by determinePaymentStatus() when a payment is confirmed.
+// 'Semua' keeps the filter out of the query, so rows of every status - including the ones
+// still without a penjualan, which have no status at all - are listed.
+const statusPembayaranOptions = [
+  {label: 'Semua', value: ''},
+  {label: 'Lunas', value: 'LUNAS'},
+  {label: 'DP', value: 'DP'},
+  {label: 'Belum Lunas', value: 'BELUM_LUNAS'}
+]
+const statusPembayaranFilter = ref('')
+const summaryStats = ref(null)
+const loadingSummary = ref(false)
 const { dateRange, dateRangeText, clearDateRange } = useDateFilter('rekap-penjualan')
 const showDetail = ref(false)
 const rows = ref([])
@@ -549,12 +575,52 @@ const columns = [
 ]
 
 
+// Filters shared by the table query and the summary above it, so the two always describe
+// the same set of rows
+const filterParams = () => {
+  const params = {statusFilter: 'SELESAI'}
+
+  if (searchText.value) {
+    params.search = searchText.value
+  }
+  if (statusPembayaranFilter.value) {
+    params.statusPembayaran = statusPembayaranFilter.value
+  }
+  // Quasar returns YYYY/MM/DD format by default. Backend needs YYYY-MM-DD.
+  if (dateRange.value?.from) {
+    params.startDate = dateRange.value.from.replace(/\//g, '-')
+  }
+  if (dateRange.value?.to) {
+    params.endDate = dateRange.value.to.replace(/\//g, '-')
+  }
+
+  return params
+}
+
+const fetchSummary = async () => {
+  loadingSummary.value = true
+  try {
+    const response = await api.get('/api/pazaauto/rekap-penjualan/summary', {params: filterParams()})
+    if (response.data.success) {
+      summaryStats.value = response.data.data
+    }
+  } catch (error) {
+    // The table is the page's job; a missing summary shouldn't interrupt reading it
+    console.warn('Failed to fetch summary:', error)
+    summaryStats.value = null
+  } finally {
+    loadingSummary.value = false
+  }
+}
+
 const fetchSpk = async (paginationData = pagination.value) => {
   loading.value = true
+  fetchSummary()
   try {
     const params = {
       page: paginationData.page,
-      rowsPerPage: paginationData.rowsPerPage
+      rowsPerPage: paginationData.rowsPerPage,
+      ...filterParams()
     }
 
     // Add sorting if specified
@@ -563,26 +629,9 @@ const fetchSpk = async (paginationData = pagination.value) => {
       params.descending = paginationData.descending
     }
 
-    // Add search if specified
-    if (searchText.value) {
-      params.search = searchText.value
-    }
-
-    // Add status filter - always filter for OPEN status
-    params.statusFilter = 'SELESAI'
-
     // Add today filter if checked
     if (filterToday.value) {
       params.filterToday = true
-    }
-
-    // Add date range filter
-    if (dateRange.value?.from) {
-      // Quasar returns YYYY/MM/DD format by default. Backend needs YYYY-MM-DD.
-      params.startDate = dateRange.value.from.replace(/\//g, '-')
-    }
-    if (dateRange.value?.to) {
-      params.endDate = dateRange.value.to.replace(/\//g, '-')
     }
 
     const response = await api.get('/api/pazaauto/rekap-penjualan/paginated', {params})
@@ -1229,9 +1278,10 @@ const getStatusColor = (status) => {
 const getPaymentStatusColor = (status) => {
   if (!status) return 'grey'
   const statusLower = status.toLowerCase()
+  // 'BELUM_LUNAS' contains 'lunas', so the unpaid case has to be checked first
+  if (statusLower.includes('belum') || statusLower.includes('pending')) return 'red'
   if (statusLower.includes('lunas')) return 'green'
   if (statusLower.includes('dp')) return 'orange'
-  if (statusLower.includes('belum') || statusLower.includes('pending')) return 'red'
   return 'blue'
 }
 
@@ -1319,6 +1369,12 @@ watch(filterStatus, (newVal) => {
   // Save to localStorage
   saveFilterToStorage(newVal)
   // Reset to page 1 when filtering
+  pagination.value.page = 1
+  fetchSpk()
+})
+
+// Watch payment status filter changes
+watch(statusPembayaranFilter, () => {
   pagination.value.page = 1
   fetchSpk()
 })

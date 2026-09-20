@@ -2,7 +2,7 @@
   <q-layout view="lHh Lpr lFf">
     <q-header elevated>
       <q-toolbar>
-        <q-toolbar-title>
+        <q-toolbar-title class="text-uppercase text-bold" shrink>
           {{ $t('app.constant.app_name') }}
         </q-toolbar-title>
 

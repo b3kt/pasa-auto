@@ -3,6 +3,7 @@ package com.github.b3kt.application.service.pazaauto;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto;
+import com.github.b3kt.application.dto.pazaauto.RekapPenjualanSummaryDto;
 import com.github.b3kt.application.helper.QueryFilterBuilder;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkRepository;
@@ -67,6 +68,55 @@ public class SpkReportService {
         return new PageResponse<>(rows, pageRequest.getPage(), pageRequest.getRowsPerPage(), totalCount);
     }
 
+    /** Columns of the rekap penjualan report that RekapPenjualanDto reads off the joined penjualan row. */
+    private static final java.util.Set<String> PENJUALAN_SORT_FIELDS = java.util.Set.of(
+            "noPenjualan", "tanggalJamPenjualan", "grandTotal", "discount",
+            "uangDibayar", "kembalian", "metodePembayaran", "statusPembayaran");
+
+    /**
+     * Filters of the rekap penjualan report. The query joins two entities and noSpk / namaPelanggan
+     * exist on both, so every field names its alias: unqualified, Hibernate rejects them with
+     * "Ambiguous unqualified attribute reference".
+     */
+    private QueryFilterBuilder rekapFilterBuilder(PageRequest pageRequest) {
+        return QueryFilterBuilder.create()
+                .withSearch(pageRequest.getSearch(), "s.noSpk", "s.nopol", "s.namaKaryawan", "s.namaPelanggan")
+                .withStatusFilter(pageRequest.getStatusFilter(), "s.statusSpk")
+                .withStatusFilter(pageRequest.getStatusPembayaranFilter(), "p.statusPembayaran")
+                .withDateRange(pageRequest.getStartDate(), pageRequest.getEndDate(), "s.tanggalJamSpk");
+    }
+
+    /** Totals over every row the filters select, for the summary shown above the report table. */
+    public RekapPenjualanSummaryDto summarizeWithPenjualan(PageRequest pageRequest) {
+        String queryString = "SELECT count(s.id), count(distinct s.pelangganId), count(distinct s.nopol), " +
+                " coalesce(sum(p.uangDibayar), 0), " +
+                " avg(timestampdiff(second, s.startedAt, s.finishedAt)), " +
+                " count(case when s.startedAt is not null and s.finishedAt is not null then 1 end) " +
+                " FROM com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity s " +
+                " LEFT JOIN com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity p " +
+                "   ON s.noSpk = p.noSpk " +
+                " WHERE 1=1";
+
+        QueryFilterBuilder filterBuilder = rekapFilterBuilder(pageRequest);
+        queryString += filterBuilder.getQueryString().replace("1=1", "");
+
+        Query query = entityManager.createQuery(queryString);
+        Object[] params = filterBuilder.getParams();
+        for (int i = 0; i < params.length; i++) {
+            query.setParameter(i + 1, params[i]);
+        }
+
+        Object[] row = (Object[]) query.getSingleResult();
+        RekapPenjualanSummaryDto summary = new RekapPenjualanSummaryDto();
+        summary.setTotalSpk(((Number) row[0]).longValue());
+        summary.setTotalPelanggan(((Number) row[1]).longValue());
+        summary.setTotalKendaraan(((Number) row[2]).longValue());
+        summary.setTotalDibayar(row[3] == null ? java.math.BigDecimal.ZERO : new java.math.BigDecimal(row[3].toString()));
+        summary.setAvgCompletionSeconds(row[4] == null ? null : ((Number) row[4]).longValue());
+        summary.setCompletedCount(((Number) row[5]).longValue());
+        return summary;
+    }
+
     public PageResponse<RekapPenjualanDto> findPaginatedWithPenjualan(PageRequest pageRequest) {
         String baseQuery = "SELECT new com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto(s, p) " +
                 " FROM com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity s " +
@@ -77,10 +127,7 @@ public class SpkReportService {
                 " LEFT JOIN com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity p " +
                 "   ON s.noSpk = p.noSpk WHERE 1=1";
 
-        QueryFilterBuilder filterBuilder = QueryFilterBuilder.create()
-                .withSearch(pageRequest.getSearch())
-                .withStatusFilter(pageRequest.getStatusFilter(), "statusSpk")
-                .withDateRange(pageRequest.getStartDate(), pageRequest.getEndDate(), "tanggalJamSpk");
+        QueryFilterBuilder filterBuilder = rekapFilterBuilder(pageRequest);
 
         String filterClause = filterBuilder.getQueryString().replace("1=1", "");
         baseQuery += filterClause;
@@ -99,12 +146,8 @@ public class SpkReportService {
             String sortDirection = pageRequest.isDescending() ? "desc" : "asc";
             String sortField = pageRequest.getSortBy();
             
-            // Handle special case for grandTotal which comes from TbPenjualanEntity
-            if ("grandTotal".equals(sortField)) {
-                baseQuery += " order by p." + sortField + " " + sortDirection;
-            } else {
-                baseQuery += " order by s." + sortField + " " + sortDirection;
-            }
+            String alias = PENJUALAN_SORT_FIELDS.contains(sortField) ? "p." : "s.";
+            baseQuery += " order by " + alias + sortField + " " + sortDirection;
             
             query = entityManager.createQuery(baseQuery, RekapPenjualanDto.class);
             for (int i = 0; i < params.length; i++) {

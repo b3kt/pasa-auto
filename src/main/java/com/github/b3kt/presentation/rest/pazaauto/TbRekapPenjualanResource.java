@@ -65,6 +65,7 @@ public class TbRekapPenjualanResource {
             @QueryParam("descending") @DefaultValue("false") boolean descending,
             @QueryParam("search") String search,
             @QueryParam("statusFilter") String statusFilter,
+            @QueryParam("statusPembayaran") String statusPembayaran,
             @QueryParam("filterToday") @DefaultValue("false") boolean filterToday,
             @QueryParam("startDate") String startDate,
             @QueryParam("endDate") String endDate) {
@@ -74,12 +75,32 @@ public class TbRekapPenjualanResource {
         pageRequest.setDescending(descending);
         pageRequest.setSearch(search);
         pageRequest.setStatusFilter(statusFilter);
+        pageRequest.setStatusPembayaranFilter(statusPembayaran);
         pageRequest.setFilterToday(filterToday);
         pageRequest.setStartDate(startDate);
         pageRequest.setEndDate(endDate);
 
         PageResponse<RekapPenjualanDto> pageResponse = service.findPaginatedWithPenjualan(pageRequest);
         return Response.ok(ApiResponse.success(pageResponse)).build();
+    }
+
+    @GET
+    @Path("/summary")
+    public Response summary(
+            @QueryParam("search") String search,
+            @QueryParam("statusFilter") String statusFilter,
+            @QueryParam("statusPembayaran") String statusPembayaran,
+            @QueryParam("startDate") String startDate,
+            @QueryParam("endDate") String endDate) {
+
+        PageRequest pageRequest = new PageRequest();
+        pageRequest.setSearch(search);
+        pageRequest.setStatusFilter(statusFilter);
+        pageRequest.setStatusPembayaranFilter(statusPembayaran);
+        pageRequest.setStartDate(startDate);
+        pageRequest.setEndDate(endDate);
+
+        return Response.ok(ApiResponse.success(service.summarizeWithPenjualan(pageRequest))).build();
     }
 
     @GET

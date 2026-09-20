@@ -85,6 +85,7 @@ public class PageRequest {
     private boolean filterToday = false;
     private String jenisPembelianFilter;
     private String kategoriOperasionalFilter;
+    private String statusPembayaranFilter;
     private String startDate;
     private String endDate;
 
@@ -110,6 +111,14 @@ public class PageRequest {
 
     public void setKategoriOperasionalFilter(String kategoriOperasionalFilter) {
         this.kategoriOperasionalFilter = kategoriOperasionalFilter;
+    }
+
+    public String getStatusPembayaranFilter() {
+        return statusPembayaranFilter;
+    }
+
+    public void setStatusPembayaranFilter(String statusPembayaranFilter) {
+        this.statusPembayaranFilter = statusPembayaranFilter;
     }
 
     public String getStartDate() {

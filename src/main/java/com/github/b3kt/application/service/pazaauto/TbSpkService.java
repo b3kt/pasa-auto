@@ -3,6 +3,7 @@ package com.github.b3kt.application.service.pazaauto;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto;
+import com.github.b3kt.application.dto.pazaauto.RekapPenjualanSummaryDto;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkDetailEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkDetailRepository;
@@ -96,6 +97,10 @@ public class TbSpkService extends AbstractCrudService<TbSpkEntity, Long> {
 
     public PageResponse<RekapPenjualanDto> findPaginatedWithPenjualan(PageRequest pageRequest) {
         return reportService.findPaginatedWithPenjualan(pageRequest);
+    }
+
+    public RekapPenjualanSummaryDto summarizeWithPenjualan(PageRequest pageRequest) {
+        return reportService.summarizeWithPenjualan(pageRequest);
     }
 
     public List<TbSpkEntity> findUnprocessedSpk() {
