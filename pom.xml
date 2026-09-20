@@ -18,7 +18,7 @@
         <quarkus.platform.version>3.36.3</quarkus.platform.version>
         <skipITs>true</skipITs>
         <testcontainers.docker.socket.override>/var/run/docker.sock</testcontainers.docker.socket.override>
-        <surefire-plugin.version>3.5.4</surefire-plugin.version>
+        <surefire-plugin.version>3.6.0</surefire-plugin.version>
         <!-- Threads per core for the parallel unit-test execution; 1 means one thread per core. -->
         <unit.test.parallelism>1</unit.test.parallelism>
         <quarkus.application.version>${project.version}</quarkus.application.version>
