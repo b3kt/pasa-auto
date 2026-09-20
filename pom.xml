@@ -190,6 +190,14 @@
             <resource>
             <directory>src/main/resources</directory>
             <filtering>true</filtering>
+            <!-- Keys and certificates must never be packaged into the jar/native image; they are
+                 provided at runtime through JWT_PRIVATE_KEY / JWT_PUBLIC_KEY / CERT_FILE_PATH / KEY_FILE_PATH -->
+            <excludes>
+                <exclude>**/*.pem</exclude>
+                <exclude>**/*.p12</exclude>
+                <exclude>**/*.jks</exclude>
+                <exclude>**/*.key</exclude>
+            </excludes>
             </resource>
         </resources>
         <plugins>

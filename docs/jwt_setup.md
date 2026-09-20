@@ -57,12 +57,26 @@ Access tokens are not tracked; after logout or a role change they stay valid unt
 
 ### Environment Variables
 
+Both key locations are **required** and must point outside the source tree: keys are excluded from the
+packaged jar and native image, so there is no bundled fallback. Without them the application refuses to
+start (`Failed to load config value ... mp.jwt.verify.publickey.location`); if a key is set but unreadable,
+startup fails with a message naming the variable.
+
 Set in `.env`:
 
 ```bash
-JWT_PRIVATE_KEY=/path/to/privateKey-pkcs8.pem
-JWT_PUBLIC_KEY=/path/to/publicKey.pem
+JWT_PRIVATE_KEY=file:/etc/pasa-auto/keys/privateKey-pkcs8.pem
+JWT_PUBLIC_KEY=file:/etc/pasa-auto/keys/publicKey.pem
 JWT_ISSUER=https://your-domain.com
+```
+
+If you still keep keys in `src/main/resources`, move them out (they are no longer packaged, so
+`classpath:` locations will not resolve in a built application):
+
+```bash
+sudo mkdir -p /etc/pasa-auto/keys
+sudo mv src/main/resources/*.pem /etc/pasa-auto/keys/
+sudo chmod 600 /etc/pasa-auto/keys/*.pem
 ```
 
 ---

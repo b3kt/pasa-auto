@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Changed**: With IP restriction enabled, an empty `allowed.ips` list now rejects all clock-ins instead of allowing all
 - **Changed**: Access tokens now expire after 30 minutes (`jwt.expiration.minutes`, was 2400 hours)
 - **Added**: Server-side refresh token store (`refresh_tokens`, migration V17) with rotation on use, reuse detection and revocation on logout / for deactivated users
+- **Fixed**: JWT signing/verification keys and TLS certificates placed in `src/main/resources` were packaged into the jar and native image; `*.pem`, `*.p12`, `*.jks` and `*.key` are now excluded from packaging and `JWT_PRIVATE_KEY`/`JWT_PUBLIC_KEY` are required (no classpath fallback), validated at startup
 - **Added**: Brute-force protection for login and change-password: 5 failures per account or 20 per client IP lock further attempts (HTTP 429 with `Retry-After`) until 15 minutes after the last failure (`LOGIN_MAX_FAILURES_PER_USER`, `LOGIN_MAX_FAILURES_PER_IP`, `LOGIN_LOCKOUT_MINUTES`)
 - **Fixed**: Login revealed whether a username exists (a different message for inactive accounts before the password check, and faster rejection of unknown usernames)
 - **Removed**: Plaintext password matching; only bcrypt hashes are accepted. Migration V18 (requires the `pgcrypto` extension) bcrypt-hashes remaining plaintext passwords and flags those users to change their password

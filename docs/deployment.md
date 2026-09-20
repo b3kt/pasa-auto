@@ -243,6 +243,13 @@ GRANT ALL PRIVILEGES ON DATABASE pasa_auto TO pasa_user;
 
 ---
 
+## Keys and Certificates
+
+Keys are never packaged with the application. Keep them outside the source tree (for example
+`/etc/pasa-auto/keys`, readable only by the service user) and point the environment variables at them:
+`JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY`, `CERT_FILE_PATH`, `KEY_FILE_PATH`. `JWT_PRIVATE_KEY` and
+`JWT_PUBLIC_KEY` are required; the application refuses to start without them.
+
 ## Passwords
 
 - Passwords are stored as bcrypt hashes only. Migration V18 hashes any plaintext passwords left from older
