@@ -15,7 +15,7 @@
     "dist:windows": "electron-builder --win"
   },
   "devDependencies": {
-    "electron": "^42.0.0-alpha.5",
+    "electron": "^44.4.1",
     "electron-builder": "^24.9.1"
   },
   "build": {
