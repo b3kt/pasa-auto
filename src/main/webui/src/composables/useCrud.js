@@ -140,7 +140,8 @@ export function useCrud(config) {
                     message: isEditMode.value ? 'Item updated successfully' : 'Item created successfully'
                 })
                 showDialog.value = false
-                if (enableCache) await masterDataCache.invalidatePrefix(baseApiUrl)
+                // The axios response interceptor has already reset the browser caches of this
+                // endpoint and of its related entities, so this refetch hits the server
                 await fetchData()
                 const result = response.data.data
                 if (result) {
@@ -196,7 +197,6 @@ export function useCrud(config) {
                 })
                 showDeleteDialog.value = false
                 itemToDelete.value = null
-                if (enableCache) await masterDataCache.invalidatePrefix(baseApiUrl)
                 await fetchData()
                 onSuccess('delete')
                 return true

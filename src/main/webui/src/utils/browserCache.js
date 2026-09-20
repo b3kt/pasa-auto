@@ -326,6 +326,38 @@ class BrowserCache {
     return null
   }
 
+  // Remove every cached API response whose URL satisfies `matches(url)`
+  // (used to reset an endpoint's cache after a successful write)
+  removeApiResponsesMatching(matches) {
+    try {
+      const apiPrefix = this.cachePrefix + 'api-'
+      let removedCount = 0
+
+      Object.keys(localStorage)
+        .filter(key => key.startsWith(apiPrefix))
+        .forEach(key => {
+          try {
+            const item = JSON.parse(localStorage.getItem(key))
+            const url = item?.data?.url
+            if (typeof url === 'string' && matches(url)) {
+              localStorage.removeItem(key)
+              removedCount++
+            }
+          } catch (error) {
+            console.log('Failed to parse cache item:', error)
+            // Remove malformed items
+            localStorage.removeItem(key)
+            removedCount++
+          }
+        })
+
+      return removedCount
+    } catch (error) {
+      console.error('Failed to remove cached API responses:', error)
+      return 0
+    }
+  }
+
   // Generate cache key for API calls
   generateApiKey(url) {
     return 'api-' + btoa(url).replace(/[+/=]/g, '')

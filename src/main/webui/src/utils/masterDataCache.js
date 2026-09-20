@@ -87,20 +87,26 @@ class MasterDataCache {
     }
   }
 
-  // Remove all cache entries for a given baseApiUrl prefix
+  // Remove all cache entries for a given baseApiUrl prefix, including the endpoints below it
+  // ('/api/pazaauto/kendaraan' also clears '/api/pazaauto/kendaraan/merk/distinct')
   async invalidatePrefix(prefix) {
     try {
       const db = await this._getDb()
       return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readwrite')
         const idx = tx.objectStore(STORE_NAME).index('prefix')
-        const req = idx.openCursor(IDBKeyRange.only(prefix))
+        // Scan the keys starting with `prefix`, then keep only whole path segments
+        // so '/api/pazaauto/karyawan' doesn't clear '/api/pazaauto/karyawan-posisi'
+        const req = idx.openCursor(IDBKeyRange.bound(prefix, prefix + '\uffff'))
         let count = 0
         req.onsuccess = (e) => {
           const cursor = e.target.result
           if (cursor) {
-            cursor.delete()
-            count++
+            const entryPrefix = cursor.value?.prefix
+            if (entryPrefix === prefix || String(entryPrefix).startsWith(prefix + '/')) {
+              cursor.delete()
+              count++
+            }
             cursor.continue()
           } else {
             resolve(count)

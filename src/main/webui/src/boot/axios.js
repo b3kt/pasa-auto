@@ -4,6 +4,7 @@ import { Notify } from 'quasar'
 import syncService from '../services/syncService.js'
 import browserCache from '../utils/browserCache.js'
 import masterDataCache from '../utils/masterDataCache.js'
+import { invalidateRelatedCaches } from '../utils/cacheInvalidation.js'
 import { useAuthStore } from 'stores/auth-store'
 
 // ── Lookup cache config ────────────────────────────────────────────────────
@@ -24,35 +25,30 @@ const LOOKUP_CACHE_URLS = new Set([
   '/api/system-parameters'
 ])
 
-// When a write (POST/PUT/DELETE/PATCH) succeeds on a URL under a given prefix,
-// all cache entries with those prefixes are invalidated.
-const WRITE_INVALIDATION_MAP = [
-  { prefix: '/api/pazaauto/jasa',          invalidate: ['/api/pazaauto/jasa'] },
-  { prefix: '/api/pazaauto/barang',        invalidate: ['/api/pazaauto/barang', '/api/pazaauto/sparepart'] },
-  { prefix: '/api/pazaauto/supplier',      invalidate: ['/api/pazaauto/supplier'] },
-  // Saving a pelanggan may create a new merk / kendaraan master (typed-in merk or jenis)
-  { prefix: '/api/pazaauto/pelanggan',     invalidate: ['/api/pazaauto/pelanggan', '/api/pazaauto/kendaraan', '/api/pazaauto/kendaraan/merk/distinct', '/api/pazaauto/kendaraan/jenis/distinct', '/api/pazaauto/merk-kendaraan'] },
-  { prefix: '/api/pazaauto/karyawan',      invalidate: ['/api/pazaauto/karyawan', '/api/pazaauto/karyawan-posisi'] },
-  { prefix: '/api/pazaauto/karyawan-posisi', invalidate: ['/api/pazaauto/karyawan-posisi'] },
-  { prefix: '/api/pazaauto/kendaraan',     invalidate: ['/api/pazaauto/kendaraan', '/api/pazaauto/kendaraan/merk/distinct', '/api/pazaauto/kendaraan/jenis/distinct', '/api/pazaauto/merk-kendaraan'] },
-  { prefix: '/api/pazaauto/merk-kendaraan', invalidate: ['/api/pazaauto/merk-kendaraan', '/api/pazaauto/kendaraan', '/api/pazaauto/kendaraan/merk/distinct'] },
-  { prefix: '/api/pazaauto/spk',          invalidate: ['/api/pazaauto/spk', '/api/pazaauto/spk_detail'] },
-  { prefix: '/api/pazaauto/penjualan',    invalidate: ['/api/pazaauto/penjualan', '/api/pazaauto/penjualan_detail'] },
-  { prefix: '/api/pazaauto/pembelian',   invalidate: ['/api/pazaauto/pembelian', '/api/pazaauto/pembelian_detail', '/api/pazaauto/pembelian_barang_detail'] },
-  { prefix: '/api/pazaauto/absensi',      invalidate: ['/api/pazaauto/absensi', '/api/pazaauto/absensi_config'] },
-  { prefix: '/api/pazaauto/sparepart', invalidate: ['/api/pazaauto/sparepart'] },
-  { prefix: '/api/roles',              invalidate: ['/api/roles', '/api/permissions'] },
-  { prefix: '/api/users',              invalidate: ['/api/users'] },
-  { prefix: '/api/system-parameters', invalidate: ['/api/system-parameters'] }
-]
+// Endpoint path of a request, without any query string
+function requestPath(config) {
+  return String(config?.url || '').split('?')[0]
+}
 
-function getLookupInvalidationUrls(writeUrl) {
-  for (const { prefix, invalidate } of WRITE_INVALIDATION_MAP) {
-    if (writeUrl === prefix || writeUrl.startsWith(prefix + '/')) {
-      return invalidate
-    }
+// Cache key for a request: its path plus a stable (sorted) query string. Axios keeps query params
+// in `config.params`, so keying on the URL alone would let requests that differ only by their
+// params - a page, a filter, a parent id - share (and overwrite) one cache entry.
+function requestCacheUrl(config) {
+  const [path, inlineQuery = ''] = String(config?.url || '').split('?')
+  const search = new URLSearchParams(inlineQuery)
+  const params = config?.params
+
+  if (params instanceof URLSearchParams) {
+    params.forEach((value, key) => search.append(key, value))
+  } else if (params && typeof params === 'object') {
+    Object.entries(params)
+      .filter(([, value]) => value !== undefined && value !== null)
+      .forEach(([key, value]) => search.append(key, value))
   }
-  return []
+
+  search.sort()
+  const query = search.toString()
+  return query ? `${path}?${query}` : path
 }
 
 // Be careful when using SSR for cross-request state pollution
@@ -130,9 +126,9 @@ api.interceptors.request.use(
     }
 
     // Check IndexedDB lookup cache for specific GET endpoints
-    if (config.method?.toUpperCase() === 'GET' && LOOKUP_CACHE_URLS.has(config.url)) {
+    if (config.method?.toUpperCase() === 'GET' && LOOKUP_CACHE_URLS.has(requestPath(config))) {
       try {
-        const cached = await masterDataCache.get(config.url)
+        const cached = await masterDataCache.get(requestCacheUrl(config))
         if (cached) {
           config.adapter = () => Promise.resolve({
             data: cached,
@@ -151,7 +147,7 @@ api.interceptors.request.use(
 
     // Check browser cache first for GET requests
     if (config.method?.toUpperCase() === 'GET' && !navigator.onLine) {
-      const cachedResponse = browserCache.getCachedApiResponse(config.url)
+      const cachedResponse = browserCache.getCachedApiResponse(requestCacheUrl(config))
       if (cachedResponse) {
         Notify.create({
           type: 'info',
@@ -168,7 +164,7 @@ api.interceptors.request.use(
     if (!navigator.onLine && ['GET', 'HEAD'].includes(config.method?.toUpperCase())) {
       // Try to get cached data for GET requests when offline
       try {
-        const cacheKey = btoa(`${config.method}:${config.url}`).replace(/[+/=]/g, '')
+        const cacheKey = btoa(`${config.method}:${requestCacheUrl(config)}`).replace(/[+/=]/g, '')
         const cachedData = await syncService.storage.getData(cacheKey)
         
         if (cachedData) {
@@ -240,24 +236,23 @@ api.interceptors.response.use(
     // Store successful GET responses for cacheable lookup endpoints
     if (method === 'GET' && response.status === 200
         && !response.config?._fromLookupCache
-        && LOOKUP_CACHE_URLS.has(url)) {
+        && LOOKUP_CACHE_URLS.has(requestPath(response.config))) {
       try {
-        await masterDataCache.set(response.config.url, response.data, response.config.url)
+        // Keyed by URL + params, but grouped under the plain endpoint so invalidation still finds it
+        await masterDataCache.set(requestCacheUrl(response.config), response.data, requestPath(response.config))
       } catch (e) {
         console.warn('[axios] lookup cache write error:', e)
       }
     }
 
-    // Invalidate lookup + paginated caches on successful writes
+    // A successful write makes the cached responses of this endpoint - and of every entity
+    // related to it - stale, so drop them from every browser cache before the caller refetches
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)
         && response.status >= 200 && response.status < 300) {
       try {
-        const toInvalidate = getLookupInvalidationUrls(response.config?.url)
-        if (toInvalidate.length > 0) {
-          await Promise.all(toInvalidate.map(url => masterDataCache.invalidatePrefix(url)))
-        }
+        await invalidateRelatedCaches(url)
       } catch (e) {
-        console.warn('[axios] lookup cache invalidation error:', e)
+        console.warn('[axios] cache invalidation error:', e)
       }
     }
 
@@ -265,11 +260,12 @@ api.interceptors.response.use(
     if (method === 'GET' && response.status === 200) {
       try {
         // Cache in service worker storage
-        const cacheKey = btoa(`${response.config.method}:${response.config.url}`).replace(/[+/=]/g, '')
-        await syncService.storage.storeData(cacheKey, response.data, response.config.url)
+        const cacheUrl = requestCacheUrl(response.config)
+        const cacheKey = btoa(`${response.config.method}:${cacheUrl}`).replace(/[+/=]/g, '')
+        await syncService.storage.storeData(cacheKey, response.data, cacheUrl)
 
         // Cache in browser localStorage with longer TTL
-        await browserCache.cacheApiResponse(response.config.url, response, 60 * 60 * 1000) // 1 hour
+        await browserCache.cacheApiResponse(cacheUrl, response, 60 * 60 * 1000) // 1 hour
       } catch (error) {
         console.warn('Failed to cache response:', error)
       }
@@ -283,7 +279,7 @@ api.interceptors.response.use(
     // Handle network errors (offline)
     if (!error.response && error.code === 'NETWORK_ERROR') {
       // Try browser cache first
-      const cachedResponse = browserCache.getCachedApiResponse(originalRequest.url)
+      const cachedResponse = browserCache.getCachedApiResponse(requestCacheUrl(originalRequest))
       if (cachedResponse) {
         Notify.create({
           type: 'info',
@@ -296,7 +292,7 @@ api.interceptors.response.use(
       // Try to get cached data for GET requests from service worker
       if (originalRequest.method?.toUpperCase() === 'GET') {
         try {
-          const cacheKey = btoa(`${originalRequest.method}:${originalRequest.url}`).replace(/[+/=]/g, '')
+          const cacheKey = btoa(`${originalRequest.method}:${requestCacheUrl(originalRequest)}`).replace(/[+/=]/g, '')
           const cachedData = await syncService.storage.getData(cacheKey)
           
           if (cachedData) {

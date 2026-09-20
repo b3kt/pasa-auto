@@ -138,6 +138,32 @@ class OfflineStorage {
     })
   }
 
+  // Drop cached responses whose endpoint satisfies `matches(endpoint)`, keeping the rest of the offline data
+  async clearDataMatching(matches) {
+    if (!this.db) await this.initDB()
+
+    const transaction = this.db.transaction(['offlineData'], 'readwrite')
+    const store = transaction.objectStore('offlineData')
+
+    return new Promise((resolve, reject) => {
+      const request = store.openCursor()
+      let removedCount = 0
+
+      request.onsuccess = (event) => {
+        const cursor = event.target.result
+        if (!cursor) return resolve(removedCount)
+
+        const endpoint = cursor.value?.endpoint
+        if (typeof endpoint === 'string' && matches(endpoint)) {
+          cursor.delete()
+          removedCount++
+        }
+        cursor.continue()
+      }
+      request.onerror = () => reject(request.error)
+    })
+  }
+
   async clearAllData() {
     return this.clearStores(['offlineData', 'pendingRequests', 'syncStatus'])
   }
