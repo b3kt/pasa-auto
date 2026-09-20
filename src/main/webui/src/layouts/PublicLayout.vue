@@ -5,7 +5,7 @@
         <q-toolbar-title class="text-uppercase text-bold" shrink>
           {{ $t('app.constant.app_name') }}
         </q-toolbar-title>
-
+        <q-space />
         <div class="q-gutter-sm row items-center no-wrap">
           <span v-if="appVersion" class="text-caption q-mr-sm">v{{ appVersion }}</span>
           <span v-else class="text-caption q-mr-sm">v{{ $q.version }}</span>

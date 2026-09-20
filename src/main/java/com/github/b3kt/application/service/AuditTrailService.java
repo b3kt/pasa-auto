@@ -27,24 +27,28 @@ public class AuditTrailService {
         repository.persist(auditTrail);
     }
 
-    public List<AuditTrailEntity> findByTableName(String tableName) {
-        return repository.findByTableName(tableName);
+    public List<AuditTrailEntity> findByTableName(String tableName, int limit) {
+        return repository.findByTableName(tableName, limit);
     }
 
-    public List<AuditTrailEntity> findByUserId(Long userId) {
-        return repository.findByUserId(userId);
+    public List<AuditTrailEntity> findByUserId(Long userId, int limit) {
+        return repository.findByUserId(userId, limit);
     }
 
-    public List<AuditTrailEntity> findByRecordId(Long recordId) {
-        return repository.findByRecordId(recordId);
+    public List<AuditTrailEntity> findByRecordId(Long recordId, int limit) {
+        return repository.findByRecordId(recordId, limit);
     }
 
-    public List<AuditTrailEntity> findByTableNameAndRecordId(String tableName, Long recordId) {
-        return repository.findByTableNameAndRecordId(tableName, recordId);
+    public List<AuditTrailEntity> findByTableNameAndRecordId(String tableName, Long recordId, int limit) {
+        return repository.findByTableNameAndRecordId(tableName, recordId, limit);
     }
 
-public List<AuditTrailEntity> findAll() {
-        return repository.listAll();
+    public List<AuditTrailEntity> findRecent(int limit) {
+        return repository.listRecent(limit);
+    }
+
+    public List<String> findDistinctUsernames() {
+        return repository.findDistinctUsernames();
     }
 
     public PageResponse<AuditTrailEntity> findPaginated(PageRequest pageRequest) {

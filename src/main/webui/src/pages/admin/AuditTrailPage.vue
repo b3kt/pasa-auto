@@ -215,14 +215,10 @@ async function loadData() {
 
 async function loadUserOptions() {
   try {
-    const response = await api.get('/api/audit-trail')
-    if (response.data?.data) {
-      const users = new Set()
-      response.data.data.forEach(r => {
-        if (r.username) users.add(r.username)
-      })
-      userOptions.value = Array.from(users)
-    }
+    // A dedicated endpoint: building this list from the full audit trail meant loading the
+    // whole append-only table, which only grows
+    const response = await api.get('/api/audit-trail/usernames')
+    userOptions.value = response.data?.data || []
   } catch (e) {
     console.error('Failed to load users:', e)
   }

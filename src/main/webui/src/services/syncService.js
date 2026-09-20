@@ -125,6 +125,20 @@ class OfflineStorage {
     })
   }
 
+  // Write a pending request back under its existing id (used to persist the retry count)
+  async updatePendingRequest(requestData) {
+    if (!this.db) await this.initDB()
+
+    const transaction = this.db.transaction(['pendingRequests'], 'readwrite')
+    const store = transaction.objectStore('pendingRequests')
+
+    return new Promise((resolve, reject) => {
+      const request = store.put(requestData)
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
   async removePendingRequest(id) {
     if (!this.db) await this.initDB()
     
@@ -239,23 +253,29 @@ class SyncService {
       let failureCount = 0
 
       for (const request of pendingRequests) {
+        let success = false
         try {
-          const success = await this.syncRequest(request)
-          if (success) {
-            await this.storage.removePendingRequest(request.id)
-            successCount++
-          } else {
-            failureCount++
-            // Update retry count
-            request.retryCount = (request.retryCount || 0) + 1
-            if (request.retryCount >= this.retryAttempts) {
-              await this.storage.removePendingRequest(request.id)
-              console.error('Max retry attempts reached for request:', request.url)
-            }
-          }
+          success = await this.syncRequest(request)
         } catch (error) {
           console.error('Error syncing request:', error)
-          failureCount++
+        }
+
+        if (success) {
+          await this.storage.removePendingRequest(request.id)
+          successCount++
+          continue
+        }
+
+        failureCount++
+        // The new count has to be written back: the next run re-reads these records from
+        // IndexedDB, so incrementing only the in-memory copy would leave every request on
+        // attempt 1 forever and it would be retried, and kept, for good
+        request.retryCount = (request.retryCount || 0) + 1
+        if (request.retryCount >= this.retryAttempts) {
+          await this.storage.removePendingRequest(request.id)
+          console.error('Max retry attempts reached, dropping request:', request.url)
+        } else {
+          await this.storage.updatePendingRequest(request)
         }
       }
 
