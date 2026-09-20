@@ -10,6 +10,7 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -208,6 +209,79 @@ class AbstractCrudServiceTest {
         verify(repository).findAll();
         verify(query).page(any(Page.class));
         verify(query).list();
+    }
+
+
+    @Test
+    @DisplayName("Should sort ascending when a sort field is given")
+    void testFindPaginated_ascendingSort() {
+        PageRequest pageRequest = new PageRequest(1, 10);
+        pageRequest.setSortBy("name");
+        pageRequest.setDescending(false);
+        when(repository.findAll()).thenReturn(query);
+
+        service.findPaginated(pageRequest);
+
+        ArgumentCaptor<Sort> captor = ArgumentCaptor.forClass(Sort.class);
+        verify(repository).findAll(captor.capture());
+        assertEquals("name", captor.getValue().getColumns().getFirst().getName());
+        assertEquals(Sort.Direction.Ascending, captor.getValue().getColumns().getFirst().getDirection());
+    }
+
+    @Test
+    @DisplayName("Should sort descending when descending is set")
+    void testFindPaginated_descendingSort() {
+        PageRequest pageRequest = new PageRequest(1, 10);
+        pageRequest.setSortBy("name");
+        pageRequest.setDescending(true);
+        when(repository.findAll()).thenReturn(query);
+
+        service.findPaginated(pageRequest);
+
+        ArgumentCaptor<Sort> captor = ArgumentCaptor.forClass(Sort.class);
+        verify(repository).findAll(captor.capture());
+        assertEquals(Sort.Direction.Descending, captor.getValue().getColumns().getFirst().getDirection());
+    }
+
+    /** An empty sortBy is not a sort: sorting by "" would be rejected by the database. */
+    @Test
+    @DisplayName("Should ignore an empty sort field")
+    void testFindPaginated_emptySortBy() {
+        PageRequest pageRequest = new PageRequest(1, 10);
+        pageRequest.setSortBy("");
+        when(repository.findAll()).thenReturn(query);
+
+        service.findPaginated(pageRequest);
+
+        verify(repository).findAll();
+        verify(repository, never()).findAll(any(Sort.class));
+    }
+
+    @Test
+    @DisplayName("Should carry the requested page and size onto the response")
+    void testFindPaginated_echoesPaging() {
+        PageRequest pageRequest = new PageRequest(3, 25);
+        when(repository.findAll()).thenReturn(query);
+        when(query.count()).thenReturn(74L);
+
+        PageResponse<TestEntity> result = service.findPaginated(pageRequest);
+
+        assertEquals(3, result.getPage());
+        assertEquals(25, result.getRowsPerPage());
+        assertEquals(74L, result.getRowsNumber());
+
+        ArgumentCaptor<Page> captor = ArgumentCaptor.forClass(Page.class);
+        verify(query).page(captor.capture());
+        assertEquals(2, captor.getValue().index, "page 3 is zero-based index 2");
+        assertEquals(25, captor.getValue().size);
+    }
+
+    /** A no-op hook that subclasses override; the base implementation must stay harmless. */
+    @Test
+    @DisplayName("Should do nothing in the default setRelationships hook")
+    void testSetRelationships_defaultIsNoOp() {
+        assertDoesNotThrow(() -> service.setRelationships(testEntity));
+        verifyNoMoreInteractions(entityManager);
     }
 
     @Test

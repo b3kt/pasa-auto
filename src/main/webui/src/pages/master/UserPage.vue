@@ -10,8 +10,8 @@
               <div class="text-h6 q-mb-md">Admin | User</div>
             </template>
           <template v-slot:body-cell-active="props">
-              <q-badge :color="props.row.active ? 'green' : 'red'">
-                {{ props.row.active ? 'Active' : 'Inactive' }}
+              <q-badge :color="statusColor(props.row)">
+                {{ statusLabel(props.row) }}
               </q-badge>
           </template>
         </GenericTable>
@@ -60,6 +60,13 @@
             </q-select>
 
             <q-checkbox v-model="formData.active" label="Active" />
+
+            <div>
+              <q-checkbox v-model="formData.googleLoginEnabled" label="Izinkan login dengan Google" />
+              <div class="text-caption text-grey-7 q-ml-lg">
+                Akun ini boleh diklaim oleh akun Google dengan email yang sama dan sudah terverifikasi.
+              </div>
+            </div>
 
             <div class="row justify-end q-mt-md q-gutter-sm">
               <q-btn v-if="isEditMode" label="Hapus" color="negative" flat @click="confirmDelete(formData)" :loading="deleting" />
@@ -122,13 +129,27 @@ const newPassword = ref('')
 const karyawanOptions = ref([])
 const filteredKaryawanOptions = ref([])
 
+// A pending or rejected account is inactive too, so the status has to say which it is
+const statusLabel = (row) => {
+  if (row.approvalStatus === 'PENDING') return 'Menunggu persetujuan'
+  if (row.approvalStatus === 'REJECTED') return 'Ditolak'
+  return row.active ? 'Active' : 'Inactive'
+}
+
+const statusColor = (row) => {
+  if (row.approvalStatus === 'PENDING') return 'orange'
+  if (row.approvalStatus === 'REJECTED') return 'red'
+  return row.active ? 'green' : 'red'
+}
+
 // Form Data
 const formData = ref({
   id: null,
   username: '',
   email: '',
   karyawanId: null,
-  active: true
+  active: true,
+  googleLoginEnabled: false
 })
 
 const resetForm = () => {
@@ -137,7 +158,8 @@ const resetForm = () => {
     username: '',
     email: '',
     karyawanId: null,
-    active: true
+    active: true,
+    googleLoginEnabled: false
   }
   newPassword.value = ''
   showPassword.value = false

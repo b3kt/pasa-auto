@@ -21,6 +21,7 @@ const routes = [
     children: [
       { path: '', component: () => import('pages/IndexPage.vue') },
       { path: 'users', meta: { roles: ROLES_OWNER_ONLY }, component: () => import('pages/master/UserPage.vue') },
+      { path: 'users/pending', meta: { roles: ROLES_OWNER_ONLY }, component: () => import('pages/master/PendingApprovalPage.vue') },
       { path: 'roles', meta: { roles: ROLES_OWNER_ONLY }, component: () => import('pages/master/RolePage.vue') },
       { path: 'roles/:id', meta: { roles: ROLES_OWNER_ONLY }, component: () => import('pages/master/RoleViewPage.vue') },
       { path: 'system-parameters', meta: { roles: ROLES_OWNER_ONLY }, component: () => import('pages/master/SystemParameterPage.vue') },

@@ -896,4 +896,24 @@ class RbacServiceImplTest {
             assertThrows(IllegalArgumentException.class, () -> rbacService.removeRoleFromUser("admin", 999L));
         }
     }
+
+    /**
+     * Each of these looks the permission up and throws when it is gone. The message carries the id
+     * so a stale UI reference can be traced.
+     */
+    @Test
+    @DisplayName("updating, activating or deactivating an unknown permission is reported")
+    void testPermissionOperations_notFound() {
+        enableRbac();
+        when(permissionEntityRepository.findByIdOptional(404L)).thenReturn(java.util.Optional.empty());
+
+        for (org.junit.jupiter.api.function.Executable op : new org.junit.jupiter.api.function.Executable[]{
+                () -> rbacService.updatePermission(404L, "n", null, null, null),
+                () -> rbacService.activatePermission(404L),
+                () -> rbacService.deactivatePermission(404L)}) {
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, op);
+            assertTrue(ex.getMessage().contains("404"), ex.getMessage());
+            assertTrue(ex.getMessage().contains("Permission not found"), ex.getMessage());
+        }
+    }
 }

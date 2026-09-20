@@ -254,6 +254,13 @@ const linksList = computed(() => [
         link: '/users'
       },
       {
+        title: 'Persetujuan Akun',
+        caption: 'Akun Google menunggu persetujuan',
+        icon: 'how_to_reg',
+        visible: hasRole('Owner'),
+        link: '/users/pending'
+      },
+      {
         title: t('app.menu.admin.role.title'),
         caption: t('app.menu.admin.role.caption'),
         icon: 'group',

@@ -149,4 +149,26 @@ class SpkDetailServiceTest {
         assertEquals(1, result.size());
         assertEquals("SPK0105", result.get(0).getId().getNoSpk());
     }
+
+    /** A jasa with no price recorded must leave hargaMaster null rather than becoming zero. */
+    @Test
+    @DisplayName("saveDetails leaves hargaMaster null for a jasa with no price")
+    void testSaveDetails_jasaWithoutHarga() {
+        TbJasaEntity jasa = new TbJasaEntity();
+        jasa.setId(20L);
+        jasa.setHargaJasa(null);
+
+        TbSpkDetailEntity detail = new TbSpkDetailEntity();
+        detail.setJasaId(20L);
+        detail.setJumlah(1);
+
+        spk.setDetails(List.of(detail));
+        when(jasaRepository.findByIdOptional(20L)).thenReturn(Optional.of(jasa));
+        doNothing().when(detailRepository).persist(any(TbSpkDetailEntity.class));
+
+        service.saveDetails(spk);
+
+        assertNull(detail.getHargaMaster());
+        verify(detailRepository).persist(detail);
+    }
 }

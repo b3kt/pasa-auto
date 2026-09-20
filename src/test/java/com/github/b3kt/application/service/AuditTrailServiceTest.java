@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -158,5 +159,88 @@ class AuditTrailServiceTest {
     @DisplayName("getRepository returns the repository")
     void getRepository() {
         assertEquals(repository, auditTrailService.getRepository());
+    }
+
+    /** An empty search is not a filter; the unfiltered query must be used. */
+    @Test
+    @DisplayName("findPaginated treats an empty search as none")
+    void findPaginatedEmptySearch() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSearch("");
+        pr.setSortBy("");
+        when(repository.findAll(any(Sort.class))).thenReturn(query);
+        when(query.count()).thenReturn(2L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of(testEntity));
+
+        assertEquals(2, auditTrailService.findPaginated(pr).getRowsNumber());
+        verify(repository).findAll(any(Sort.class));
+        verify(repository, never()).find(anyString(), any(Sort.class), anyString());
+    }
+
+    /** With no sort asked for, the audit trail reads newest first. */
+    @Test
+    @DisplayName("findPaginated defaults to newest first")
+    void findPaginatedDefaultSort() {
+        PageRequest pr = new PageRequest(1, 10);
+        when(repository.findAll(any(Sort.class))).thenReturn(query);
+        when(query.count()).thenReturn(0L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of());
+
+        auditTrailService.findPaginated(pr);
+
+        ArgumentCaptor<Sort> captor = ArgumentCaptor.forClass(Sort.class);
+        verify(repository).findAll(captor.capture());
+        assertEquals("timestamp", captor.getValue().getColumns().getFirst().getName());
+        assertEquals(Sort.Direction.Descending, captor.getValue().getColumns().getFirst().getDirection());
+    }
+
+    @Test
+    @DisplayName("getRepository exposes the audit trail repository")
+    void getRepositoryExposesRepository() {
+        assertSame(repository, auditTrailService.getRepository());
+    }
+
+    /** A search combined with an explicit sort keeps both. */
+    @Test
+    @DisplayName("findPaginated sorts a filtered search ascending")
+    void findPaginatedSearchAscendingSort() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSearch("CREATE");
+        pr.setSortBy("username");
+        pr.setDescending(false);
+        when(repository.find(anyString(), any(Sort.class), anyString())).thenReturn(query);
+        when(query.count()).thenReturn(1L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of(testEntity));
+
+        assertEquals(1, auditTrailService.findPaginated(pr).getRowsNumber());
+
+        ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+        ArgumentCaptor<String> patternCaptor = ArgumentCaptor.forClass(String.class);
+        verify(repository).find(anyString(), sortCaptor.capture(), patternCaptor.capture());
+        assertEquals("username", sortCaptor.getValue().getColumns().getFirst().getName());
+        assertEquals(Sort.Direction.Ascending, sortCaptor.getValue().getColumns().getFirst().getDirection());
+        assertEquals("%create%", patternCaptor.getValue());
+    }
+
+    @Test
+    @DisplayName("findPaginated sorts a filtered search descending")
+    void findPaginatedSearchDescendingSort() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSearch("CREATE");
+        pr.setSortBy("username");
+        pr.setDescending(true);
+        when(repository.find(anyString(), any(Sort.class), anyString())).thenReturn(query);
+        when(query.count()).thenReturn(0L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of());
+
+        auditTrailService.findPaginated(pr);
+
+        ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+        verify(repository).find(anyString(), sortCaptor.capture(), anyString());
+        assertEquals(Sort.Direction.Descending, sortCaptor.getValue().getColumns().getFirst().getDirection());
     }
 }

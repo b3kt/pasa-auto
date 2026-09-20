@@ -235,9 +235,12 @@ registerRoute(
   })
 )
 
-// Fallback for offline navigation
+// Fallback for offline navigation.
+// The auth redirects (/api/auth/google/start and /callback) are navigations too, and they must
+// always go to the network: serving the offline page instead of Google's consent screen, or in
+// place of a slow token exchange, would strand the sign-in half way through.
 registerRoute(
-  ({ request }) => request.mode === 'navigate',
+  ({ request, url }) => request.mode === 'navigate' && !url.pathname.startsWith('/api/auth/'),
   async ({ request }) => {
     try {
       // Try network first

@@ -424,4 +424,18 @@ class TbSpkServiceTest {
             assertSame(repository, spkService.getRepository());
         }
     }
+
+    /** A thin delegation, but the one the rekap summary endpoint goes through. */
+    @Test
+    @DisplayName("summarizeWithPenjualan delegates to the report service")
+    void testSummarizeWithPenjualan_delegates() {
+        PageRequest pr = new PageRequest(1, 10);
+        com.github.b3kt.application.dto.pazaauto.RekapPenjualanSummaryDto summary =
+                new com.github.b3kt.application.dto.pazaauto.RekapPenjualanSummaryDto();
+        summary.setTotalSpk(9L);
+        when(reportService.summarizeWithPenjualan(pr)).thenReturn(summary);
+
+        assertSame(summary, spkService.summarizeWithPenjualan(pr));
+        verify(reportService).summarizeWithPenjualan(pr);
+    }
 }

@@ -407,4 +407,79 @@ class TbAbsensiServiceTest {
         assertEquals(1L, summary.get("daysCuti"));
         assertEquals(0, summary.get("totalOvertimeMinutes"));
     }
+
+    @Test
+    @DisplayName("getAttendanceHistory sorts descending on an explicit field")
+    void testGetAttendanceHistory_descendingCustomSort() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setDescending(true);
+        pr.setSortBy("jamMasuk");
+
+        when(repository.count(anyString(), any(java.util.HashMap.class))).thenReturn(0L);
+        when(repository.find(anyString(), any(Sort.class), any(java.util.HashMap.class))).thenReturn(panacheQuery);
+        when(panacheQuery.page(any(Page.class))).thenReturn(panacheQuery);
+        when(panacheQuery.list()).thenReturn(List.of());
+
+        absensiService.getAttendanceHistory(null, null, null, null, pr);
+
+        ArgumentCaptor<Sort> captor = ArgumentCaptor.forClass(Sort.class);
+        verify(repository).find(anyString(), captor.capture(), any(java.util.HashMap.class));
+        assertEquals("jamMasuk", captor.getValue().getColumns().getFirst().getName());
+        assertEquals(Sort.Direction.Descending, captor.getValue().getColumns().getFirst().getDirection());
+    }
+
+    /** An empty status is not a filter; it must not narrow the query to status = "". */
+    @Test
+    @DisplayName("getAttendanceHistory ignores an empty status filter")
+    void testGetAttendanceHistory_emptyStatus() {
+        PageRequest pr = new PageRequest(1, 10);
+
+        when(repository.count(anyString(), any(java.util.HashMap.class))).thenReturn(0L);
+        when(repository.find(anyString(), any(Sort.class), any(java.util.HashMap.class))).thenReturn(panacheQuery);
+        when(panacheQuery.page(any(Page.class))).thenReturn(panacheQuery);
+        when(panacheQuery.list()).thenReturn(List.of());
+
+        absensiService.getAttendanceHistory(null, null, null, "", pr);
+
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(repository).find(captor.capture(), any(Sort.class), any(java.util.HashMap.class));
+        assertFalse(captor.getValue().contains("status"), captor.getValue());
+    }
+
+    /**
+     * A row can exist for today without a clock-in (created by another path), and closing it would
+     * record a jamKeluar with no jamMasuk.
+     */
+    @Test
+    @DisplayName("clockOut refuses a record that was never clocked in")
+    void testClockOut_recordWithoutJamMasuk() {
+        TbAbsensiEntity notClockedIn = new TbAbsensiEntity();
+        notClockedIn.setKaryawanId(1L);
+        notClockedIn.setTanggal(LocalDate.now());
+        notClockedIn.setJamMasuk(null);
+        stubFindByKaryawanAndDate(notClockedIn);
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> absensiService.clockOut(1L, "192.168.1.1", "Office"));
+        assertTrue(ex.getMessage().contains("Must clock in"), ex.getMessage());
+    }
+
+    /** The inherited CRUD path routes through getRepository and setEntityId. */
+    @Test
+    @DisplayName("the inherited CRUD hooks reach the absensi repository")
+    void testInheritedCrudHooks() {
+        TbAbsensiEntity entity = new TbAbsensiEntity();
+        entity.setKaryawanId(1L);
+        when(repository.findByIdOptional(7L)).thenReturn(java.util.Optional.of(entity));
+
+        assertSame(entity, absensiService.findById(7L));
+
+        jakarta.persistence.EntityManager em = mock(jakarta.persistence.EntityManager.class);
+        when(repository.getEntityManager()).thenReturn(em);
+        when(em.merge(any(TbAbsensiEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        TbAbsensiEntity updated = new TbAbsensiEntity();
+        absensiService.update(7L, updated);
+        assertEquals(7L, updated.getId(), "setEntityId stamps the id onto the entity before merging");
+    }
 }

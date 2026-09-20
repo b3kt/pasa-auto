@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -240,5 +241,45 @@ class LoggingInterceptorTest {
         interceptor.filter(requestContext);
 
         verify(requestContext).setProperty(eq("request.body"), eq(""));
+    }
+
+    /** A non-JSON or absent entity is not logged, and must not blow up the response filter. */
+    @Test
+    @DisplayName("response filter logs no body for a non-JSON or absent entity")
+    void testResponseFilter_nonJsonOrAbsentEntity() throws IOException {
+        when(responseContext.getStatus()).thenReturn(200);
+
+        when(responseContext.getEntity()).thenReturn(null);
+        interceptor.filter(requestContext, responseContext);
+
+        when(responseContext.getEntity()).thenReturn("plain text");
+        when(responseContext.getMediaType()).thenReturn(null);
+        interceptor.filter(requestContext, responseContext);
+
+        when(responseContext.getMediaType()).thenReturn(MediaType.valueOf("text/plain"));
+        interceptor.filter(requestContext, responseContext);
+
+        verify(tracingLogger, times(3)).logResponse(eq("GET"), eq("/api/test"), eq(200), eq(""));
+    }
+
+    /** Reading the entity must never turn a successful response into a failure. */
+    @Test
+    @DisplayName("response filter swallows a failure to read the entity")
+    void testResponseFilter_entityReadFails() throws IOException {
+        when(responseContext.getStatus()).thenReturn(200);
+        when(responseContext.getEntity()).thenThrow(new IllegalStateException("entity already consumed"));
+
+        assertDoesNotThrow(() -> interceptor.filter(requestContext, responseContext));
+        verify(tracingLogger).logResponse(eq("GET"), eq("/api/test"), eq(200), eq(""));
+    }
+
+    /** Without an OpenTelemetry Tracer bean the interceptor falls back to a no-op tracer. */
+    @Test
+    @DisplayName("an unresolvable tracer falls back to the no-op tracer")
+    void testUnresolvableTracer() throws IOException {
+        when(tracerInstance.isResolvable()).thenReturn(false);
+
+        assertDoesNotThrow(() -> interceptor.filter(requestContext));
+        verify(tracerInstance, never()).get();
     }
 }

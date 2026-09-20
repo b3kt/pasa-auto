@@ -91,6 +91,15 @@ class SummaryServiceTest {
             assertEquals(50L, dto.getTotalItemTerjual());
         }
 
+        /** Empty entries from a trailing or doubled comma must be dropped, not queried for. */
+        @Test
+        @DisplayName("Should drop empty entries from the status filter")
+        void getSummaryStatusFilterWithEmptyEntries() {
+            stubEmptyQueries();
+            assertNotNull(summaryService.getSummary("2024-01-01", "2024-01-31", "LUNAS,,DP,"));
+            assertNotNull(summaryService.getSummary("2024-01-01", "2024-01-31", " , "));
+        }
+
         @Test
         @DisplayName("Should parse status filter with multiple values")
         void getSummaryWithStatusFilter() {

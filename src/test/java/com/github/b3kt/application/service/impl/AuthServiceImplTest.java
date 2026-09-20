@@ -387,6 +387,27 @@ class AuthServiceImplTest {
             verify(refreshTokenService).revokeAllForUser("admin");
         }
 
+        /** A blank cookie is as good as no cookie: there is no session to single out. */
+        @Test
+        @DisplayName("Should revoke all sessions when the refresh token is blank")
+        void testLogout_blankRefreshToken() {
+            authService.logout("admin", "   ");
+
+            verify(refreshTokenService).revokeAllForUser("admin");
+            verify(refreshTokenService, never()).revokeSession(any());
+        }
+
+        @Test
+        @DisplayName("Should ignore an unreadable refresh token")
+        void testLogout_invalidRefreshToken() {
+            when(jwtTokenService.validateRefreshToken("bad")).thenReturn(null);
+
+            authService.logout("admin", "bad");
+
+            verify(refreshTokenService, never()).revokeSession(any());
+            verify(refreshTokenService, never()).revokeAllForUser(anyString());
+        }
+
         @Test
         @DisplayName("Should not revoke another user's session")
         void testLogout_otherUsersToken() {
@@ -416,5 +437,106 @@ class AuthServiceImplTest {
             assertEquals("admin", result.getUsername());
             verify(jwtTokenService).extractUserInfo(jwt);
         }
+    }
+
+    /**
+     * The entry point Google sign-in uses: a session is issued on the strength of the verified
+     * identity alone, with no password involved. Everything that guards a password login still has
+     * to hold here, or Google would become a way around it.
+     */
+    @Nested
+    @DisplayName("issueSessionFor")
+    class IssueSessionForTests {
+
+        @BeforeEach
+        void stubTokens() {
+            when(jwtTokenService.generateToken(any(User.class))).thenReturn("token123");
+            when(refreshTokenService.issue(any(User.class))).thenReturn("refresh123");
+            when(jwtTokenService.getTokenExpirationSeconds()).thenReturn(1800L);
+        }
+
+        @Test
+        @DisplayName("Should issue a session without a password")
+        void testIssueSessionFor_success() {
+            when(userRepository.findByUsername("admin")).thenReturn(Optional.of(testUser));
+
+            LoginResponse result = authService.issueSessionFor("admin");
+
+            assertEquals("token123", result.getToken());
+            assertEquals("refresh123", result.getRefreshToken());
+            assertEquals("admin", result.getUsername());
+            assertEquals(1800L, result.getExpiresIn());
+            verify(passwordEncoder, never()).matches(anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("Should attach the karyawan profile when there is one")
+        void testIssueSessionFor_attachesKaryawan() {
+            when(userRepository.findByUsername("admin")).thenReturn(Optional.of(testUser));
+            TbKaryawanEntity karyawan = new TbKaryawanEntity();
+            karyawan.setId(42L);
+            karyawan.setNamaKaryawan("Budi Santoso");
+            when(tbKaryawanRepository.findByUsername("admin")).thenReturn(Optional.of(karyawan));
+
+            authService.issueSessionFor("admin");
+
+            assertEquals(42L, testUser.getKaryawanId());
+            assertEquals("Budi Santoso", testUser.getKaryawanNama());
+        }
+
+        @Test
+        @DisplayName("Should issue a session for a user with no karyawan profile")
+        void testIssueSessionFor_noKaryawan() {
+            when(userRepository.findByUsername("admin")).thenReturn(Optional.of(testUser));
+            when(tbKaryawanRepository.findByUsername("admin")).thenReturn(Optional.empty());
+
+            assertNotNull(authService.issueSessionFor("admin"));
+            assertNull(testUser.getKaryawanId());
+        }
+
+        @Test
+        @DisplayName("Should refuse an unknown user")
+        void testIssueSessionFor_unknownUser() {
+            when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+            AuthenticationException ex = assertThrows(AuthenticationException.class,
+                    () -> authService.issueSessionFor("ghost"));
+            assertEquals("User account is not active", ex.getMessage());
+            verify(refreshTokenService, never()).issue(any(User.class));
+        }
+
+        /** A deactivated account must not be reachable through Google either. */
+        @Test
+        @DisplayName("Should refuse an account that cannot authenticate")
+        void testIssueSessionFor_inactiveUser() {
+            testUser.setActive(false);
+            when(userRepository.findByUsername("admin")).thenReturn(Optional.of(testUser));
+
+            assertThrows(AuthenticationException.class, () -> authService.issueSessionFor("admin"));
+            verify(refreshTokenService, never()).issue(any(User.class));
+        }
+    }
+
+    /** A password change re-issues the session, so the karyawan profile has to be re-attached. */
+    @Test
+    @DisplayName("changePassword re-attaches the karyawan profile to the new session")
+    void testChangePassword_attachesKaryawan() {
+        testUser.setPasswordHash("hashed_password");
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches("old-password", "hashed_password")).thenReturn(true);
+        when(passwordEncoder.encode("New-password-1")).thenReturn("new_hash");
+        when(jwtTokenService.generateToken(any(User.class))).thenReturn("new_token");
+        when(refreshTokenService.issue(any(User.class))).thenReturn("new_refresh");
+
+        TbKaryawanEntity karyawan = new TbKaryawanEntity();
+        karyawan.setId(42L);
+        karyawan.setNamaKaryawan("Budi Santoso");
+        when(tbKaryawanRepository.findByUsername("admin")).thenReturn(Optional.of(karyawan));
+
+        authService.changePassword("admin", "old-password", "New-password-1");
+
+        assertEquals(42L, testUser.getKaryawanId());
+        assertEquals("Budi Santoso", testUser.getKaryawanNama());
+        verify(refreshTokenService).revokeAllForUser("admin");
     }
 }

@@ -34,6 +34,9 @@ public class UserService extends AbstractCrudService<UserEntity, Long> {
     @Inject
     RefreshTokenService refreshTokenService;
 
+    @Inject
+    AuditTrailService auditTrailService;
+
     @Override
     protected void setEntityId(UserEntity entity, Long id) {
         entity.setId(id);
@@ -67,6 +70,10 @@ public class UserService extends AbstractCrudService<UserEntity, Long> {
         existing.setEmail(entity.getEmail());
         existing.setKaryawanId(entity.getKaryawanId());
         existing.setActive(entity.isActive());
+        // The admin's switch for letting a matching verified Google email claim this account.
+        // approvalStatus and googleSub are deliberately not copied: they are READ_ONLY over the API
+        // and only the approve/reject endpoints may change them.
+        existing.setGoogleLoginEnabled(entity.isGoogleLoginEnabled());
 
         boolean endSessions = !entity.isActive();
         if (entity.getPassword() != null && !entity.getPassword().isBlank()) {
@@ -79,6 +86,50 @@ public class UserService extends AbstractCrudService<UserEntity, Long> {
             refreshTokenService.revokeAllForUser(previousUsername);
         }
         return existing;
+    }
+
+    /**
+     * Accounts a Google sign-in created and nobody has looked at yet.
+     */
+    public java.util.List<UserEntity> findPending() {
+        return repository.list("approvalStatus", com.github.b3kt.domain.model.ApprovalStatus.PENDING);
+    }
+
+    /**
+     * Approve a pending account. It gets no roles here - an Owner assigns those afterwards, so
+     * approving alone never grants access to anything.
+     */
+    @Transactional
+    public UserEntity approve(Long id) {
+        UserEntity user = findById(id);
+        user.setApprovalStatus(com.github.b3kt.domain.model.ApprovalStatus.APPROVED);
+        user.setActive(true);
+        recordApprovalAudit(user, "APPROVE");
+        return user;
+    }
+
+    /**
+     * Reject a pending account, ending any session it might hold.
+     */
+    @Transactional
+    public UserEntity reject(Long id) {
+        UserEntity user = findById(id);
+        user.setApprovalStatus(com.github.b3kt.domain.model.ApprovalStatus.REJECTED);
+        user.setActive(false);
+        refreshTokenService.revokeAllForUser(user.getUsername());
+        recordApprovalAudit(user, "REJECT");
+        return user;
+    }
+
+    private void recordApprovalAudit(UserEntity user, String action) {
+        // The users table has no audit trigger (V12 covers only tb_* tables), so this is recorded here
+        com.github.b3kt.infrastructure.persistence.entity.AuditTrailEntity audit =
+                new com.github.b3kt.infrastructure.persistence.entity.AuditTrailEntity();
+        audit.setTableName("users");
+        audit.setAction(action);
+        audit.setRecordId(user.getId());
+        audit.setUsername(user.getUsername());
+        auditTrailService.record(audit);
     }
 
     @Override

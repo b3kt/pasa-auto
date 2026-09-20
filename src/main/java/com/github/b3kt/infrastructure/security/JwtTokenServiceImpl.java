@@ -51,7 +51,10 @@ public class JwtTokenServiceImpl implements JwtTokenService {
         io.smallrye.jwt.build.JwtClaimsBuilder jwtBuilder = Jwt.issuer(issuer)
                 .upn(user.getUsername())
                 .subject(user.getUsername())
-                .groups(user.getRoles().stream().map(RoleEntity::getName).collect(Collectors.toSet()))
+                // An approved account can legitimately have no roles yet - a Google sign-in assigns
+                // none - so this must tolerate an empty or absent set rather than throwing
+                .groups(user.getRoles() == null ? java.util.Set.<String>of()
+                        : user.getRoles().stream().map(RoleEntity::getName).collect(Collectors.toSet()))
                 .claim("email", user.getEmail())
                 .expiresIn(Duration.ofMinutes(expirationMinutes));
 

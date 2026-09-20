@@ -15,7 +15,6 @@ public final class PasswordPolicy {
     private static final int TEMPORARY_LENGTH = 12;
     /** No look-alike characters (0/O, 1/l/I), so a temporary password can be read out or copied by hand. */
     private static final String TEMPORARY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     private PasswordPolicy() {
     }
@@ -36,9 +35,13 @@ public final class PasswordPolicy {
     }
 
     public static String generateTemporary() {
+        // Created per call, never cached in a static field: a static SecureRandom is constructed during
+        // native image generation and snapshotted into the image heap with its seed, so every deployed
+        // binary would generate the same sequence of temporary passwords.
+        SecureRandom random = new SecureRandom();
         StringBuilder password = new StringBuilder(TEMPORARY_LENGTH);
         for (int i = 0; i < TEMPORARY_LENGTH; i++) {
-            password.append(TEMPORARY_ALPHABET.charAt(RANDOM.nextInt(TEMPORARY_ALPHABET.length())));
+            password.append(TEMPORARY_ALPHABET.charAt(random.nextInt(TEMPORARY_ALPHABET.length())));
         }
         return password.toString();
     }

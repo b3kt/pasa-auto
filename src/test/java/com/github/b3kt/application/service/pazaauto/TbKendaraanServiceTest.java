@@ -13,6 +13,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import jakarta.persistence.EntityNotFoundException;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -255,5 +257,173 @@ class TbKendaraanServiceTest {
         assertEquals("Sedan", result.getJenis());
         assertEquals(99L, result.getId());
         verify(em).merge(any(TbKendaraanEntity.class));
+    }
+
+    // --- findPaginated: the four filter combinations ---------------------------------------
+
+    private void stubPaginateQuery() {
+        when(query.count()).thenReturn(1L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of(kendaraan));
+    }
+
+    @Test
+    @DisplayName("findPaginated filters by merk and search together")
+    void testFindPaginated_merkAndSearch() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSearch("Rush");
+        when(repository.find(anyString(), any(Object[].class))).thenReturn(query);
+        stubPaginateQuery();
+
+        PageResponse<TbKendaraanEntity> result = service.findPaginated(pr, 5L);
+
+        assertEquals(1, result.getRowsNumber());
+        ArgumentCaptor<Object[]> params = ArgumentCaptor.forClass(Object[].class);
+        verify(repository).find(
+                eq("merkId = ?1 and (lower(jenis) like ?2 or lower(model) like ?2)"), params.capture());
+        assertArrayEquals(new Object[]{5L, "%rush%"}, params.getValue());
+    }
+
+    @Test
+    @DisplayName("findPaginated filters by merk alone")
+    void testFindPaginated_merkOnly() {
+        PageRequest pr = new PageRequest(1, 10);
+        when(repository.find(anyString(), any(Object[].class))).thenReturn(query);
+        stubPaginateQuery();
+
+        service.findPaginated(pr, 5L);
+
+        ArgumentCaptor<Object[]> params = ArgumentCaptor.forClass(Object[].class);
+        verify(repository).find(eq("merkId = ?1"), params.capture());
+        assertArrayEquals(new Object[]{5L}, params.getValue());
+    }
+
+    @Test
+    @DisplayName("findPaginated searches jenis and merk when no merk is chosen")
+    void testFindPaginated_searchOnly() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSearch("Toyota");
+        when(repository.find(anyString(), any(Object[].class))).thenReturn(query);
+        stubPaginateQuery();
+
+        service.findPaginated(pr);
+
+        ArgumentCaptor<Object[]> params = ArgumentCaptor.forClass(Object[].class);
+        verify(repository).find(eq("lower(jenis) like ?1 or lower(merk) like ?1"), params.capture());
+        assertArrayEquals(new Object[]{"%toyota%"}, params.getValue());
+    }
+
+    @Test
+    @DisplayName("findPaginated lists everything with no merk and no search")
+    void testFindPaginated_noFilters() {
+        PageRequest pr = new PageRequest(1, 10);
+        when(repository.findAll()).thenReturn(query);
+        stubPaginateQuery();
+
+        assertEquals(1, service.findPaginated(pr).getRowsNumber());
+        verify(repository, never()).find(anyString(), any(Object[].class));
+    }
+
+    /** An empty search string is not a search. */
+    @Test
+    @DisplayName("findPaginated treats an empty search as none")
+    void testFindPaginated_emptySearch() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSearch("");
+        when(repository.findAll()).thenReturn(query);
+        stubPaginateQuery();
+
+        service.findPaginated(pr, null);
+
+        verify(repository).findAll();
+    }
+
+    // --- applyMerk -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("create refuses a kendaraan with no merk chosen")
+    void testCreate_missingMerkId() {
+        TbKendaraanEntity entity = new TbKendaraanEntity();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.create(entity));
+        assertEquals("Merk harus dipilih", ex.getMessage());
+        verify(repository, never()).persist(any(TbKendaraanEntity.class));
+    }
+
+    /** A merkId pointing at a merk that no longer exists is a dangling reference. */
+    @Test
+    @DisplayName("create reports a merkId that does not resolve")
+    void testCreate_unknownMerkId() {
+        TbKendaraanEntity entity = new TbKendaraanEntity();
+        entity.setMerkId(99L);
+        when(merkRepository.findByIdOptional(99L)).thenReturn(Optional.empty());
+
+        EntityNotFoundException ex = assertThrows(EntityNotFoundException.class,
+                () -> service.create(entity));
+        assertTrue(ex.getMessage().contains("99"), ex.getMessage());
+    }
+
+    // --- delete ----------------------------------------------------------------------------
+
+    /** Deleting a kendaraan that owners still point at would orphan their history. */
+    @Test
+    @DisplayName("delete is blocked while pelanggan_kendaraan rows reference it")
+    void testDelete_blockedByReferences() {
+        when(pelangganKendaraanRepository.findByKendaraanIdOrderByTanggalMulai(1L))
+                .thenReturn(List.of(new com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganKendaraanEntity()));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> service.delete(1L));
+        assertTrue(ex.getMessage().contains("still referenced"), ex.getMessage());
+        verify(repository, never()).deleteById(anyLong());
+    }
+
+    @Test
+    @DisplayName("delete succeeds when nothing references the kendaraan")
+    void testDelete_unreferenced() {
+        when(pelangganKendaraanRepository.findByKendaraanIdOrderByTanggalMulai(1L)).thenReturn(List.of());
+        when(repository.deleteById(1L)).thenReturn(true);
+
+        assertDoesNotThrow(() -> service.delete(1L));
+        verify(repository).deleteById(1L);
+    }
+
+    // --- findOrCreateByMerkJenis -----------------------------------------------------------
+
+    /** A null jenis becomes empty rather than a null column. */
+    @Test
+    @DisplayName("findOrCreateByMerkJenis creates the row, normalising a null jenis")
+    void testFindOrCreateByMerkJenis_createsWithNullJenis() {
+        when(repository.findByMerkAndJenis("Toyota", null)).thenReturn(Optional.empty());
+        TbMerkKendaraanEntity merk = new TbMerkKendaraanEntity();
+        merk.setId(3L);
+        merk.setNama("TOYOTA");
+        when(merkRepository.findOrCreateByNama("Toyota")).thenReturn(merk);
+
+        jakarta.persistence.EntityManager em = mock(jakarta.persistence.EntityManager.class);
+        when(repository.getEntityManager()).thenReturn(em);
+        when(em.merge(any(TbKendaraanEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        TbKendaraanEntity created = service.findOrCreateByMerkJenis("Toyota", null);
+
+        assertEquals(3L, created.getMerkId());
+        assertEquals("TOYOTA", created.getMerk());
+        assertEquals("", created.getJenis());
+    }
+
+    @Test
+    @DisplayName("findOrCreateByMerkJenis trims the jenis it is given")
+    void testFindOrCreateByMerkJenis_trimsJenis() {
+        when(repository.findByMerkAndJenis("Toyota", "  SUV  ")).thenReturn(Optional.empty());
+        TbMerkKendaraanEntity merk = new TbMerkKendaraanEntity();
+        merk.setId(3L);
+        merk.setNama("TOYOTA");
+        when(merkRepository.findOrCreateByNama("Toyota")).thenReturn(merk);
+
+        jakarta.persistence.EntityManager em = mock(jakarta.persistence.EntityManager.class);
+        when(repository.getEntityManager()).thenReturn(em);
+        when(em.merge(any(TbKendaraanEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertEquals("SUV", service.findOrCreateByMerkJenis("Toyota", "  SUV  ").getJenis());
     }
 }

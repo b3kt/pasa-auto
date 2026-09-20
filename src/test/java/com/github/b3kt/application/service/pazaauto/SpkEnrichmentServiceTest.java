@@ -267,4 +267,22 @@ class SpkEnrichmentServiceTest {
         verify(pelangganRepository).find(eq("nopol"), (Object) eq("NONEXISTENT"));
         verify(pelangganQuery).firstResult();
     }
+
+    /**
+     * A blank nopol is not a plate. Looking it up would match whatever row happens to carry a
+     * blank plate, binding the SPK to an unrelated customer.
+     */
+    @Test
+    @DisplayName("Should not resolve ownership from a blank nopol")
+    void testEnrich_blankNopol() {
+        TbSpkEntity target = createTarget(null, "   ");
+        // The legacy lookup still runs; it is the ownership lookup that must be skipped.
+        when(pelangganRepository.find(eq("nopol"), (Object) eq("   "))).thenReturn(pelangganQuery);
+        when(pelangganQuery.firstResult()).thenReturn(null);
+
+        enrichmentService.enrich(target);
+
+        assertNull(target.getNamaPelanggan());
+        verifyNoInteractions(ownershipRepository);
+    }
 }

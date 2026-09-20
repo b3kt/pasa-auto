@@ -27,6 +27,17 @@
             <q-btn label="Login" type="submit" color="primary" class="full-width" :loading="loading" />
           </div>
         </q-form>
+
+        <template v-if="googleEnabled">
+          <div class="row items-center q-my-md">
+            <q-separator class="col" />
+            <div class="col-auto q-px-sm text-caption text-grey-7">atau</div>
+            <q-separator class="col" />
+          </div>
+
+          <q-btn outline color="primary" class="full-width" icon="login" label="Masuk dengan Google"
+                 :loading="googleRedirecting" @click="signInWithGoogle" />
+        </template>
       </q-card-section>
     </q-card>
   </q-page>
@@ -37,6 +48,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from 'stores/auth-store'
 import { useQuasar } from 'quasar'
+import { api } from 'boot/axios'
 
 const router = useRouter()
 const route = useRoute()
@@ -47,6 +59,18 @@ const username = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
+const googleEnabled = ref(false)
+const googleRedirecting = ref(false)
+
+// Outcomes the Google callback redirects back with
+const GOOGLE_MESSAGES = {
+  pending: 'Akun Anda sudah dibuat dan menunggu persetujuan administrator.',
+  rejected: 'Akun Google Anda ditolak. Hubungi administrator.',
+  disabled: 'Akun Anda dinonaktifkan. Hubungi administrator.',
+  link_required: 'Email ini sudah terdaftar. Minta administrator mengaktifkan login Google untuk akun tersebut.',
+  denied: 'Login dengan Google dibatalkan.',
+  error: 'Login dengan Google gagal. Silakan coba lagi.'
+}
 
 // Clear all authentication data and cookies on mount
 const clearAuthData = () => {
@@ -68,6 +92,11 @@ onMounted(async () => {
   // Hash routing: the query lives in the route, not in window.location.search
   const { expired, message: logoutMessage } = route.query
 
+  if (route.query.google) {
+    await handleGoogleReturn(route.query.google)
+    return
+  }
+
   if (expired === 'true') {
     clearAuthData()
 
@@ -85,7 +114,52 @@ onMounted(async () => {
     // Clean URL
     router.replace({ path: '/login' })
   }
+
+  await loadGoogleConfig()
 })
+
+const loadGoogleConfig = async () => {
+  try {
+    const response = await api.get('/api/auth/config')
+    googleEnabled.value = response.data?.data?.googleLoginEnabled === true
+  } catch (err) {
+    // The button simply stays hidden if the backend can't be asked
+    console.warn('Failed to read auth config:', err)
+  }
+}
+
+const signInWithGoogle = () => {
+  googleRedirecting.value = true
+  // A full-page navigation, not an XHR: the browser has to follow the redirect to Google. It also
+  // has to be a navigation rather than a form post, since the CSP sets form-action 'self'.
+  window.location.href = `${api.defaults.baseURL.replace(/\/$/, '')}/api/auth/google/start`
+}
+
+const handleGoogleReturn = async (outcome) => {
+  router.replace({ path: '/login' })
+
+  if (outcome !== 'ok') {
+    error.value = GOOGLE_MESSAGES[outcome] || GOOGLE_MESSAGES.error
+    await loadGoogleConfig()
+    return
+  }
+
+  loading.value = true
+  try {
+    // Wipe the previous user's session and caches first: the refresh cookie now belongs to the
+    // Google user, and clearSession() is what clears the cached data of whoever was here before.
+    await authStore.clearSession()
+    if (await authStore.refreshAccessToken()) {
+      $q.notify({ type: 'positive', message: 'Login successful!' })
+      router.push('/')
+    } else {
+      error.value = GOOGLE_MESSAGES.error
+      await loadGoogleConfig()
+    }
+  } finally {
+    loading.value = false
+  }
+}
 
 const onSubmit = async () => {
   error.value = ''

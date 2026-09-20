@@ -1,6 +1,11 @@
 package com.github.b3kt.application.service.pazaauto;
 
+import com.github.b3kt.application.dto.PageRequest;
+import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbMerkKendaraanEntity;
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
+import io.quarkus.panache.common.Page;
+import jakarta.persistence.EntityNotFoundException;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKendaraanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbMerkKendaraanRepository;
 import jakarta.persistence.EntityManager;
@@ -8,10 +13,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,6 +34,9 @@ class TbMerkKendaraanServiceTest {
 
     @Mock
     TbKendaraanRepository kendaraanRepository;
+
+    @Mock
+    PanacheQuery<TbMerkKendaraanEntity> query;
 
     @InjectMocks
     TbMerkKendaraanService service;
@@ -124,5 +134,81 @@ class TbMerkKendaraanServiceTest {
         service.delete(1L);
 
         verify(repository).deleteById(1L);
+    }
+
+    @Test
+    @DisplayName("findPaginated searches nama case-insensitively")
+    void testFindPaginated_withSearch() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSearch("Hon");
+        when(repository.find(anyString(), any(Object[].class))).thenReturn(query);
+        when(query.count()).thenReturn(1L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of(honda));
+
+        PageResponse<TbMerkKendaraanEntity> result = service.findPaginated(pr);
+
+        assertEquals(1, result.getRowsNumber());
+        ArgumentCaptor<Object[]> params = ArgumentCaptor.forClass(Object[].class);
+        verify(repository).find(eq("lower(nama) like ?1"), params.capture());
+        assertEquals("%hon%", params.getValue()[0], "the search term is lowercased for the like");
+    }
+
+    @Test
+    @DisplayName("findPaginated without a search lists everything")
+    void testFindPaginated_noSearch() {
+        PageRequest pr = new PageRequest(1, 10);
+        when(repository.findAll()).thenReturn(query);
+        when(query.count()).thenReturn(3L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of(honda));
+
+        assertEquals(3, service.findPaginated(pr).getRowsNumber());
+        verify(repository, never()).find(anyString(), any(Object[].class));
+    }
+
+    @Test
+    @DisplayName("findPaginated treats an empty search as no search")
+    void testFindPaginated_emptySearch() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSearch("");
+        when(repository.findAll()).thenReturn(query);
+        when(query.count()).thenReturn(0L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of());
+
+        service.findPaginated(pr);
+
+        verify(repository).findAll();
+        verify(repository, never()).find(anyString(), any(Object[].class));
+    }
+
+    @Test
+    @DisplayName("requireById returns the merk when it exists")
+    void testRequireById_found() {
+        when(repository.findByIdOptional(1L)).thenReturn(Optional.of(honda));
+
+        assertSame(honda, service.requireById(1L));
+    }
+
+    /** A null id means the form was submitted without picking a merk, which is a user error. */
+    @Test
+    @DisplayName("requireById rejects a null id as a missing choice")
+    void testRequireById_nullId() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.requireById(null));
+        assertEquals("Merk harus dipilih", ex.getMessage());
+        verify(repository, never()).findByIdOptional(any());
+    }
+
+    /** An id that is set but absent is a dangling reference, not a missing choice. */
+    @Test
+    @DisplayName("requireById reports an unknown id as not found")
+    void testRequireById_unknownId() {
+        when(repository.findByIdOptional(99L)).thenReturn(Optional.empty());
+
+        EntityNotFoundException ex = assertThrows(EntityNotFoundException.class,
+                () -> service.requireById(99L));
+        assertTrue(ex.getMessage().contains("99"), ex.getMessage());
     }
 }

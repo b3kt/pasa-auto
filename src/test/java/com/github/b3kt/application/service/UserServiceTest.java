@@ -21,6 +21,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import com.github.b3kt.domain.model.ApprovalStatus;
+import com.github.b3kt.infrastructure.persistence.entity.AuditTrailEntity;
+import org.mockito.ArgumentCaptor;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -46,6 +50,9 @@ class UserServiceTest {
 
     @Mock
     RefreshTokenService refreshTokenService;
+
+    @Mock
+    AuditTrailService auditTrailService;
 
     @InjectMocks
     UserService userService;
@@ -293,5 +300,205 @@ class UserServiceTest {
             var result = userService.findPaginated(pr);
             assertEquals(1, result.getRowsNumber());
         }
+    }
+
+    /**
+     * The approval workflow behind Google sign-in: an account the callback created is unusable
+     * until an Owner looks at it.
+     */
+    @Nested
+    @DisplayName("pending approval")
+    class PendingApproval {
+
+        private UserEntity pending;
+
+        @BeforeEach
+        void setUp() {
+            pending = new UserEntity();
+            pending.setId(7L);
+            pending.setUsername("budi");
+            pending.setApprovalStatus(ApprovalStatus.PENDING);
+            pending.setActive(false);
+            when(repository.findByIdOptional(7L)).thenReturn(Optional.of(pending));
+        }
+
+        @Test
+        @DisplayName("findPending lists only the accounts nobody has looked at")
+        void findPendingQueriesByStatus() {
+            when(repository.list("approvalStatus", ApprovalStatus.PENDING)).thenReturn(List.of(pending));
+
+            assertEquals(List.of(pending), userService.findPending());
+            verify(repository).list("approvalStatus", ApprovalStatus.PENDING);
+        }
+
+        /** Approving must not grant access by itself - an Owner assigns roles as a separate act. */
+        @Test
+        @DisplayName("approve activates the account but grants no roles")
+        void approveActivatesWithoutRoles() {
+            UserEntity result = userService.approve(7L);
+
+            assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
+            assertTrue(result.isActive());
+            assertTrue(result.getRoles().isEmpty(), "approving alone must not grant access to anything");
+            verify(refreshTokenService, never()).revokeAllForUser(anyString());
+        }
+
+        @Test
+        @DisplayName("reject deactivates the account and ends any session it holds")
+        void rejectRevokesSessions() {
+            UserEntity result = userService.reject(7L);
+
+            assertEquals(ApprovalStatus.REJECTED, result.getApprovalStatus());
+            assertFalse(result.isActive());
+            verify(refreshTokenService).revokeAllForUser("budi");
+        }
+
+        /** The users table has no audit trigger - V12 covers only tb_* tables - so this is the only record. */
+        @Test
+        @DisplayName("both decisions are written to the audit trail")
+        void decisionsAreAudited() {
+            userService.approve(7L);
+            userService.reject(7L);
+
+            ArgumentCaptor<AuditTrailEntity> captor = ArgumentCaptor.forClass(AuditTrailEntity.class);
+            verify(auditTrailService, times(2)).record(captor.capture());
+
+            List<AuditTrailEntity> audits = captor.getAllValues();
+            assertEquals(List.of("APPROVE", "REJECT"), audits.stream().map(AuditTrailEntity::getAction).toList());
+            audits.forEach(audit -> {
+                assertEquals("users", audit.getTableName());
+                assertEquals(7L, audit.getRecordId());
+                assertEquals("budi", audit.getUsername());
+            });
+        }
+
+        @Test
+        @DisplayName("an unknown id is reported rather than silently ignored")
+        void unknownIdIsRejected() {
+            when(repository.findByIdOptional(404L)).thenReturn(Optional.empty());
+
+            assertThrows(EntityNotFoundException.class, () -> userService.approve(404L));
+            assertThrows(EntityNotFoundException.class, () -> userService.reject(404L));
+            verifyNoInteractions(auditTrailService);
+        }
+    }
+
+    /** The sorted paths re-run the query; a sorted search must keep its filter. */
+    @Nested
+    @DisplayName("findPaginated sorting")
+    class FindPaginatedSorting {
+
+        @Test
+        @DisplayName("sorts a filtered search without losing the filter")
+        void sortedSearch() {
+            PageRequest pr = new PageRequest(1, 10);
+            pr.setSearch("Budi");
+            pr.setSortBy("username");
+            pr.setDescending(true);
+            when(repository.find(anyString(), any(Object[].class))).thenReturn(query);
+            when(query.page(any(Page.class))).thenReturn(query);
+            when(repository.find(anyString(), any(Sort.class), any(Object[].class))).thenReturn(sortedQuery);
+            when(sortedQuery.count()).thenReturn(2L);
+            when(sortedQuery.page(any(Page.class))).thenReturn(sortedQuery);
+            when(sortedQuery.list()).thenReturn(List.of(testEntity));
+
+            assertEquals(2L, userService.findPaginated(pr).getRowsNumber());
+
+            ArgumentCaptor<Object[]> params = ArgumentCaptor.forClass(Object[].class);
+            verify(repository).find(anyString(), any(Sort.class), params.capture());
+            assertEquals("%budi%", params.getValue()[0], "the search filter survives the sort");
+        }
+
+        @Test
+        @DisplayName("treats an empty search and sort as unset")
+        void emptySearchAndSort() {
+            PageRequest pr = new PageRequest(1, 10);
+            pr.setSearch("");
+            pr.setSortBy("");
+            when(repository.findAll()).thenReturn(query);
+            when(query.count()).thenReturn(1L);
+            when(query.page(any(Page.class))).thenReturn(query);
+            when(query.list()).thenReturn(List.of(testEntity));
+
+            assertEquals(1L, userService.findPaginated(pr).getRowsNumber());
+            verify(repository).findAll();
+            verify(repository, never()).findAll(any(Sort.class));
+        }
+    }
+
+    /**
+     * setEntityId is required by AbstractCrudService, but this class overrides both create and
+     * update and neither routes through it - update mutates the managed entity in place. It is
+     * exercised directly so the contract still holds if a future change starts relying on it.
+     */
+    @Test
+    @DisplayName("setEntityId stamps the id onto the entity")
+    void setEntityIdStampsId() {
+        UserEntity entity = new UserEntity();
+
+        userService.setEntityId(entity, 7L);
+
+        assertEquals(7L, entity.getId());
+    }
+
+    /** Deactivating a user ends their sessions, as does resetting their password. */
+    @Test
+    @DisplayName("update ends sessions when the user is deactivated")
+    void updateDeactivationEndsSessions() {
+        UserEntity existing = new UserEntity();
+        existing.setId(7L);
+        existing.setUsername("budi");
+        existing.setActive(true);
+        when(repository.findByIdOptional(7L)).thenReturn(Optional.of(existing));
+
+        UserEntity incoming = new UserEntity();
+        incoming.setUsername("budi");
+        incoming.setActive(false);
+
+        userService.update(7L, incoming);
+
+        verify(refreshTokenService).revokeAllForUser("budi");
+    }
+
+    /** A rename must revoke under the OLD username, or the old sessions survive. */
+    @Test
+    @DisplayName("update revokes under the previous username when renaming")
+    void updateRevokesUnderPreviousUsername() {
+        UserEntity existing = new UserEntity();
+        existing.setId(7L);
+        existing.setUsername("budi");
+        existing.setActive(true);
+        when(repository.findByIdOptional(7L)).thenReturn(Optional.of(existing));
+
+        UserEntity incoming = new UserEntity();
+        incoming.setUsername("budi.baru");
+        incoming.setActive(true);
+        incoming.setPassword("New-password-1");
+
+        userService.update(7L, incoming);
+
+        assertTrue(existing.isMustChangePassword(), "a reset password must be changed at next login");
+        verify(refreshTokenService).revokeAllForUser("budi");
+        verify(refreshTokenService, never()).revokeAllForUser("budi.baru");
+    }
+
+    /** An active user with no password change keeps their sessions. */
+    @Test
+    @DisplayName("update keeps sessions when nothing security-relevant changed")
+    void updateKeepsSessions() {
+        UserEntity existing = new UserEntity();
+        existing.setId(7L);
+        existing.setUsername("budi");
+        existing.setActive(true);
+        when(repository.findByIdOptional(7L)).thenReturn(Optional.of(existing));
+
+        UserEntity incoming = new UserEntity();
+        incoming.setUsername("budi");
+        incoming.setActive(true);
+        incoming.setPassword("   ");
+
+        userService.update(7L, incoming);
+
+        verify(refreshTokenService, never()).revokeAllForUser(anyString());
     }
 }

@@ -19,6 +19,17 @@ public interface AuthService {
      * @throws com.github.b3kt.domain.exception.AuthenticationException if authentication fails
      */
     LoginResponse login(String username, String password);
+
+    /**
+     * Issue a session for a user who has already been authenticated by other means - today, by
+     * Google. Performs the same karyawan lookup, refresh-token family creation and token minting
+     * as {@link #login}, without a password check.
+     *
+     * @param username the username of an already-authenticated, approved, active user
+     * @return LoginResponse with JWT token and user info
+     * @throws com.github.b3kt.domain.exception.AuthenticationException if the account may not authenticate
+     */
+    LoginResponse issueSessionFor(String username);
     
     /**
      * Get user information from JWT token.

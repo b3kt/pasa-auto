@@ -76,7 +76,10 @@ const api = axios.create({
 })
 
 // Auth endpoints that must never carry (or try to renew) an access token
-const PUBLIC_AUTH_URLS = ['/api/auth/login', '/api/auth/refresh']
+// /api/auth/config is read on the login page before anyone is signed in. It has to be here:
+// with proactive authentication on, a stale token in localStorage would make it 401 and tear the
+// session down before @PermitAll is ever consulted.
+const PUBLIC_AUTH_URLS = ['/api/auth/login', '/api/auth/refresh', '/api/auth/config']
 const isPublicAuthUrl = (url) => PUBLIC_AUTH_URLS.some(p => url.startsWith(p))
 
 // Set by the boot function below; used to send the user to the login page when the session ends

@@ -20,6 +20,12 @@ public class User {
     private boolean active;
     private boolean mustChangePassword;
 
+    /**
+     * Defaults to APPROVED so every account that predates Google sign-in, and every account an
+     * admin creates, behaves exactly as before. Only the Google callback sets PENDING.
+     */
+    private ApprovalStatus approvalStatus = ApprovalStatus.APPROVED;
+
     private transient Long karyawanId;
     private transient String karyawanNama;
 
@@ -49,6 +55,9 @@ public class User {
      * Business logic: Check if user can authenticate
      */
     public boolean canAuthenticate() {
-        return active && username != null && !username.isEmpty();
+        return active
+                && ApprovalStatus.APPROVED.equals(approvalStatus)
+                && username != null
+                && !username.isEmpty();
     }
 }

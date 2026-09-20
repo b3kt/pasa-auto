@@ -54,13 +54,19 @@ public class AuthResource {
     @Inject
     SecurityIdentity identity;
 
-    static final String REFRESH_COOKIE = "refresh_token";
+    static final String REFRESH_COOKIE = AuthCookies.REFRESH_COOKIE;
 
     @Inject
     LoginAttemptService loginAttemptService;
 
     @Inject
     com.github.b3kt.infrastructure.security.JwtTokenService jwtTokenService;
+
+    @Inject
+    AuthCookies authCookies;
+
+    @Inject
+    com.github.b3kt.application.properties.GoogleAuthProperties googleAuthProperties;
 
     @Context
     HttpServerRequest request;
@@ -114,6 +120,17 @@ public class AuthResource {
                     .entity(ApiResponse.<LoginResponse>error(e.getMessage()))
                     .build();
         }
+    }
+
+    /**
+     * Public client configuration: what the login page needs before anyone has signed in.
+     */
+    @GET
+    @Path("/config")
+    @PermitAll
+    public Response config() {
+        return Response.ok(ApiResponse.success(java.util.Map.of(
+                "googleLoginEnabled", googleAuthProperties.enabled()))).build();
     }
 
     @POST
@@ -298,15 +315,6 @@ public class AuthResource {
     }
 
     private NewCookie refreshCookie(String value, long maxAgeSeconds) {
-        boolean https = request != null && "https".equalsIgnoreCase(request.scheme());
-        return new NewCookie.Builder(REFRESH_COOKIE)
-                .value(value == null ? "" : value)
-                // Only sent to the auth endpoints that need it
-                .path("/api/auth")
-                .httpOnly(true)
-                .secure(https)
-                .sameSite(NewCookie.SameSite.STRICT)
-                .maxAge((int) maxAgeSeconds)
-                .build();
+        return authCookies.refresh(request, value, maxAgeSeconds);
     }
 }

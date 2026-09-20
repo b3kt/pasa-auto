@@ -77,6 +77,33 @@ class UserTest {
     }
 
     @Test
+    @DisplayName("canAuthenticate returns false while approval is pending")
+    void canAuthenticatePendingApproval() {
+        User user = new User();
+        user.setActive(true);
+        user.setUsername("user");
+        user.setApprovalStatus(ApprovalStatus.PENDING);
+        // One gate covers password login, refresh and change-password alike
+        assertFalse(user.canAuthenticate());
+    }
+
+    @Test
+    @DisplayName("canAuthenticate returns false when the account was rejected")
+    void canAuthenticateRejected() {
+        User user = new User();
+        user.setActive(true);
+        user.setUsername("user");
+        user.setApprovalStatus(ApprovalStatus.REJECTED);
+        assertFalse(user.canAuthenticate());
+    }
+
+    @Test
+    @DisplayName("accounts default to approved, so nothing that predates Google sign-in changes")
+    void approvalDefaultsToApproved() {
+        assertEquals(ApprovalStatus.APPROVED, new User().getApprovalStatus());
+    }
+
+    @Test
     @DisplayName("Setters and getters work correctly")
     void settersAndGetters() {
         User user = new User();

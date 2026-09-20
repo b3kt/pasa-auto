@@ -70,6 +70,21 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    public LoginResponse issueSessionFor(String username) {
+        User user = userRepository.findByUsername(username)
+                .filter(User::canAuthenticate)
+                .orElseThrow(() -> new AuthenticationException("User account is not active"));
+
+        tbKaryawanRepository.findByUsername(username)
+                .ifPresent(karyawan -> {
+                    user.setKaryawanId(karyawan.getId());
+                    user.setKaryawanNama(karyawan.getNamaKaryawan());
+                });
+
+        return issueTokens(user, refreshTokenService.issue(user));
+    }
+
+    @Override
     public UserInfo getUserInfo(JsonWebToken jwt) {
         return jwtTokenService.extractUserInfo(jwt);
     }

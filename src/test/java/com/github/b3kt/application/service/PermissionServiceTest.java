@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -214,5 +215,88 @@ class PermissionServiceTest {
             var result = permissionService.findPaginated(pr);
             assertEquals(1, result.getRowsNumber());
         }
+    }
+
+    /**
+     * The sorted paths re-run the query with a Sort, keeping the search filter when there is one.
+     * A sorted search that dropped the filter would quietly widen the result set.
+     */
+    @Test
+    @DisplayName("findPaginated sorts a filtered search without losing the filter")
+    void findPaginated_sortedSearch() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSearch("Admin");
+        pr.setSortBy("name");
+        pr.setDescending(true);
+        when(repository.find(anyString(), any(Object[].class))).thenReturn(query);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(repository.find(anyString(), any(Sort.class), any(Object[].class))).thenReturn(sortedQuery);
+        when(sortedQuery.count()).thenReturn(4L);
+        when(sortedQuery.page(any(Page.class))).thenReturn(sortedQuery);
+        when(sortedQuery.list()).thenReturn(List.of(testEntity));
+
+        PageResponse<PermissionEntity> result = permissionService.findPaginated(pr);
+
+        assertEquals(4L, result.getRowsNumber());
+        ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+        ArgumentCaptor<Object[]> paramCaptor = ArgumentCaptor.forClass(Object[].class);
+        verify(repository).find(anyString(), sortCaptor.capture(), paramCaptor.capture());
+        assertEquals(Sort.Direction.Descending, sortCaptor.getValue().getColumns().getFirst().getDirection());
+        assertEquals("%admin%", paramCaptor.getValue()[0], "the search filter survives the sort");
+    }
+
+    @Test
+    @DisplayName("findPaginated sorts ascending when descending is not set")
+    void findPaginated_sortedSearchAscending() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSearch("Admin");
+        pr.setSortBy("name");
+        pr.setDescending(false);
+        when(repository.find(anyString(), any(Object[].class))).thenReturn(query);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(repository.find(anyString(), any(Sort.class), any(Object[].class))).thenReturn(sortedQuery);
+        when(sortedQuery.count()).thenReturn(0L);
+        when(sortedQuery.page(any(Page.class))).thenReturn(sortedQuery);
+        when(sortedQuery.list()).thenReturn(List.of());
+
+        permissionService.findPaginated(pr);
+
+        ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+        verify(repository).find(anyString(), sortCaptor.capture(), any(Object[].class));
+        assertEquals(Sort.Direction.Ascending, sortCaptor.getValue().getColumns().getFirst().getDirection());
+    }
+
+    @Test
+    @DisplayName("findPaginated sorts an unfiltered list")
+    void findPaginated_sortedNoSearch() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSortBy("name");
+        when(repository.findAll()).thenReturn(query);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(repository.findAll(any(Sort.class))).thenReturn(sortedQuery);
+        when(sortedQuery.count()).thenReturn(2L);
+        when(sortedQuery.page(any(Page.class))).thenReturn(sortedQuery);
+        when(sortedQuery.list()).thenReturn(List.of(testEntity));
+
+        assertEquals(2L, permissionService.findPaginated(pr).getRowsNumber());
+        verify(repository).findAll(any(Sort.class));
+    }
+
+    /** An empty search and an empty sort are both "not set", not values to act on. */
+    @Test
+    @DisplayName("findPaginated treats empty search and sort as unset")
+    void findPaginated_emptySearchAndSort() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSearch("");
+        pr.setSortBy("");
+        when(repository.findAll()).thenReturn(query);
+        when(query.count()).thenReturn(1L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of(testEntity));
+
+        assertEquals(1L, permissionService.findPaginated(pr).getRowsNumber());
+        verify(repository).findAll();
+        verify(repository, never()).findAll(any(Sort.class));
+        verify(repository, never()).find(anyString(), any(Object[].class));
     }
 }

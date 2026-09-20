@@ -113,4 +113,19 @@ class LoginAttemptServiceTest {
         assertEquals("Too many failed attempts. Try again in 1 minute(s).",
                 new TooManyAttemptsException(10).getMessage());
     }
+
+    /**
+     * With a fraction of a second left, toSeconds() truncates to 0 - which would read as "not
+     * locked". The floor of 1 is what keeps the lockout closed for that last moment.
+     */
+    @Test
+    @DisplayName("A sub-second remainder still reports one second, never zero")
+    void subSecondRemainderReportsOne() {
+        fail("budi", "10.0.0.1", 5);
+        advance(Duration.ofMinutes(15).minusNanos(1));
+
+        TooManyAttemptsException ex = assertThrows(TooManyAttemptsException.class,
+                () -> service.checkAllowed("budi", "10.0.0.1"));
+        assertEquals(1L, ex.getRetryAfterSeconds());
+    }
 }

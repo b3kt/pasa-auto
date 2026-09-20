@@ -211,4 +211,135 @@ class PelangganOwnershipSyncServiceTest {
         verifyNoInteractions(ownershipRepository);
         verifyNoInteractions(kendaraanService);
     }
+
+    /**
+     * A legacy pelanggan whose master changed but who has no ownership row yet gets one opened,
+     * rather than being left unlinked.
+     */
+    @Test
+    @DisplayName("syncOnUpdate opens a row for a legacy pelanggan whose master changed")
+    void testSyncOnUpdate_masterChangedLegacyNoRow() {
+        TbKendaraanEntity master = new TbKendaraanEntity();
+        master.setId(20L);
+        when(kendaraanService.findOrCreateByMerkJenis("Toyota", "Hatchback")).thenReturn(master);
+        when(ownershipRepository.findCurrentByNopolAndPelanggan("B1234CD", 1L)).thenReturn(Optional.empty());
+        when(ownershipRepository.findCurrentByNopol("B1234CD")).thenReturn(Optional.empty());
+
+        service.syncOnUpdate(1L, "B1234CD", "Toyota", "SUV", "B1234CD", "Toyota", "Hatchback", null);
+
+        verify(ownershipRepository).openOwnership(eq(1L), eq(20L), eq("B1234CD"), any(LocalDate.class), isNull());
+    }
+
+    /** Someone else already owns the plate, so nothing is opened for this pelanggan. */
+    @Test
+    @DisplayName("syncOnUpdate opens nothing when the plate is owned elsewhere")
+    void testSyncOnUpdate_masterChangedPlateOwnedElsewhere() {
+        TbKendaraanEntity master = new TbKendaraanEntity();
+        master.setId(20L);
+        when(kendaraanService.findOrCreateByMerkJenis("Toyota", "Hatchback")).thenReturn(master);
+        when(ownershipRepository.findCurrentByNopolAndPelanggan("B1234CD", 1L)).thenReturn(Optional.empty());
+        when(ownershipRepository.findCurrentByNopol("B1234CD"))
+                .thenReturn(Optional.of(new TbPelangganKendaraanEntity()));
+
+        service.syncOnUpdate(1L, "B1234CD", "Toyota", "SUV", "B1234CD", "Toyota", "Hatchback", null);
+
+        verify(ownershipRepository, never()).openOwnership(any(), any(), any(), any(), any());
+    }
+
+    /**
+     * Nothing changed at all: no plate change and no master change, so the ownership rows are left
+     * exactly as they are.
+     */
+    @Test
+    @DisplayName("syncOnUpdate does nothing when neither plate nor master changed")
+    void testSyncOnUpdate_nothingChanged() {
+        service.syncOnUpdate(1L, "B1234CD", "Toyota", "SUV", "B1234CD", "Toyota", "SUV", null);
+
+        verifyNoInteractions(kendaraanService);
+        verify(ownershipRepository, never()).openOwnership(any(), any(), any(), any(), any());
+        verify(ownershipRepository, never()).closeOwnership(any(), any(), any());
+    }
+
+    /**
+     * normalize() trims and treats null as empty, so "  Toyota " and "Toyota" are the same master
+     * and a whitespace-only change is not a change.
+     */
+    @Test
+    @DisplayName("syncOnUpdate ignores whitespace-only differences in merk and jenis")
+    void testSyncOnUpdate_whitespaceOnlyMasterChange() {
+        service.syncOnUpdate(1L, "B1234CD", "Toyota", "SUV", "B1234CD", "  Toyota ", " SUV  ", null);
+
+        verifyNoInteractions(kendaraanService);
+        verify(ownershipRepository, never()).openOwnership(any(), any(), any(), any(), any());
+    }
+
+    /** A null merk and an empty merk normalise to the same thing, so neither is a change. */
+    @Test
+    @DisplayName("syncOnUpdate treats a null and an empty master alike")
+    void testSyncOnUpdate_nullVersusEmptyMaster() {
+        service.syncOnUpdate(1L, "B1234CD", null, null, "B1234CD", "", "", null);
+
+        verifyNoInteractions(kendaraanService);
+    }
+
+    /** A plate change away from nothing: there is no old row to close. */
+    @Test
+    @DisplayName("syncOnUpdate opens without closing when there was no old plate")
+    void testSyncOnUpdate_noOldNopol() {
+        TbKendaraanEntity master = new TbKendaraanEntity();
+        master.setId(20L);
+        when(kendaraanService.findOrCreateByMerkJenis("Honda", "Sedan")).thenReturn(master);
+        when(ownershipRepository.findCurrentByNopol("B5678EF")).thenReturn(Optional.empty());
+
+        service.syncOnUpdate(1L, "  ", "Honda", "Sedan", "B5678EF", "Honda", "Sedan", LocalDate.now());
+
+        verify(ownershipRepository, never()).closeOwnership(any(), any(), any());
+        verify(ownershipRepository).openOwnership(eq(1L), eq(20L), eq("B5678EF"), any(LocalDate.class), isNull());
+    }
+
+    /** A plate cleared to nothing closes the old row and opens none. */
+    @Test
+    @DisplayName("syncOnUpdate closes without opening when the plate is cleared")
+    void testSyncOnUpdate_newNopolCleared() {
+        TbPelangganKendaraanEntity row = new TbPelangganKendaraanEntity();
+        row.setId(100L);
+        when(ownershipRepository.findCurrentByNopolAndPelanggan("B1234CD", 1L)).thenReturn(Optional.of(row));
+
+        service.syncOnUpdate(1L, "B1234CD", "Toyota", "SUV", "  ", "Toyota", "SUV", null);
+
+        verify(ownershipRepository).closeOwnership(eq(100L), any(LocalDate.class), eq("nopol berubah"));
+        verify(ownershipRepository, never()).openOwnership(any(), any(), any(), any(), any());
+    }
+
+    /** A plate change with no start date given opens the new row as of today. */
+    @Test
+    @DisplayName("syncOnUpdate defaults a nopol change to today")
+    void testSyncOnUpdate_nopolChangedDefaultsToToday() {
+        TbKendaraanEntity master = new TbKendaraanEntity();
+        master.setId(20L);
+        when(kendaraanService.findOrCreateByMerkJenis("Honda", "Sedan")).thenReturn(master);
+        when(ownershipRepository.findCurrentByNopolAndPelanggan("B1234CD", 1L)).thenReturn(Optional.empty());
+        when(ownershipRepository.findCurrentByNopol("B5678EF")).thenReturn(Optional.empty());
+
+        service.syncOnUpdate(1L, "B1234CD", "Honda", "Sedan", "B5678EF", "Honda", "Sedan", null);
+
+        verify(ownershipRepository).openOwnership(eq(1L), eq(20L), eq("B5678EF"),
+                eq(LocalDate.now()), isNull());
+    }
+
+    /** A legacy master change with an explicit start date backdates the new row. */
+    @Test
+    @DisplayName("syncOnUpdate honours an explicit date for a legacy master change")
+    void testSyncOnUpdate_masterChangedLegacyExplicitDate() {
+        LocalDate backdated = LocalDate.of(2024, 1, 15);
+        TbKendaraanEntity master = new TbKendaraanEntity();
+        master.setId(20L);
+        when(kendaraanService.findOrCreateByMerkJenis("Toyota", "Hatchback")).thenReturn(master);
+        when(ownershipRepository.findCurrentByNopolAndPelanggan("B1234CD", 1L)).thenReturn(Optional.empty());
+        when(ownershipRepository.findCurrentByNopol("B1234CD")).thenReturn(Optional.empty());
+
+        service.syncOnUpdate(1L, "B1234CD", "Toyota", "SUV", "B1234CD", "Toyota", "Hatchback", backdated);
+
+        verify(ownershipRepository).openOwnership(eq(1L), eq(20L), eq("B1234CD"), eq(backdated), isNull());
+    }
 }

@@ -124,6 +124,46 @@ class JwtTokenServiceImplTest {
             assertNotNull(token);
         }
 
+        /**
+         * A Google sign-in creates an approved account with no roles yet, so a null or empty role
+         * set has to produce a token rather than throw on the way in.
+         */
+        @Test
+        @DisplayName("Should issue a token for a user with no roles")
+        void testGenerateToken_nullRoles() {
+            when(rbacProperties.enabled()).thenReturn(false);
+            testUser.setRoles(null);
+
+            String token = jwtTokenService.generateToken(testUser);
+
+            assertNotNull(token);
+            assertEquals(3, token.split("\\.").length);
+        }
+
+        @Test
+        @DisplayName("Should issue a token for a user with an empty role set")
+        void testGenerateToken_emptyRoles() {
+            when(rbacProperties.enabled()).thenReturn(false);
+            testUser.setRoles(Set.of());
+
+            assertNotNull(jwtTokenService.generateToken(testUser));
+        }
+
+        /** The claim the augmentor reads to strip roles until the password is changed. */
+        @Test
+        @DisplayName("Should mark a token issued for a temporary password")
+        void testGenerateToken_mustChangePassword() {
+            when(rbacProperties.enabled()).thenReturn(false);
+            testUser.setMustChangePassword(true);
+
+            String token = jwtTokenService.generateToken(testUser);
+
+            assertNotNull(token);
+            String payload = new String(java.util.Base64.getUrlDecoder().decode(token.split("\\.")[1]),
+                    java.nio.charset.StandardCharsets.UTF_8);
+            assertTrue(payload.contains(PasswordChangeRequiredAugmentor.CLAIM), payload);
+        }
+
         @Test
         @DisplayName("Should handle null karyawanId and karyawanNama")
         void testGenerateToken_noKaryawanInfo() {

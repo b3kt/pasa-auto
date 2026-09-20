@@ -70,15 +70,57 @@ class PageHelperTest {
     @DisplayName("paginate with Parameters object")
     void paginateWithParameters() {
         PageRequest pr = new PageRequest(1, 10);
-        Map<String, Object> params = Map.of("key", "value");
-        when(repo.find(anyString(), any(Map.class))).thenReturn(query);
+        when(repo.find(anyString(), any(Parameters.class))).thenReturn(query);
+        when(query.count()).thenReturn(3L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of());
+
+        PageResponse<Object> result = PageHelper.paginate(repo, pr, "nama = :key", Parameters.with("key", "value"));
+
+        assertEquals(3, result.getRowsNumber());
+        verify(repo).find(anyString(), any(Parameters.class));
+        verify(repo, never()).find(anyString(), any(Map.class));
+    }
+
+    @Test
+    @DisplayName("paginate with Parameters object and sort")
+    void paginateWithParametersAndSort() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSortBy("nama");
+        when(repo.find(anyString(), any(Parameters.class))).thenReturn(query);
+        when(repo.find(anyString(), any(Sort.class), any(Parameters.class))).thenReturn(query);
         when(query.count()).thenReturn(0L);
         when(query.page(any(Page.class))).thenReturn(query);
         when(query.list()).thenReturn(List.of());
 
-        PageHelper.paginate(repo, pr, "1=1", params);
+        PageHelper.paginate(repo, pr, "nama = :key", Parameters.with("key", "value"));
 
-        verify(repo).find(anyString(), any(Map.class));
+        verify(repo).find(anyString(), any(Sort.class), any(Parameters.class));
+    }
+
+    /** An empty sortBy is not a sort - the query must be left alone rather than sorted by "". */
+    @Test
+    @DisplayName("an empty sortBy is ignored")
+    void emptySortByIsIgnored() {
+        PageRequest pr = new PageRequest(1, 10);
+        pr.setSortBy("");
+        when(repo.findAll()).thenReturn(query);
+        when(query.count()).thenReturn(1L);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(List.of(new Object()));
+
+        PageHelper.findAll(repo, pr);
+        PageHelper.applyPagination(query, repo, pr, "1=1", new Object[0]);
+
+        verify(repo, never()).findAll(any(Sort.class));
+        verify(repo, never()).find(anyString(), any(Sort.class));
+    }
+
+    /** PageHelper is a static helper; the implicit constructor exists only because none was declared. */
+    @Test
+    @DisplayName("the helper is constructible but holds no state")
+    void helperIsStateless() {
+        assertNotNull(new PageHelper());
     }
 
     @Test

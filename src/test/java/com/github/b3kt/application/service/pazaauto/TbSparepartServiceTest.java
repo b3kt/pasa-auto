@@ -167,4 +167,20 @@ class TbSparepartServiceTest {
 
         assertEquals(5, sparepart.getStok());
     }
+
+    /** The inherited update path stamps the id onto the entity before merging it. */
+    @Test
+    @DisplayName("update stamps the id onto the entity")
+    void testUpdate_stampsEntityId() {
+        when(repository.findByIdOptional(7L)).thenReturn(java.util.Optional.of(sparepart));
+
+        jakarta.persistence.EntityManager em = mock(jakarta.persistence.EntityManager.class);
+        when(repository.getEntityManager()).thenReturn(em);
+        when(em.merge(any(TbSparepartEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        TbSparepartEntity incoming = new TbSparepartEntity();
+        service.update(7L, incoming);
+
+        assertEquals(7L, incoming.getId());
+    }
 }
