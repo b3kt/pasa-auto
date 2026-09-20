@@ -1,0 +1,29 @@
+# Keeps dependencies patched: Dependabot opens PRs for updates and GitHub raises
+# security alerts for known vulnerabilities in these manifests.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      quarkus:
+        patterns: ["io.quarkus*", "io.quarkiverse*"]
+
+  - package-ecosystem: npm
+    directory: "/src/main/webui"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: "/electron"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly

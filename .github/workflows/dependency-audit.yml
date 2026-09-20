@@ -1,0 +1,59 @@
+name: Dependency Audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, so a newly disclosed vulnerability surfaces without waiting for the next PR
+    - cron: '0 2 * * 1'
+  pull_request:
+    branches:
+      - feature/*
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    name: npm audit (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [src/main/webui, electron]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Audit production dependencies
+        working-directory: ${{ matrix.project }}
+        # Only production dependencies: a vulnerable build-time package is not shipped to users
+        run: npm audit --omit=dev --audit-level=high
+
+  java-audit:
+    name: Java dependencies (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Resolve dependencies
+        run: ./mvnw -B -q dependency:go-offline -DskipTests
+
+      - name: Scan for known vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
