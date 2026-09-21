@@ -3,7 +3,22 @@
 
 import { defineConfig } from '#q-app/wrappers'
 import { fileURLToPath } from 'node:url'
+import { readFileSync } from 'node:fs'
 import { loadEnv } from 'vite';
+
+// Print templates are template literals with embedded JS (`${data.x}`, IIFEs). Importing one with
+// `?compiled` turns it into a render function at build time. Evaluating the raw text at runtime
+// needs `new Function`, which the production CSP (script-src 'self', no 'unsafe-eval') blocks.
+const compiledTemplatePlugin = () => ({
+  name: 'compiled-template',
+  enforce: 'pre',
+  load(id) {
+    if (!id.endsWith('.template?compiled')) return null
+    const file = id.slice(0, id.indexOf('?'))
+    this.addWatchFile(file)
+    return `export default (data, formatCurrency, formatNumber) => \`${readFileSync(file, 'utf8')}\``
+  }
+})
 
 export default defineConfig((ctx) => {
   return {
@@ -66,6 +81,8 @@ export default defineConfig((ctx) => {
       gzip: true,
 
       extendViteConf(viteConf) {
+        viteConf.plugins = [...(viteConf.plugins || []), compiledTemplatePlugin()]
+
         // Workaround for crypto.hash issue in Node 24
         if (typeof viteConf.define === 'undefined') {
           viteConf.server = {

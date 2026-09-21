@@ -505,7 +505,7 @@ import {useQuasar, date} from 'quasar'
 import { useDateFilter } from 'src/composables/useDateFilter'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
-import fakturTemplate from 'assets/template/rekap-pembelian.template?raw'
+import renderFaktur from 'assets/template/rekap-pembelian.template?compiled'
 
 const $q = useQuasar()
 
@@ -1242,13 +1242,7 @@ const printTable = async () => {
       }
 
       // Render template
-      const renderedContent = renderTemplate(fakturTemplate, {
-        data,
-        formatCurrency,
-        formatNumber
-      })
-
-      printPreviewContent.value = renderedContent
+      printPreviewContent.value = renderFaktur(data, formatCurrency, formatNumber)
       showPrintDialog.value = true
     }
   } catch (error) {
@@ -1290,18 +1284,6 @@ const confirmPrint = () => {
     iframe.contentWindow.focus()
     iframe.contentWindow.print()
   }, 250)
-}
-
-// Template rendering helper
-const renderTemplate = (template, context) => {
-  const keys = Object.keys(context)
-  const values = Object.values(context)
-  try {
-    return new Function(...keys, `return \`${template}\`;`)(...values)
-  } catch (e) {
-    console.error('Template rendering error:', e)
-    return 'Error rendering template'
-  }
 }
 
 

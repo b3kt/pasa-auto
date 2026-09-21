@@ -288,7 +288,7 @@ import GenericTable from "components/GenericTable.vue";
 import RekapPenjualanStats from 'components/RekapPenjualanStats.vue'
 import SPKDetailsEditor from 'components/SPKDetailsEditor.vue'
 import SPKCustomerInfo from 'components/SPKCustomerInfo.vue'
-import fakturTemplate from 'assets/template/faktur.template?raw'
+import renderFaktur from 'assets/template/faktur.template?compiled'
 
 const $q = useQuasar()
 
@@ -956,13 +956,7 @@ const printSpk = async () => {
   }
 
   // Render template
-  const renderedContent = renderTemplate(fakturTemplate, {
-    data,
-    formatCurrency,
-    formatNumber
-  })
-
-  printPreviewContent.value = renderedContent
+  printPreviewContent.value = renderFaktur(data, formatCurrency, formatNumber)
   showPrintDialog.value = true
 }
 
@@ -990,17 +984,6 @@ const confirmPrint = () => {
     iframe.contentWindow.focus()
     iframe.contentWindow.print()
   }, 250)
-}
-
-const renderTemplate = (template, context) => {
-  const keys = Object.keys(context)
-  const values = Object.values(context)
-  try {
-    return new Function(...keys, `return \`${template}\`;`)(...values)
-  } catch (e) {
-    console.error('Template rendering error:', e)
-    return 'Error rendering template'
-  }
 }
 
 const handleSave = async () => {
