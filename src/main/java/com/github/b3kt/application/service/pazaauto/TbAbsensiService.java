@@ -3,7 +3,9 @@ package com.github.b3kt.application.service.pazaauto;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbAbsensiEntity;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKaryawanEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbAbsensiRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawanRepository;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
@@ -17,12 +19,16 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class TbAbsensiService extends AbstractCrudService<TbAbsensiEntity, Long> {
 
     @Inject
     TbAbsensiRepository repository;
+
+    @Inject
+    TbKaryawanRepository karyawanRepository;
 
     @Inject
     TbAbsensiConfigService configService;
@@ -86,7 +92,7 @@ public class TbAbsensiService extends AbstractCrudService<TbAbsensiEntity, Long>
      * Clock out employee
      */
     @Transactional
-    public TbAbsensiEntity clockOut(Long karyawanId, String ipAddress, String location) {
+    public TbAbsensiEntity clockOut(Long karyawanId, String ipAddress, String location, String keterangan) {
         LocalDate today = LocalDate.now();
 
         TbAbsensiEntity absensi = repository.find("karyawanId = ?1 and tanggal = ?2", karyawanId, today).firstResult();
@@ -111,6 +117,9 @@ public class TbAbsensiService extends AbstractCrudService<TbAbsensiEntity, Long>
         absensi.setIpKeluar(ipAddress);
         absensi.setLokasiKeluar(location);
         absensi.setPulangCepat(now.isBefore(earlyThreshold));
+        if (keterangan != null && !keterangan.isBlank()) {
+            absensi.setKeterangan(keterangan);
+        }
 
         // Calculate overtime
         if (now.isAfter(workEndTime)) {
@@ -168,6 +177,14 @@ public class TbAbsensiService extends AbstractCrudService<TbAbsensiEntity, Long>
         List<TbAbsensiEntity> rows = repository.find(query.toString(), sort, params)
                 .page(Page.of(pageRequest.getPage() - 1, pageRequest.getRowsPerPage()))
                 .list();
+
+        // A single "all staff" view needs to show whose row is whose; namaKaryawan is transient
+        // (not a DB column), so it's filled in here from the (cached) employee list.
+        if (karyawanId == null && !rows.isEmpty()) {
+            Map<Long, String> namesById = karyawanRepository.findAllCached().stream()
+                    .collect(Collectors.toMap(TbKaryawanEntity::getId, TbKaryawanEntity::getNamaKaryawan));
+            rows.forEach(row -> row.setNamaKaryawan(namesById.get(row.getKaryawanId())));
+        }
 
         return new PageResponse<>(rows, pageRequest.getPage(), pageRequest.getRowsPerPage(), totalCount);
     }

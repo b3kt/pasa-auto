@@ -42,7 +42,7 @@ const routes = [
       { path: 'pazaauto/absensi', meta: { roles: ROLES_ALL_STAFF }, component: () => import('pages/pazaauto/AbsensiPage.vue') },
       { path: 'offline-status', component: () => import('pages/OfflineStatusPage.vue') },
       { path: 'change-password', component: () => import('pages/ChangePasswordPage.vue') },
-      { path: 'admin/clear-cache', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/admin/ClearCachePage.vue') },
+      { path: 'admin/clear-cache', meta: { roles: ROLES_ALL_STAFF }, component: () => import('pages/admin/ClearCachePage.vue') },
       { path: 'admin/audit-trail', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/admin/AuditTrailPage.vue') }
 
     ]

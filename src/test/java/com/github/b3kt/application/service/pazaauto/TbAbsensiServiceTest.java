@@ -3,7 +3,9 @@ package com.github.b3kt.application.service.pazaauto;
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbAbsensiEntity;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKaryawanEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbAbsensiRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKaryawanRepository;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
@@ -34,6 +36,7 @@ import static org.mockito.Mockito.*;
 class TbAbsensiServiceTest {
 
     @Mock TbAbsensiRepository repository;
+    @Mock TbKaryawanRepository karyawanRepository;
     @Mock TbAbsensiConfigService configService;
     @Mock PanacheQuery<TbAbsensiEntity> panacheQuery;
 
@@ -153,11 +156,44 @@ class TbAbsensiServiceTest {
 
         stubFindByKaryawanAndDate(existing);
 
-        TbAbsensiEntity result = absensiService.clockOut(1L, "192.168.1.1", "Office");
+        TbAbsensiEntity result = absensiService.clockOut(1L, "192.168.1.1", "Office", null);
 
         assertNotNull(result.getJamKeluar());
         assertEquals("192.168.1.1", result.getIpKeluar());
         assertEquals("Office", result.getLokasiKeluar());
+    }
+
+    @Test
+    @DisplayName("clockOut stores the optional note when provided")
+    void testClockOut_savesKeterangan() {
+        TbAbsensiEntity existing = new TbAbsensiEntity();
+        existing.setKaryawanId(1L);
+        existing.setTanggal(LocalDate.now());
+        existing.setJamMasuk(LocalTime.of(8, 0));
+        existing.setJamKeluar(null);
+
+        stubFindByKaryawanAndDate(existing);
+
+        TbAbsensiEntity result = absensiService.clockOut(1L, "192.168.1.1", "Office", "Pulang lebih awal karena urusan keluarga");
+
+        assertEquals("Pulang lebih awal karena urusan keluarga", result.getKeterangan());
+    }
+
+    @Test
+    @DisplayName("clockOut leaves keterangan untouched when blank")
+    void testClockOut_blankKeteranganIgnored() {
+        TbAbsensiEntity existing = new TbAbsensiEntity();
+        existing.setKaryawanId(1L);
+        existing.setTanggal(LocalDate.now());
+        existing.setJamMasuk(LocalTime.of(8, 0));
+        existing.setJamKeluar(null);
+        existing.setKeterangan("Existing note");
+
+        stubFindByKaryawanAndDate(existing);
+
+        TbAbsensiEntity result = absensiService.clockOut(1L, "192.168.1.1", "Office", "   ");
+
+        assertEquals("Existing note", result.getKeterangan());
     }
 
     @Test
@@ -166,7 +202,7 @@ class TbAbsensiServiceTest {
         stubFindByKaryawanAndDate(null);
 
         assertThrows(IllegalStateException.class,
-                () -> absensiService.clockOut(1L, "192.168.1.1", "Office"));
+                () -> absensiService.clockOut(1L, "192.168.1.1", "Office", null));
     }
 
     @Test
@@ -181,7 +217,7 @@ class TbAbsensiServiceTest {
         stubFindByKaryawanAndDate(existing);
 
         assertThrows(IllegalStateException.class,
-                () -> absensiService.clockOut(1L, "192.168.1.1", "Office"));
+                () -> absensiService.clockOut(1L, "192.168.1.1", "Office", null));
     }
 
     @Test
@@ -303,7 +339,7 @@ class TbAbsensiServiceTest {
         stubFindByKaryawanAndDate(existing);
 
         assertThrows(IllegalStateException.class,
-                () -> absensiService.clockOut(1L, "192.168.1.1", "Office"));
+                () -> absensiService.clockOut(1L, "192.168.1.1", "Office", null));
     }
 
     @Test
@@ -321,7 +357,7 @@ class TbAbsensiServiceTest {
         stubFindByKaryawanAndDate(existing);
 
         assertThrows(SecurityException.class,
-                () -> absensiService.clockOut(1L, "10.0.0.1", "Office"));
+                () -> absensiService.clockOut(1L, "10.0.0.1", "Office", null));
     }
 
     @Test
@@ -353,6 +389,35 @@ class TbAbsensiServiceTest {
                 null, null, null, null, pr);
 
         assertNotNull(result);
+    }
+
+    @Test
+    @DisplayName("getAttendanceHistory with null karyawanId fills in employee names for the all-staff view")
+    void testGetAttendanceHistory_nullKaryawanIdFillsNames() {
+        TbAbsensiEntity row1 = new TbAbsensiEntity();
+        row1.setKaryawanId(1L);
+        TbAbsensiEntity row2 = new TbAbsensiEntity();
+        row2.setKaryawanId(2L);
+
+        TbKaryawanEntity karyawan1 = new TbKaryawanEntity();
+        karyawan1.setId(1L);
+        karyawan1.setNamaKaryawan("Budi");
+        TbKaryawanEntity karyawan2 = new TbKaryawanEntity();
+        karyawan2.setId(2L);
+        karyawan2.setNamaKaryawan("Siti");
+        when(karyawanRepository.findAllCached()).thenReturn(List.of(karyawan1, karyawan2));
+
+        PageRequest pr = new PageRequest(1, 10);
+        when(repository.count(anyString(), any(java.util.HashMap.class))).thenReturn(2L);
+        when(repository.find(anyString(), any(Sort.class), any(java.util.HashMap.class))).thenReturn(panacheQuery);
+        when(panacheQuery.page(any(Page.class))).thenReturn(panacheQuery);
+        when(panacheQuery.list()).thenReturn(List.of(row1, row2));
+
+        PageResponse<TbAbsensiEntity> result = absensiService.getAttendanceHistory(
+                null, null, null, null, pr);
+
+        assertEquals("Budi", result.getRows().get(0).getNamaKaryawan());
+        assertEquals("Siti", result.getRows().get(1).getNamaKaryawan());
     }
 
     @Test
@@ -460,7 +525,7 @@ class TbAbsensiServiceTest {
         stubFindByKaryawanAndDate(notClockedIn);
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> absensiService.clockOut(1L, "192.168.1.1", "Office"));
+                () -> absensiService.clockOut(1L, "192.168.1.1", "Office", null));
         assertTrue(ex.getMessage().contains("Must clock in"), ex.getMessage());
     }
 

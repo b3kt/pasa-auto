@@ -65,6 +65,10 @@ export default {
         order: {
           title: 'SPK',
           caption: 'Proses Order'
+        },
+        attendance: {
+          title: 'Absensi',
+          caption: 'Absensi Karyawan'
         }
       },
       sales: {

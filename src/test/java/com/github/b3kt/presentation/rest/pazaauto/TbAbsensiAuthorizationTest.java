@@ -48,7 +48,7 @@ class TbAbsensiAuthorizationTest extends IntegrationTestBase {
         ownRecord.setId(1L);
         ownRecord.setKaryawanId(OWN_ID);
         when(service.clockIn(anyLong(), any(), any(), any())).thenReturn(ownRecord);
-        when(service.clockOut(anyLong(), any(), any())).thenReturn(ownRecord);
+        when(service.clockOut(anyLong(), any(), any(), any())).thenReturn(ownRecord);
         when(service.getTodayAttendance(anyLong())).thenReturn(ownRecord);
         when(service.getMonthlySummary(anyLong(), anyInt(), anyInt())).thenReturn(Map.of());
         when(service.getAttendanceHistory(any(), any(), any(), any(), any()))
@@ -100,7 +100,7 @@ class TbAbsensiAuthorizationTest extends IntegrationTestBase {
                 .then().statusCode(200);
 
         verify(service).clockIn(eq(OWN_ID), eq("127.0.0.1"), any(), any());
-        verify(service).clockOut(eq(OWN_ID), eq("127.0.0.1"), any());
+        verify(service).clockOut(eq(OWN_ID), eq("127.0.0.1"), any(), any());
     }
 
     @Test
@@ -115,7 +115,7 @@ class TbAbsensiAuthorizationTest extends IntegrationTestBase {
                 .when().post("/api/pazaauto/absensi/clock-out")
                 .then().statusCode(403);
         verify(service, never()).clockIn(anyLong(), any(), any(), any());
-        verify(service, never()).clockOut(anyLong(), any(), any());
+        verify(service, never()).clockOut(anyLong(), any(), any(), any());
     }
 
     @Test

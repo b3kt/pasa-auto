@@ -83,6 +83,10 @@ export default {
         order: {
           title: 'Surat Perintah Kerja (SPK)',
           caption: 'Proses Order'
+        },
+        attendance: {
+          title: 'Absensi',
+          caption: 'Absensi Karyawan'
         }
       },
       sales: {

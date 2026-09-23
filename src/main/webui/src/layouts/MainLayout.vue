@@ -10,37 +10,52 @@
 
         <div class="q-pa-sm q-pl-md row items-center xs-hide" >
           <template v-for="menu in linksList" :key="menu.title">
-            <q-btn-dropdown
-              v-if="menu.visible"
-              flat
-              stretch
-              no-caps
-              :menu-offset="[0, 8]"
-              :menu-anchor="'bottom left'"
-              :menu-self="'top left'"
-              :title="menu.title"
-              :icon="menu.icon"
-            >
-              <template v-slot:label>
+            <template v-if="menu.visible">
+              <!-- Single-page items render as a plain button, not a dropdown -->
+              <q-btn
+                v-if="menu.link"
+                flat
+                stretch
+                no-caps
+                :to="menu.link"
+                :title="menu.title"
+                :icon="menu.icon"
+              >
                 <span class="q-px-sm" v-if="$q.screen.gt.sm">{{menu.title}}</span>
-              </template>
+              </q-btn>
 
-              <q-list dense>
-                <q-item
-                  v-for="child in menu.children"
-                  :key="child.title"
-                  v-bind="child"
-                  clickable
-                  v-close-popup
-                  :to="child.link"
-                  v-show="child.visible"
-                >
-                  <q-item-section>
-                    <q-item-label class="q-pa-sm">{{ child.title }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-btn-dropdown>
+              <q-btn-dropdown
+                v-else
+                flat
+                stretch
+                no-caps
+                :menu-offset="[0, 8]"
+                :menu-anchor="'bottom left'"
+                :menu-self="'top left'"
+                :title="menu.title"
+                :icon="menu.icon"
+              >
+                <template v-slot:label>
+                  <span class="q-px-sm" v-if="$q.screen.gt.sm">{{menu.title}}</span>
+                </template>
+
+                <q-list dense>
+                  <q-item
+                    v-for="child in menu.children"
+                    :key="child.title"
+                    v-bind="child"
+                    clickable
+                    v-close-popup
+                    :to="child.link"
+                    v-show="child.visible"
+                  >
+                    <q-item-section>
+                      <q-item-label class="q-pa-sm">{{ child.title }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-btn-dropdown>
+            </template>
           </template>
         </div>
 
@@ -178,7 +193,7 @@ const linksList = computed(() => [
     title: t('app.menu.process.title'),
     caption: t('app.menu.process.caption'),
     icon: 'conveyor_belt',
-    visible: hasRole('Admin') || hasRole('Karyawan'),
+    visible: hasRole('Admin') || hasRole('Owner'),
     children: [
       {
         title: t('app.menu.process.order.title'),
@@ -244,7 +259,7 @@ const linksList = computed(() => [
     title: t('app.menu.admin.title'),
     caption: t('app.menu.admin.caption'),
     icon: 'settings',
-    visible: hasRole('Admin') || hasRole('Owner'),
+    visible: hasRole('Admin') || hasRole('Owner') || hasRole('Karyawan'),
     children: [
       {
         title: t('app.menu.admin.user.title'),
@@ -271,7 +286,7 @@ const linksList = computed(() => [
         title: t('app.menu.admin.clearCache.title'),
         caption: t('app.menu.admin.clearCache.caption'),
         icon: 'cleaning_services',
-        visible: hasRole('Admin') || hasRole('Owner'),
+        visible: hasRole('Admin') || hasRole('Owner') || hasRole('Karyawan'),
         link: '/admin/clear-cache'
       },
       {
@@ -282,16 +297,25 @@ const linksList = computed(() => [
         link: '/admin/audit-trail'
       }
     ]
+  },
+  {
+    title: t('app.menu.process.attendance.title'),
+    caption: t('app.menu.process.attendance.caption'),
+    icon: 'event_available',
+    visible: hasRole('Admin') || hasRole('Owner') || hasRole('Karyawan'),
+    link: '/pazaauto/absensi'
   }
 ])
 
 async function handleLogout() {
   await authStore.logout()
+  // Replace (not push) so the back button can't return to the now-inaccessible page, and go there
+  // straight away - the toast is a courtesy, not something the redirect should ever wait on.
+  router.replace('/login')
   $q.notify({
     type: 'info',
     message: 'Logged out successfully',
   })
-  router.push('/login')
 }
 
 </script>

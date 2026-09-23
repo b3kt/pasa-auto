@@ -72,7 +72,7 @@
       </q-card>
 
       <!-- Clear all -->
-      <q-card flat bordered>
+      <q-card flat bordered class="q-mb-md">
         <q-card-section class="row items-center">
           <div>
             <div class="text-subtitle1">Reset Semua Cache</div>
@@ -80,6 +80,18 @@
           </div>
           <q-space />
           <q-btn label="Reset Cache" icon="delete_forever" color="negative" :loading="clearing" @click="confirmClearAll" />
+        </q-card-section>
+      </q-card>
+
+      <!-- Clear server-side caffeine cache (Admin/Owner only; Karyawan may only clear the browser cache above) -->
+      <q-card v-if="canClearCaffeine" flat bordered>
+        <q-card-section class="row items-center">
+          <div>
+            <div class="text-subtitle1">Reset Caffeine Cache</div>
+            <div class="text-caption text-grey">Menghapus cache server-side (Caffeine). Data akan di-query ulang dari database pada request berikutnya.</div>
+          </div>
+          <q-space />
+          <q-btn label="Clear Caffeine Cache" icon="delete_forever" color="negative" :loading="clearingCaffeine" @click="confirmClearCaffeine" />
         </q-card-section>
       </q-card>
     </template>
@@ -97,19 +109,45 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Confirm dialog: caffeine cache -->
+    <q-dialog v-model="confirmCaffeineDialog">
+      <q-card style="min-width: 320px">
+        <q-card-section class="row items-center">
+          <q-avatar icon="warning" color="negative" text-color="white" />
+          <span class="q-ml-sm">Hapus semua caffeine cache di server?</span>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Batal" v-close-popup />
+          <q-btn flat label="Hapus" color="negative" @click="clearCaffeine" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+import { api } from 'boot/axios'
+import { useAuthStore } from 'stores/auth-store'
 import masterDataCache from 'src/utils/masterDataCache'
 
 const $q = useQuasar()
+const authStore = useAuthStore()
 const loading = ref(false)
 const clearing = ref(false)
+const clearingCaffeine = ref(false)
 const confirmDialog = ref(false)
+const confirmCaffeineDialog = ref(false)
 const stats = ref({ total: 0, active: 0, expired: 0, byPrefix: {} })
+
+// Clearing the server-side Caffeine cache is Admin/Owner territory; Karyawan only gets the
+// client-side browser cache reset above.
+const canClearCaffeine = computed(() => {
+  const roles = authStore.user?.roles || []
+  return roles.includes('Admin') || roles.includes('Owner')
+})
 
 const prefixColumns = [
   { name: 'prefix', label: 'Endpoint', field: 'prefix', align: 'left' },
@@ -154,6 +192,20 @@ async function invalidatePrefix(prefix) {
   const count = await masterDataCache.invalidatePrefix(prefix)
   $q.notify({ type: 'positive', message: `${count} entri cache dihapus untuk ${prefix}` })
   await loadStats()
+}
+
+function confirmClearCaffeine() {
+  confirmCaffeineDialog.value = true
+}
+
+async function clearCaffeine() {
+  clearingCaffeine.value = true
+  try {
+    await api.post('/api/admin/caffeine-cache/clear')
+    $q.notify({ type: 'positive', message: 'Caffeine cache berhasil dihapus' })
+  } finally {
+    clearingCaffeine.value = false
+  }
 }
 
 onMounted(loadStats)

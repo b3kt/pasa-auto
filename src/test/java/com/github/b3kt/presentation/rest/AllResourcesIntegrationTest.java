@@ -804,12 +804,12 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
             .then().statusCode(400);
 
         // clock-out
-        when(tbAbsensiService.clockOut(anyLong(), any(), any())).thenReturn(absen);
+        when(tbAbsensiService.clockOut(anyLong(), any(), any(), any())).thenReturn(absen);
         given().contentType(ContentType.JSON).body(Map.of("karyawanId", 1, "location", "offc"))
             .when().post("/api/pazaauto/absensi/clock-out")
             .then().statusCode(200);
 
-        when(tbAbsensiService.clockOut(anyLong(), any(), any()))
+        when(tbAbsensiService.clockOut(anyLong(), any(), any(), any()))
             .thenThrow(new IllegalStateException("must clock in first"));
         given().contentType(ContentType.JSON).body(Map.of("karyawanId", 1))
             .when().post("/api/pazaauto/absensi/clock-out")

@@ -93,7 +93,7 @@ public class TbAbsensiResource {
         Long karyawanId = resolveKaryawanId(entity.getKaryawanId());
         try {
             String ipAddress = getClientIpAddress(request);
-            TbAbsensiEntity result = service.clockOut(karyawanId, ipAddress, entity.getLokasiKeluar());
+            TbAbsensiEntity result = service.clockOut(karyawanId, ipAddress, entity.getLokasiKeluar(), entity.getKeterangan());
             return Response.ok(ApiResponse.success("Clock-out successful", absensiMapper.toDto(result))).build();
         } catch (IllegalStateException | SecurityException e) {
             return Response.status(Response.Status.BAD_REQUEST)
