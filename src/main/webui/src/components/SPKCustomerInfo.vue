@@ -1,21 +1,21 @@
 <template>
   <div>
       <div class="q-mb-md">
-        <span class="text-caption text-bold">Informasi Pelanggan</span>
+        <span class="text-caption text-bold">{{ $t('components.spkCustomerInfo.title') }}</span>
       </div>
       <div class="q-mb-md">
         <q-input :model-value="editableFields.namaPelanggan !== undefined ? editableFields.namaPelanggan : namaPelanggan" 
-                 label="Nama *" outlined dense
+                 :label="$t('components.spkCustomerInfo.namaLabel')" outlined dense
                  @update:model-value="handleFieldUpdate('namaPelanggan', $event)"
                  @blur="handleFieldBlur('namaPelanggan')"
                  @dblclick="handleDoubleClick('namaPelanggan')"
                  :readonly="!isFieldEditable('namaPelanggan')"
                  :class="{ 'editable-field': isFieldEditable('namaPelanggan') }"
-                 :rules="isNewCustomer ? [val => !!val || 'Nama harus diisi'] : []"/>
+                 :rules="isNewCustomer ? [val => !!val || $t('nameRequired')] : []"/>
       </div>
       <div class="q-mb-md">
         <q-input :model-value="editableFields.alamat !== undefined ? editableFields.alamat : alamat" 
-                 label="Alamat" outlined dense
+                 :label="$t('components.spkCustomerInfo.alamatLabel')" outlined dense
                  @update:model-value="handleFieldUpdate('alamat', $event)"
                  @blur="handleFieldBlur('alamat')"
                  @dblclick="handleDoubleClick('alamat')"
@@ -24,12 +24,12 @@
                  type="textarea" rows="4"/>
       </div>
       <div class="q-mb-md">
-        <q-input :model-value="nopol" label="Kendaraan" outlined dense readonly/>
+        <q-input :model-value="nopol" :label="$t('components.spkCustomerInfo.kendaraanLabel')" outlined dense readonly/>
       </div>
       <div class="row q-col-gutter-sm">
         <div class="q-mb-md col-6">
           <q-select :model-value="editableFields.merk !== undefined ? editableFields.merk : merk" 
-                   label="Merk *" outlined dense
+                   :label="$t('components.spkCustomerInfo.merkLabel')" outlined dense
                    @update:model-value="handleFieldUpdate('merk', $event)"
                    @blur="handleFieldBlur('merk')"
                    @dblclick="handleDoubleClick('merk')"
@@ -40,13 +40,13 @@
                    option-value="merk" emit-value map-options use-input
                    input-debounce="300" @filter="filterMerk" 
                    :loading="loadingMerk"
-                   :rules="isNewCustomer ? [val => !!val || 'Merk harus diisi'] : []"
+                   :rules="isNewCustomer ? [val => !!val || $t('components.spkCustomerInfo.merkRequired')] : []"
                    new-value-mode="add-unique"
                    hide-bottom-space>
             <template v-slot:no-option>
               <q-item>
                 <q-item-section class="text-grey">
-                  No results found. Type to add new merk.
+                  {{ $t('components.spkCustomerInfo.noMerkResults') }}
                 </q-item-section>
               </q-item>
             </template>
@@ -54,7 +54,7 @@
         </div>
         <div class="q-mb-md col-6">
           <q-select :model-value="editableFields.jenis !== undefined ? editableFields.jenis : jenis" 
-                   label="Jenis" outlined dense
+                   :label="$t('components.spkCustomerInfo.jenisLabel')" outlined dense
                    @update:model-value="handleFieldUpdate('jenis', $event)"
                    @blur="handleFieldBlur('jenis')"
                    @dblclick="handleDoubleClick('jenis')"
@@ -70,7 +70,7 @@
             <template v-slot:no-option>
               <q-item>
                 <q-item-section class="text-grey">
-                  No results found. Type to add new jenis.
+                  {{ $t('components.spkCustomerInfo.noJenisResults') }}
                 </q-item-section>
               </q-item>
             </template>
@@ -83,12 +83,12 @@
         <q-card>
           <q-card-section class="row items-center">
             <q-avatar icon="info" color="primary" text-color="white" />
-            <span class="q-ml-sm">Update data pelanggan untuk field <strong>{{ fieldToUpdate }}</strong>?</span>
+            <span class="q-ml-sm">{{ $t('components.spkCustomerInfo.confirmUpdateMessage', { field: fieldToUpdate }) }}</span>
           </q-card-section>
 
           <q-card-actions align="right">
-            <q-btn flat label="Tidak" color="primary" @click="handleDialogCancel" />
-            <q-btn flat label="Ya, Update" color="green" @click="confirmUpdate" />
+            <q-btn flat :label="$t('no')" color="primary" @click="handleDialogCancel" />
+            <q-btn flat :label="$t('components.spkCustomerInfo.confirmUpdateButton')" color="green" @click="confirmUpdate" />
           </q-card-actions>
         </q-card>
       </q-dialog>
@@ -98,9 +98,11 @@
 <script setup>
 import { ref, watchEffect } from 'vue'
 import { useQuasar } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import { api } from 'boot/axios'
 
 const $q = useQuasar()
+const { t } = useI18n()
 
 const props = defineProps({
   namaPelanggan: String,
@@ -175,10 +177,10 @@ const handleFieldBlur = (field) => {
 // Get field label for confirmation dialog
 const getFieldLabel = (field) => {
   const labels = {
-    namaPelanggan: 'Nama Pelanggan',
-    alamat: 'Alamat',
-    merk: 'Merk',
-    jenis: 'Jenis'
+    namaPelanggan: t('components.spkCustomerInfo.fieldNamaPelanggan'),
+    alamat: t('components.spkCustomerInfo.alamatLabel'),
+    merk: t('components.spkCustomerInfo.merk'),
+    jenis: t('components.spkCustomerInfo.jenisLabel')
   }
   return labels[field] || field
 }
@@ -216,7 +218,7 @@ const confirmUpdate = async () => {
     
     $q.notify({
       type: 'positive',
-      message: `Data pelanggan berhasil diupdate untuk ${getFieldLabel(pendingField.value)}`
+      message: t('components.spkCustomerInfo.updateSuccessMessage', { field: getFieldLabel(pendingField.value) })
     })
   } catch (error) {
     // Revert changes on error
@@ -225,7 +227,7 @@ const confirmUpdate = async () => {
     
     $q.notify({
       type: 'negative',
-      message: 'Gagal update data pelanggan',
+      message: t('components.spkCustomerInfo.updateFailedMessage'),
       caption: error.response?.data?.message || error.message
     })
   } finally {

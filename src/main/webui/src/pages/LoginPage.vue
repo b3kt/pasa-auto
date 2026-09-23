@@ -2,16 +2,16 @@
   <q-page class="flex flex-center">
     <q-card class="login-card" style="min-width: 350px">
       <q-card-section>
-<div class="text-h6 text-center q-mb-md">Login</div>
+        <div class="text-h6 text-center q-mb-lg">{{ $t('pages.login.title') }}</div>
          <q-form @submit="onSubmit" class="q-gutter-md">
-          <q-input v-model="username" label="Username" :rules="[val => !!val || 'Username harus diisi']" outlined dense
+          <q-input v-model="username" :label="$t('pages.login.usernameLabel')" :rules="[val => !!val || $t('pages.login.usernameRequired')]" outlined dense
           hide-bottom-space>
             <template v-slot:prepend>
               <q-icon name="person" />
             </template>
           </q-input>
 
-          <q-input v-model="password" label="Password" type="password" :rules="[val => !!val || 'Password harus diisi']"
+          <q-input v-model="password" :label="$t('pages.login.passwordLabel')" type="password" :rules="[val => !!val || $t('pages.login.passwordRequired')]"
             outlined dense
            hide-bottom-space>
             <template v-slot:prepend>
@@ -24,18 +24,18 @@
           </q-banner>
 
           <div>
-            <q-btn label="Login" type="submit" color="primary" class="full-width" :loading="loading" />
+            <q-btn :label="$t('pages.login.title')" type="submit" color="primary" class="full-width" :loading="loading" />
           </div>
         </q-form>
 
         <template v-if="googleEnabled">
           <div class="row items-center q-my-md">
             <q-separator class="col" />
-            <div class="col-auto q-px-sm text-caption text-grey-7">atau</div>
+            <div class="col-auto q-px-sm text-caption text-grey-7">{{ $t('pages.login.or') }}</div>
             <q-separator class="col" />
           </div>
 
-          <q-btn outline color="primary" class="full-width" icon="login" label="Masuk dengan Google"
+          <q-btn outline color="primary" class="full-width" icon="login" :label="$t('pages.login.googleButton')"
                  :loading="googleRedirecting" @click="signInWithGoogle" />
         </template>
       </q-card-section>
@@ -48,12 +48,14 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from 'stores/auth-store'
 import { useQuasar } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import { api } from 'boot/axios'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const $q = useQuasar()
+const { t } = useI18n()
 
 const username = ref('')
 const password = ref('')
@@ -64,12 +66,12 @@ const googleRedirecting = ref(false)
 
 // Outcomes the Google callback redirects back with
 const GOOGLE_MESSAGES = {
-  pending: 'Akun Anda sudah dibuat dan menunggu persetujuan administrator.',
-  rejected: 'Akun Google Anda ditolak. Hubungi administrator.',
-  disabled: 'Akun Anda dinonaktifkan. Hubungi administrator.',
-  link_required: 'Email ini sudah terdaftar. Minta administrator mengaktifkan login Google untuk akun tersebut.',
-  denied: 'Login dengan Google dibatalkan.',
-  error: 'Login dengan Google gagal. Silakan coba lagi.'
+  pending: () => t('pages.login.google.pending'),
+  rejected: () => t('pages.login.google.rejected'),
+  disabled: () => t('pages.login.google.disabled'),
+  link_required: () => t('pages.login.google.linkRequired'),
+  denied: () => t('pages.login.google.denied'),
+  error: () => t('pages.login.google.error')
 }
 
 // Clear all authentication data and cookies on mount
@@ -103,12 +105,12 @@ onMounted(async () => {
     if (logoutMessage) {
       error.value = decodeURIComponent(logoutMessage)
     } else {
-      error.value = 'Session has expired. Please login again.'
+      error.value = t('pages.login.sessionExpiredMessage')
     }
 
     $q.notify({
       type: 'warning',
-      message: 'Session expired, please login again',
+      message: t('pages.login.sessionExpiredNotify'),
     })
 
     // Clean URL
@@ -139,7 +141,7 @@ const handleGoogleReturn = async (outcome) => {
   router.replace({ path: '/login' })
 
   if (outcome !== 'ok') {
-    error.value = GOOGLE_MESSAGES[outcome] || GOOGLE_MESSAGES.error
+    error.value = (GOOGLE_MESSAGES[outcome] || GOOGLE_MESSAGES.error)()
     await loadGoogleConfig()
     return
   }
@@ -150,10 +152,10 @@ const handleGoogleReturn = async (outcome) => {
     // Google user, and clearSession() is what clears the cached data of whoever was here before.
     await authStore.clearSession()
     if (await authStore.refreshAccessToken()) {
-      $q.notify({ type: 'positive', message: 'Login successful!' })
+      $q.notify({ type: 'positive', message: t('pages.login.loginSuccess') })
       router.push('/')
     } else {
-      error.value = GOOGLE_MESSAGES.error
+      error.value = GOOGLE_MESSAGES.error()
       await loadGoogleConfig()
     }
   } finally {
@@ -171,15 +173,15 @@ const onSubmit = async () => {
       if (result.success) {
         $q.notify({
           type: 'positive',
-          message: 'Login successful!',
+          message: t('pages.login.loginSuccess'),
         })
         router.push('/')
       } else {
-        error.value = result.error || 'Login failed'
+        error.value = result.error || t('pages.login.loginFailed')
       }
     }
   } catch (err) {
-    error.value = 'An error occurred during login'
+    error.value = t('pages.login.loginError')
     console.error(err)
   } finally {
     loading.value = false

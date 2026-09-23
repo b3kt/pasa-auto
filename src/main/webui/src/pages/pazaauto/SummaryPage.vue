@@ -2,28 +2,28 @@
   <q-page padding>
     <!-- Header & Filters -->
     <div class="row items-center q-mb-md q-gutter-sm">
-      <div class="text-h6 col-auto">Ringkasan Laporan</div>
+      <div class="text-h6 col-auto">{{ $t('pages.summaryPage.title') }}</div>
       <q-space />
 
       <!-- Pembelian status filter -->
       <q-select
         v-model="filterStatusPembelian"
         :options="statusPembelianOptions"
-        label="Status Pembelian"
+        :label="$t('pages.summaryPage.statusPembelianLabel')"
         outlined dense clearable multiple
         style="min-width: 200px"
         emit-value map-options
       />
 
       <!-- Date range -->
-      <q-input :model-value="dateRangeText" label="Periode" outlined dense readonly style="min-width: 220px">
+      <q-input :model-value="dateRangeText" :label="$t('period')" outlined dense readonly style="min-width: 220px">
         <template v-slot:append>
           <q-icon name="event" class="cursor-pointer">
             <q-popup-proxy cover transition-show="scale" transition-hide="scale">
               <q-date v-model="dateRange" range>
                 <div class="row items-center justify-end q-gutter-sm">
-                  <q-btn label="Clear" color="primary" flat @click="clearDateRange" v-close-popup />
-                  <q-btn label="Close" color="primary" flat v-close-popup />
+                  <q-btn :label="$t('clear')" color="primary" flat @click="clearDateRange" v-close-popup />
+                  <q-btn :label="$t('close')" color="primary" flat v-close-popup />
                 </div>
               </q-date>
             </q-popup-proxy>
@@ -32,7 +32,7 @@
       </q-input>
 
       <q-btn icon="refresh" color="primary" dense flat :loading="loading" @click="fetchSummary">
-        <q-tooltip>Refresh</q-tooltip>
+        <q-tooltip>{{ $t('refresh') }}</q-tooltip>
       </q-btn>
     </div>
 
@@ -48,7 +48,7 @@
             <q-card-section class="row items-center no-wrap">
               <q-icon name="people" size="40px" color="primary" class="q-mr-md" />
               <div>
-                <div class="text-caption text-grey">Total Pelanggan</div>
+                <div class="text-caption text-grey">{{ $t('pages.summaryPage.totalPelangganLabel') }}</div>
                 <div class="text-h5 text-weight-bold">{{ summary.totalCustomers }}</div>
               </div>
             </q-card-section>
@@ -59,7 +59,7 @@
             <q-card-section class="row items-center no-wrap">
               <q-icon name="trending_up" size="40px" color="green" class="q-mr-md" />
               <div>
-                <div class="text-caption text-grey">Total Pemasukan</div>
+                <div class="text-caption text-grey">{{ $t('pages.summaryPage.totalPemasukanLabel') }}</div>
                 <div class="text-h5 text-weight-bold text-green">{{ formatCurrency(summary.totalIncome) }}</div>
               </div>
             </q-card-section>
@@ -70,7 +70,7 @@
             <q-card-section class="row items-center no-wrap">
               <q-icon name="trending_down" size="40px" color="red" class="q-mr-md" />
               <div>
-                <div class="text-caption text-grey">Total Pengeluaran</div>
+                <div class="text-caption text-grey">{{ $t('pages.summaryPage.totalPengeluaranLabel') }}</div>
                 <div class="text-h5 text-weight-bold text-red">{{ formatCurrency(summary.totalOutcome) }}</div>
               </div>
             </q-card-section>
@@ -81,8 +81,8 @@
             <q-card-section class="row items-center no-wrap">
               <q-icon name="inventory_2" size="40px" color="orange" class="q-mr-md" />
               <div>
-                <div class="text-caption text-grey">Item Terjual</div>
-                <div class="text-h5 text-weight-bold">{{ summary.totalItemTerjual }} pcs</div>
+                <div class="text-caption text-grey">{{ $t('pages.summaryPage.itemTerjualLabel') }}</div>
+                <div class="text-h5 text-weight-bold">{{ summary.totalItemTerjual }} {{ $t('pages.summaryPage.pcsShort') }}</div>
               </div>
             </q-card-section>
           </q-card>
@@ -93,14 +93,14 @@
       <q-card flat bordered class="q-mb-md" :class="netProfitColor">
         <q-card-section class="row items-center">
           <q-icon :name="summary.netProfit >= 0 ? 'arrow_upward' : 'arrow_downward'" size="28px" class="q-mr-sm" />
-          <span class="text-subtitle1 text-weight-bold">Pemasukan Bruto: {{ formatCurrency(summary.netProfit) }}</span>
+          <span class="text-subtitle1 text-weight-bold">{{ $t('pages.summaryPage.netProfitLabel', { amount: formatCurrency(summary.netProfit) }) }}</span>
         </q-card-section>
       </q-card>
 
       <!-- Trend Chart -->
       <q-card flat bordered class="q-mb-md">
         <q-card-section>
-          <div class="text-subtitle1 q-mb-sm">Tren Harian</div>
+          <div class="text-subtitle1 q-mb-sm">{{ $t('pages.summaryPage.trendDailyTitle') }}</div>
           <Chart type="bar" :data="trendChartData" :options="trendChartOptions" style="max-height: 300px" />
         </q-card-section>
       </q-card>
@@ -110,7 +110,7 @@
         <div class="col-12 col-md-4">
           <q-card flat bordered style="height: 100%">
             <q-card-section>
-              <div class="text-subtitle1 q-mb-sm">Top 10 Barang Terjual</div>
+              <div class="text-subtitle1 q-mb-sm">{{ $t('pages.summaryPage.topItemsTitle') }}</div>
               <Bar :data="topItemsChartData" :options="topItemsChartOptions" style="max-height: 280px" />
             </q-card-section>
           </q-card>
@@ -118,7 +118,7 @@
         <div class="col-12 col-sm-6 col-md-4">
           <q-card flat bordered style="height: 100%">
             <q-card-section>
-              <div class="text-subtitle1 q-mb-sm">Pemasukan per Metode</div>
+              <div class="text-subtitle1 q-mb-sm">{{ $t('pages.summaryPage.incomeByMethodTitle') }}</div>
               <Doughnut :data="incomeMethodChartData" :options="donutOptions" style="max-height: 280px" />
             </q-card-section>
           </q-card>
@@ -126,7 +126,7 @@
         <div class="col-12 col-sm-6 col-md-4">
           <q-card flat bordered style="height: 100%">
             <q-card-section>
-              <div class="text-subtitle1 q-mb-sm">Pengeluaran per Jenis</div>
+              <div class="text-subtitle1 q-mb-sm">{{ $t('pages.summaryPage.outcomeByTypeTitle') }}</div>
               <Doughnut :data="outcomeTypeChartData" :options="donutOptions" style="max-height: 280px" />
             </q-card-section>
           </q-card>
@@ -136,7 +136,7 @@
       <!-- Mechanic Chart -->
       <q-card flat bordered class="q-mb-md">
         <q-card-section>
-          <div class="text-subtitle1 q-mb-sm">Performa Mekanik per Hari</div>
+          <div class="text-subtitle1 q-mb-sm">{{ $t('pages.summaryPage.mechanicPerformanceTitle') }}</div>
           <Bar :data="mekanikChartData" :options="mekanikChartOptions" style="max-height: 300px" />
         </q-card-section>
       </q-card>
@@ -144,7 +144,7 @@
       <!-- Mechanic Summary Table -->
       <q-card flat bordered class="q-mb-md">
         <q-card-section>
-          <div class="text-subtitle1 q-mb-sm">Ringkasan Mekanik</div>
+          <div class="text-subtitle1 q-mb-sm">{{ $t('pages.summaryPage.mechanicSummaryTitle') }}</div>
           <q-table
             :rows="summary.mekanikSummary"
             :columns="mekanikSummaryColumns"
@@ -163,7 +163,7 @@
       <!-- Daily Breakdown Table -->
       <q-card flat bordered class="q-mb-md">
         <q-card-section>
-          <div class="text-subtitle1 q-mb-sm">Detail Per Hari</div>
+          <div class="text-subtitle1 q-mb-sm">{{ $t('pages.summaryPage.dailyBreakdownTitle') }}</div>
           <q-table
             :rows="summary.dailyBreakdown"
             :columns="dailyColumns"
@@ -191,9 +191,9 @@
       <q-card flat bordered class="q-mb-md">
         <q-card-section>
           <div class="row items-center q-mb-sm">
-            <div class="text-subtitle1">Detail Mekanik per Hari</div>
+            <div class="text-subtitle1">{{ $t('pages.summaryPage.mechanicDailyTitle') }}</div>
             <q-space />
-            <q-input v-model="mekanikSearch" placeholder="Cari mekanik..." dense outlined clearable style="max-width: 250px">
+            <q-input v-model="mekanikSearch" :placeholder="$t('pages.summaryPage.mechanicSearchPlaceholder')" dense outlined clearable style="max-width: 250px">
               <template v-slot:prepend><q-icon name="search" /></template>
             </q-input>
           </div>
@@ -213,9 +213,9 @@
       <q-card flat bordered class="q-mb-md">
         <q-card-section>
           <div class="row items-center q-mb-sm">
-            <div class="text-subtitle1">Detail Item Terjual per Hari</div>
+            <div class="text-subtitle1">{{ $t('pages.summaryPage.soldItemsTitle') }}</div>
             <q-space />
-            <q-input v-model="itemSearch" placeholder="Cari barang..." dense outlined clearable style="max-width: 250px">
+            <q-input v-model="itemSearch" :placeholder="$t('pages.summaryPage.itemSearchPlaceholder')" dense outlined clearable style="max-width: 250px">
               <template v-slot:prepend><q-icon name="search" /></template>
             </q-input>
           </div>
@@ -250,9 +250,9 @@
       <q-card flat bordered class="q-mb-md">
         <q-card-section>
           <div class="row items-center q-mb-sm">
-            <div class="text-subtitle1">Detail Jasa Terjual per Hari</div>
+            <div class="text-subtitle1">{{ $t('pages.summaryPage.jasaSoldTitle') }}</div>
             <q-space />
-            <q-input v-model="jasaSearch" placeholder="Cari jasa..." dense outlined clearable style="max-width: 250px">
+            <q-input v-model="jasaSearch" :placeholder="$t('pages.summaryPage.jasaSearchPlaceholder')" dense outlined clearable style="max-width: 250px">
               <template v-slot:prepend><q-icon name="search" /></template>
             </q-input>
           </div>
@@ -278,7 +278,7 @@
 
     <div v-else-if="!loading" class="text-center text-grey q-pa-xl">
       <q-icon name="bar_chart" size="60px" />
-      <div class="q-mt-sm">Pilih periode dan klik Refresh untuk melihat ringkasan.</div>
+      <div class="q-mt-sm">{{ $t('pages.summaryPage.noDataLabel') }}</div>
     </div>
   </q-page>
 </template>
@@ -286,6 +286,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { date } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import {
   Chart as ChartJS,
   CategoryScale, LinearScale, BarElement, LineElement, BarController, LineController,
@@ -297,6 +298,8 @@ import { useDateFilter } from 'src/composables/useDateFilter'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, BarController, LineController, PointElement, ArcElement, Title, Tooltip, Legend)
 
+const { t } = useI18n()
+
 // ── Date filter — default: first day of current month → today ─────────────
 const todayVal = new Date()
 const firstOfMonth = new Date(todayVal.getFullYear(), todayVal.getMonth(), 1)
@@ -307,11 +310,11 @@ const { dateRange, dateRangeText, clearDateRange } = useDateFilter('summary', {
 
 // ── Pembelian status filter ───────────────────────────────────────────────
 const filterStatusPembelian = ref(null)
-const statusPembelianOptions = [
-  { label: 'Lunas', value: 'LUNAS' },
-  { label: 'Belum Lunas', value: 'BELUM_LUNAS' },
-  { label: 'DP', value: 'DP' }
-]
+const statusPembelianOptions = computed(() => [
+  { label: t('pages.summaryPage.lunasOption'), value: 'LUNAS' },
+  { label: t('pages.summaryPage.belumLunasOption'), value: 'BELUM_LUNAS' },
+  { label: t('pages.summaryPage.dpOption'), value: 'DP' }
+])
 
 // ── Data ─────────────────────────────────────────────────────────────────
 const loading = ref(false)
@@ -367,21 +370,21 @@ const trendChartData = computed(() => {
     labels: rows.map(r => r.date),
     datasets: [
       {
-        label: 'Pemasukan',
+        label: t('pages.summaryPage.pemasukanColumn'),
         data: rows.map(r => Number(r.income)),
         backgroundColor: 'rgba(66,165,245,0.7)',
         borderColor: '#42A5F5',
         type: 'bar'
       },
       {
-        label: 'Pengeluaran',
+        label: t('pages.summaryPage.pengeluaranColumn'),
         data: rows.map(r => Number(r.outcome)),
         backgroundColor: 'rgba(239,83,80,0.7)',
         borderColor: '#EF5350',
         type: 'bar'
       },
       {
-        label: 'Item Terjual',
+        label: t('pages.summaryPage.itemTerjualLabel'),
         data: rows.map(r => r.itemsTerjual),
         borderColor: '#FFA726',
         backgroundColor: 'transparent',
@@ -398,8 +401,8 @@ const trendChartOptions = {
   responsive: true,
   plugins: { legend: { position: 'top' } },
   scales: {
-    y: { beginAtZero: true, title: { display: true, text: 'Rupiah' } },
-    y2: { beginAtZero: true, position: 'right', title: { display: true, text: 'Item' }, grid: { drawOnChartArea: false } }
+    y: { beginAtZero: true, title: { display: true, text: t('pages.summaryPage.rupiahAxisTitle') } },
+    y2: { beginAtZero: true, position: 'right', title: { display: true, text: t('pages.summaryPage.itemColumn') }, grid: { drawOnChartArea: false } }
   }
 }
 
@@ -409,7 +412,7 @@ const topItemsChartData = computed(() => {
   return {
     labels: rows.map(r => r.namaBarang),
     datasets: [{
-      label: 'Qty Terjual',
+      label: t('pages.summaryPage.qtyTerjualLabel'),
       data: rows.map(r => r.totalQty),
       backgroundColor: CHART_COLORS.slice(0, rows.length)
     }]
@@ -474,7 +477,7 @@ const mekanikChartData = computed(() => {
 const mekanikChartOptions = {
   responsive: true,
   plugins: { legend: { position: 'top' } },
-  scales: { x: { stacked: false }, y: { beginAtZero: true, title: { display: true, text: 'Pelanggan' } } }
+  scales: { x: { stacked: false }, y: { beginAtZero: true, title: { display: true, text: t('pages.summaryPage.pelangganColumn') } } }
 }
 
 // ── Filtered tables ───────────────────────────────────────────────────────
@@ -500,43 +503,43 @@ const filteredJasaItems = computed(() => {
 })
 
 // ── Table columns ─────────────────────────────────────────────────────────
-const dailyColumns = [
-  { name: 'date', label: 'Tanggal', field: 'date', align: 'left', sortable: true },
-  { name: 'customers', label: 'Pelanggan', field: 'customers', align: 'center', sortable: true },
-  { name: 'income', label: 'Pemasukan', field: 'income', align: 'right', sortable: true },
-  { name: 'outcome', label: 'Pengeluaran', field: 'outcome', align: 'right', sortable: true },
-  { name: 'itemsTerjual', label: 'Item', field: 'itemsTerjual', align: 'center', sortable: true },
-  { name: 'net', label: 'Gross', field: 'net', align: 'right', sortable: true }
-]
+const dailyColumns = computed(() => [
+  { name: 'date', label: t('pages.summaryPage.tanggalColumn'), field: 'date', align: 'left', sortable: true },
+  { name: 'customers', label: t('pages.summaryPage.pelangganColumn'), field: 'customers', align: 'center', sortable: true },
+  { name: 'income', label: t('pages.summaryPage.pemasukanColumn'), field: 'income', align: 'right', sortable: true },
+  { name: 'outcome', label: t('pages.summaryPage.pengeluaranColumn'), field: 'outcome', align: 'right', sortable: true },
+  { name: 'itemsTerjual', label: t('pages.summaryPage.itemColumn'), field: 'itemsTerjual', align: 'center', sortable: true },
+  { name: 'net', label: t('pages.summaryPage.grossColumn'), field: 'net', align: 'right', sortable: true }
+])
 
-const mekanikSummaryColumns = [
-  { name: 'namaMekanik', label: 'Mekanik', field: 'namaMekanik', align: 'left', sortable: true },
-  { name: 'totalCustomers', label: 'Total Pelanggan', field: 'totalCustomers', align: 'center', sortable: true },
-  { name: 'totalHari', label: 'Hari Kerja', field: 'totalHari', align: 'center', sortable: true },
-  { name: 'rataPerHari', label: 'Rata/Hari', field: 'rataPerHari', align: 'center', sortable: true }
-]
+const mekanikSummaryColumns = computed(() => [
+  { name: 'namaMekanik', label: t('pages.summaryPage.mekanikColumn'), field: 'namaMekanik', align: 'left', sortable: true },
+  { name: 'totalCustomers', label: t('pages.summaryPage.totalPelangganLabel'), field: 'totalCustomers', align: 'center', sortable: true },
+  { name: 'totalHari', label: t('pages.summaryPage.hariKerjaColumn'), field: 'totalHari', align: 'center', sortable: true },
+  { name: 'rataPerHari', label: t('pages.summaryPage.rataHariColumn'), field: 'rataPerHari', align: 'center', sortable: true }
+])
 
-const mekanikDailyColumns = [
-  { name: 'date', label: 'Tanggal', field: 'date', align: 'left', sortable: true },
-  { name: 'namaMekanik', label: 'Mekanik', field: 'namaMekanik', align: 'left', sortable: true },
-  { name: 'totalCustomers', label: 'Jumlah Pelanggan', field: 'totalCustomers', align: 'center', sortable: true }
-]
+const mekanikDailyColumns = computed(() => [
+  { name: 'date', label: t('pages.summaryPage.tanggalColumn'), field: 'date', align: 'left', sortable: true },
+  { name: 'namaMekanik', label: t('pages.summaryPage.mekanikColumn'), field: 'namaMekanik', align: 'left', sortable: true },
+  { name: 'totalCustomers', label: t('pages.summaryPage.jumlahPelangganColumn'), field: 'totalCustomers', align: 'center', sortable: true }
+])
 
-const soldItemsColumns = [
-  { name: 'date', label: 'Tanggal', field: 'date', align: 'left', sortable: true },
-  { name: 'namaBarang', label: 'Nama Barang', field: 'namaBarang', align: 'left', sortable: true },
-  { name: 'totalQty', label: 'Qty', field: 'totalQty', align: 'center', sortable: true },
-  { name: 'totalValue', label: 'Total Nilai', field: 'totalValue', align: 'right', sortable: true },
-  { name: 'totalNilaiAdjustment', label: 'Total Nilai Adj.', field: 'totalNilaiAdjustment', align: 'right', sortable: true },
-  { name: 'totalModal', label: 'Total Modal', field: 'totalModal', align: 'right', sortable: true },
-  { name: 'net', label: 'Net', field: r => r.totalNilaiAdjustment - r.totalModal, align: 'right', sortable: true }
-]
+const soldItemsColumns = computed(() => [
+  { name: 'date', label: t('pages.summaryPage.tanggalColumn'), field: 'date', align: 'left', sortable: true },
+  { name: 'namaBarang', label: t('pages.summaryPage.namaBarangColumn'), field: 'namaBarang', align: 'left', sortable: true },
+  { name: 'totalQty', label: t('pages.summaryPage.qtyColumn'), field: 'totalQty', align: 'center', sortable: true },
+  { name: 'totalValue', label: t('pages.summaryPage.totalNilaiColumn'), field: 'totalValue', align: 'right', sortable: true },
+  { name: 'totalNilaiAdjustment', label: t('pages.summaryPage.totalNilaiAdjustmentColumn'), field: 'totalNilaiAdjustment', align: 'right', sortable: true },
+  { name: 'totalModal', label: t('pages.summaryPage.totalModalColumn'), field: 'totalModal', align: 'right', sortable: true },
+  { name: 'net', label: t('pages.summaryPage.netColumn'), field: r => r.totalNilaiAdjustment - r.totalModal, align: 'right', sortable: true }
+])
 
-const jasaSoldColumns = [
-  { name: 'date', label: 'Tanggal', field: 'date', align: 'left', sortable: true },
-  { name: 'namaJasa', label: 'Nama Jasa', field: 'namaJasa', align: 'left', sortable: true },
-  { name: 'totalQty', label: 'Qty', field: 'totalQty', align: 'center', sortable: true },
-  { name: 'totalNilai', label: 'Total Nilai', field: 'totalNilai', align: 'right', sortable: true },
-  { name: 'totalNilaiAdjustment', label: 'Net', field: 'totalNilaiAdjustment', align: 'right', sortable: true },
-]
+const jasaSoldColumns = computed(() => [
+  { name: 'date', label: t('pages.summaryPage.tanggalColumn'), field: 'date', align: 'left', sortable: true },
+  { name: 'namaJasa', label: t('pages.summaryPage.namaJasaColumn'), field: 'namaJasa', align: 'left', sortable: true },
+  { name: 'totalQty', label: t('pages.summaryPage.qtyColumn'), field: 'totalQty', align: 'center', sortable: true },
+  { name: 'totalNilai', label: t('pages.summaryPage.totalNilaiColumn'), field: 'totalNilai', align: 'right', sortable: true },
+  { name: 'totalNilaiAdjustment', label: t('pages.summaryPage.netColumn'), field: 'totalNilaiAdjustment', align: 'right', sortable: true },
+])
 </script>

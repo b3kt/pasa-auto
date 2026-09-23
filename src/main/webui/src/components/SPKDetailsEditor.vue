@@ -4,7 +4,7 @@
     <div class="col-12">
       <q-card flat bordered class="full-height">
         <q-card-section class="bg-grey-2 q-py-xs">
-          <div class="text-subtitle2">DAFTAR LAYANAN PERBAIKAN / SERVIS</div>
+          <div class="text-subtitle2">{{ $t('components.spkDetailsEditor.jasaListTitle') }}</div>
         </q-card-section>
         <q-card-section class="q-pa-none">
           <q-table flat :rows="jasaRows" :columns="jasaColumns" row-key="tempId" dense hide-pagination
@@ -19,7 +19,7 @@
               <q-tr v-if="canEdit">
                 <q-th class="text-center" colspan="5">
                   <q-select v-model="newJasa.item" :options="jasaOptions" option-label="namaJasa" dense outlined
-                            label="Pilih Jasa" use-input input-debounce="300" @filter="filterJasa" emit-value
+                            :label="$t('components.spkDetailsEditor.selectJasaLabel')" use-input input-debounce="300" @filter="filterJasa" emit-value
                             map-options @update:model-value="addJasa" :option-disable="isJasaDisabled">
                     <template v-slot:option="scope">
                       <q-item v-bind="scope.itemProps">
@@ -39,20 +39,20 @@
                 <q-td key="namaJasa" :props="props">{{ props.row.namaItem }}</q-td>
                 <q-td key="harga" :props="props" class="text-right">
                   {{ formatCurrency(props.row.harga) }}
-                  <q-tooltip v-if="canEdit" anchor="top middle" self="bottom middle">Klik dua kali untuk mengedit</q-tooltip>
+                  <q-tooltip v-if="canEdit" anchor="top middle" self="bottom middle">{{ $t('components.spkDetailsEditor.doubleClickToEdit') }}</q-tooltip>
                   <q-popup-edit v-if="canEdit" :model-value="props.row.harga" auto-save v-slot="scope" @save="val => onHargaSave(props.row, val)">
                     <q-input v-model.number="scope.value" dense outlined autofocus counter @keyup.enter="scope.set"
                              type="number"
-                             :rules="[(val) => val > 0 || 'Harga harus lebih dari 0']"/>
+                             :rules="[(val) => val > 0 || $t('components.spkDetailsEditor.hargaInvalid')]"/>
                   </q-popup-edit>
                 </q-td>
                 <q-td key="jumlah" :props="props" class="text-center">
                   {{ props.row.jumlah }}
-                  <q-tooltip v-if="canEdit" anchor="top middle" self="bottom middle">Klik dua kali untuk mengedit</q-tooltip>
+                  <q-tooltip v-if="canEdit" anchor="top middle" self="bottom middle">{{ $t('components.spkDetailsEditor.doubleClickToEdit') }}</q-tooltip>
                   <q-popup-edit v-if="canEdit" :model-value="props.row.jumlah" auto-save v-slot="scope" @save="val => onJumlahSave(props.row, val)">
                     <q-input v-model.number="scope.value" type="number" dense outlined autofocus counter
-                             :rules="[(val) => val > 0 || 'Jumlah harus lebih dari 0']"
-                             @keyup.enter="scope.set" label="Jumlah"/>
+                             :rules="[(val) => val > 0 || $t('components.spkDetailsEditor.jumlahInvalid')]"
+                             @keyup.enter="scope.set" :label="$t('components.spkDetailsEditor.jumlah')"/>
                   </q-popup-edit>
                 </q-td>
                 <q-td key="total" :props="props" class="text-right">
@@ -68,7 +68,7 @@
         </q-card-section>
         <q-separator/>
         <q-card-section class="q-py-xs text-right bg-grey-2">
-          <span class="text-weight-bold">Total: {{ formatCurrency(subtotalJasa) }}</span>
+          <span class="text-weight-bold">{{ $t('components.spkDetailsEditor.total') }}: {{ formatCurrency(subtotalJasa) }}</span>
         </q-card-section>
       </q-card>
     </div>
@@ -77,7 +77,7 @@
     <div class="col-12">
       <q-card flat bordered class="full-height">
         <q-card-section class="bg-grey-2 q-py-xs">
-          <div class="text-subtitle2">BARANG / SPAREPART</div>
+          <div class="text-subtitle2">{{ $t('components.spkDetailsEditor.barangListTitle') }}</div>
         </q-card-section>
         <q-card-section class="q-pa-none">
           <q-table flat :rows="barangRows" :columns="barangColumns" row-key="tempId" dense hide-pagination
@@ -92,7 +92,7 @@
               <q-tr v-if="canEdit">
                 <q-th class="text-center" colspan="6">
                   <q-select v-model="newBarang.item" :options="barangOptions" option-label="namaBarang" dense outlined
-                            label="Pilih Barang" use-input input-debounce="300" @filter="filterBarang" emit-value
+                            :label="$t('components.spkDetailsEditor.selectBarangLabel')" use-input input-debounce="300" @filter="filterBarang" emit-value
                             map-options @update:model-value="addBarang" :option-disable="isBarangDisabled">
                     <template v-slot:option="scope">
                       <q-item v-bind="scope.itemProps">
@@ -112,20 +112,20 @@
                 <q-td key="namaBarang" :props="props">{{ props.row.namaItem }}</q-td>
                 <q-td key="harga" :props="props" class="text-right">
                   {{ formatCurrency(props.row.harga) }}
-                  <q-tooltip v-if="canEdit" anchor="top middle" self="bottom middle">Klik dua kali untuk mengedit</q-tooltip>
+                  <q-tooltip v-if="canEdit" anchor="top middle" self="bottom middle">{{ $t('components.spkDetailsEditor.doubleClickToEdit') }}</q-tooltip>
                   <q-popup-edit v-if="canEdit" :model-value="props.row.harga" auto-save v-slot="scope" @save="val => onHargaSave(props.row, val)">
                     <q-input v-model.number="scope.value" dense outlined autofocus counter @keyup.enter="scope.set"
-                             type="number" label="Harga Barang Satuan"
-                             :rules="[(val) => val > 0 || 'Harga harus lebih dari 0']"/>
+                             type="number" :label="$t('components.spkDetailsEditor.hargaBarangSatuanLabel')"
+                             :rules="[(val) => val > 0 || $t('components.spkDetailsEditor.hargaInvalid')]"/>
                   </q-popup-edit>
                 </q-td>
                 <q-td key="jumlah" :props="props" class="text-center">
                   {{ props.row.jumlah }}
-                  <q-tooltip v-if="canEdit" anchor="top middle" self="bottom middle">Klik dua kali untuk mengedit</q-tooltip>
+                  <q-tooltip v-if="canEdit" anchor="top middle" self="bottom middle">{{ $t('components.spkDetailsEditor.doubleClickToEdit') }}</q-tooltip>
                   <q-popup-edit v-if="canEdit" :model-value="props.row.jumlah" auto-save v-slot="scope" @save="val => onJumlahSave(props.row, val)">
                     <q-input v-model.number="scope.value" type="number" dense outlined autofocus counter
-                             :rules="[(val) => val > 0 || 'Jumlah harus lebih dari 0']"
-                             @keyup.enter="scope.set" label="Jumlah barang"/>
+                             :rules="[(val) => val > 0 || $t('components.spkDetailsEditor.jumlahInvalid')]"
+                             @keyup.enter="scope.set" :label="$t('components.spkDetailsEditor.jumlahBarang')"/>
                   </q-popup-edit>
                 </q-td>
                 <q-td key="total" :props="props" class="text-right">
@@ -141,7 +141,7 @@
         </q-card-section>
         <q-separator/>
         <q-card-section class="q-py-xs text-right bg-grey-2">
-          <span class="text-weight-bold">Total: {{ formatCurrency(subtotalBarang) }}</span>
+          <span class="text-weight-bold">{{ $t('components.spkDetailsEditor.total') }}: {{ formatCurrency(subtotalBarang) }}</span>
         </q-card-section>
       </q-card>
     </div>
@@ -152,19 +152,21 @@
     <q-card style="min-width: 350px">
       <q-card-section class="row items-center">
         <q-avatar icon="warning" color="warning" text-color="white" />
-        <span class="q-ml-sm text-h6">Update Master Data?</span>
+        <span class="q-ml-sm text-h6">{{ $t('components.spkDetailsEditor.masterUpdateTitle') }}</span>
       </q-card-section>
 
       <q-card-section class="q-pt-none">
-        Harga master untuk <strong>"{{ pendingUpdateData?.row.namaItem }}"</strong> berbeda
-        ({{ formatCurrency(pendingUpdateData?.type === 'jasa' ? pendingUpdateData?.master.hargaJasa : pendingUpdateData?.master.hargaJual) }}).
-        Apakah Anda ingin memperbarui harga master menjadi <strong>{{ formatCurrency(pendingUpdateData?.newValue) }}</strong> juga?
+        {{ $t('components.spkDetailsEditor.masterUpdateMessage', {
+          item: pendingUpdateData?.row.namaItem,
+          oldHarga: formatCurrency(pendingUpdateData?.type === 'jasa' ? pendingUpdateData?.master.hargaJasa : pendingUpdateData?.master.hargaJual),
+          newHarga: formatCurrency(pendingUpdateData?.newValue)
+        }) }}
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
-        <q-btn flat label="Batal" v-close-popup @click="pendingUpdateData = null" />
-        <q-btn flat label="Hanya Item Ini" @click="confirmUpdateLocalOnly" />
-        <q-btn color="primary" label="Update Keduanya" @click="confirmUpdateBoth" />
+        <q-btn flat :label="$t('components.spkDetailsEditor.cancelButton')" v-close-popup @click="pendingUpdateData = null" />
+        <q-btn flat :label="$t('components.spkDetailsEditor.localOnlyButton')" @click="confirmUpdateLocalOnly" />
+        <q-btn color="primary" :label="$t('components.spkDetailsEditor.updateBothButton')" @click="confirmUpdateBoth" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -172,6 +174,7 @@
 
 <script setup>
 import {ref, computed} from 'vue'
+import {useI18n} from 'vue-i18n'
 // import {useQuasar} from 'quasar'
 // const $q = useQuasar();
 const props = defineProps({
@@ -199,6 +202,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:details', 'update-master-jasa', 'update-master-barang'])
 
+const { t } = useI18n()
+
 const showMasterUpdateDialog = ref(false)
 const pendingUpdateData = ref(null)
 
@@ -216,21 +221,21 @@ const formatCurrency = (val) => {
   }).format(val)
 }
 
-const jasaColumns = [
-  {name: 'no', label: 'No', align: 'left', field: 'no', autoWidth: true},
-  {name: 'namaJasa', label: 'Jasa', align: 'left', field: 'namaItem', autoWidth: false},
-  {name: 'harga', label: 'Biaya', align: 'right', field: 'harga', autoWidth: true, minWidth: '200px'},
-  {name: 'jumlah', label: 'Jumlah', align: 'center', field: 'jumlah', minWidth: '100px'},
+const jasaColumns = computed(() => [
+  {name: 'no', label: t('components.spkDetailsEditor.noColumn'), align: 'left', field: 'no', autoWidth: true},
+  {name: 'namaJasa', label: t('components.spkDetailsEditor.jasaColumn'), align: 'left', field: 'namaItem', autoWidth: false},
+  {name: 'harga', label: t('components.spkDetailsEditor.biayaColumn'), align: 'right', field: 'harga', autoWidth: true, minWidth: '200px'},
+  {name: 'jumlah', label: t('components.spkDetailsEditor.jumlah'), align: 'center', field: 'jumlah', minWidth: '100px'},
   {name: 'actions', label: '', align: 'center',autoWidth: true }
-]
+])
 
-const barangColumns = [
-  {name: 'no', label: 'No', align: 'left', field: 'no', autoWidth: true},
-  {name: 'namaBarang', label: 'Barang', align: 'left', field: 'namaItem', autoWidth: false},
-  {name: 'harga', label: 'Harga', align: 'right', field: 'harga', autoWidth: true, minWidth: '200px'},
-  {name: 'jumlah', label: 'Jumlah', align: 'center', field: 'jumlah', minWidth: '100px'},
+const barangColumns = computed(() => [
+  {name: 'no', label: t('components.spkDetailsEditor.noColumn'), align: 'left', field: 'no', autoWidth: true},
+  {name: 'namaBarang', label: t('components.spkDetailsEditor.barangColumn'), align: 'left', field: 'namaItem', autoWidth: false},
+  {name: 'harga', label: t('components.spkDetailsEditor.hargaColumn'), align: 'right', field: 'harga', autoWidth: true, minWidth: '200px'},
+  {name: 'jumlah', label: t('components.spkDetailsEditor.jumlah'), align: 'center', field: 'jumlah', minWidth: '100px'},
   {name: 'actions', label: '', align: 'center', autoWidth: true}
-]
+])
 
 const jasaRows = computed(() => {
   return props.details

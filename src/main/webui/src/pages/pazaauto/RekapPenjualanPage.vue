@@ -7,21 +7,21 @@
         <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
                       @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
                       :on-create="openCreateDialog"
-                      :on-edit="openEditDialog" create-label="Tambah data Karyawan" ref="tableRef"
-                      search-placeholder="Search by name or email...">
+                      :on-edit="openEditDialog" :create-label="$t('pages.rekapPenjualanPage.createLabel')" ref="tableRef"
+                      :search-placeholder="$t('pages.rekapPenjualanPage.searchPlaceholder')">
                         <template v-slot:title>
-                          <div class="text-h6 q-mb-md">Laporan | Riwayat Penjualan</div>
+                          <div class="text-h6 q-mb-md">{{ $t('pages.rekapPenjualanPage.title') }}</div>
                         </template>
           <template v-slot:toolbar-filters>
             <div class="row items-center q-gutter-sm">
-              <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly>
+              <q-input :model-value="dateRangeText" :label="$t('dateRange')" outlined dense readonly>
                 <template v-slot:append>
                   <q-icon name="event" class="cursor-pointer">
                     <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                       <q-date v-model="dateRange" range>
                         <div class="row items-center justify-end q-gutter-sm">
-                          <q-btn label="Clear" color="primary" flat @click="clearDateRange"/>
-                          <q-btn label="OK" color="primary" flat v-close-popup/>
+                          <q-btn :label="$t('clear')" color="primary" flat @click="clearDateRange"/>
+                          <q-btn :label="$t('ok')" color="primary" flat v-close-popup/>
                         </div>
                       </q-date>
                     </q-popup-proxy>
@@ -29,7 +29,7 @@
                 </template>
               </q-input>
               <q-select v-model="statusPembayaranFilter" :options="statusPembayaranOptions"
-                        label="Status pembayaran" outlined dense emit-value map-options
+                        :label="$t('pages.rekapPenjualanPage.statusPembayaranLabel')" outlined dense emit-value map-options
                         style="min-width: 190px">
                 <template v-slot:option="{ itemProps, opt }">
                   <q-item v-bind="itemProps">
@@ -43,13 +43,13 @@
             </div>
             <q-btn :icon="showDetail ? 'chevron_left' : 'chevron_right'" @click="showDetailForm()" class="q-ml-sm">
               <q-tooltip>
-                {{ showDetail ? 'Sembunyikan detail' : 'Tampilkan lebih rinci' }}
+                {{ showDetail ? $t('pages.rekapPenjualanPage.hideDetailTooltip') : $t('pages.rekapPenjualanPage.showDetailTooltip') }}
               </q-tooltip>
             </q-btn>
           </template>
           <template v-slot:body-cell-statusSpk="props">
             <q-badge :color="getStatusColor(props.row.statusSpk)">
-              {{ props.row.statusSpk || 'N/A' }}
+              {{ props.row.statusSpk || $t('pages.rekapPenjualanPage.naLabel') }}
             </q-badge>
           </template>
 
@@ -82,7 +82,7 @@
       <template v-slot:after>
         <div class="q-pa-md scroll" style="height: 100%">
           <div class="row items-center q-mb-md">
-            <div class="text-h6 q-mb-md">Detail SPK dan Penjualan</div>
+            <div class="text-h6 q-mb-md">{{ $t('pages.rekapPenjualanPage.detailTitle') }}</div>
             <q-space/>
           </div>
           <q-form @submit="handleSave" id="karyawan-form" class="q-gutter-md">
@@ -90,19 +90,19 @@
               <q-card-section class="row" horizontal>
                 <q-card-section class="col-6 q-col-gutter-md">
                   <div>
-                    <span class="text-caption text-bold">Informasi SPK</span>
+                    <span class="text-caption text-bold">{{ $t('pages.rekapPenjualanPage.spkInfoLabel') }}</span>
                   </div>
-                  <q-input v-model="formData.tanggalJamSpk" label="Tanggal" outlined dense
+                  <q-input v-model="formData.tanggalJamSpk" :label="$t('pages.rekapPenjualanPage.dateLabel')" outlined dense
                            placeholder="YYYY-MM-DD HH:mm:ss"
                            readonly/>
-                  <q-input v-model="formData.noSpk" label="No SPK" outlined dense readonly/>
-                  <q-input v-model.number="formData.noAntrian" label="No Antrian" outlined dense type="number"
+                  <q-input v-model="formData.noSpk" :label="$t('pages.rekapPenjualanPage.noSpkLabel')" outlined dense readonly/>
+                  <q-input v-model.number="formData.noAntrian" :label="$t('pages.rekapPenjualanPage.noAntrianLabel')" outlined dense type="number"
                            readonly/>
 
-                  <q-input v-model.number="formData.nopol" label="No Polisi *" outlined dense
+                  <q-input v-model.number="formData.nopol" :label="$t('pages.rekapPenjualanPage.noPolisiLabel')" outlined dense
                            readonly/>
 
-                  <q-select v-model="selectedMekaniks" label="Pilih Mekanik" outlined dense multiple
+                  <q-select v-model="selectedMekaniks" :label="$t('pages.rekapPenjualanPage.selectMekanikLabel')" outlined dense multiple
                             :options="karyawanOptions" option-label="namaKaryawan" option-value="id" use-chips use-input
                             input-debounce="300" @filter="filterKaryawan" :loading="loadingKaryawan"
                             readonly
@@ -126,10 +126,10 @@
                     </template>
                   </q-select>
 
-                  <q-input v-model.number="formData.km" label="KM" outlined dense type="number"
-                           :rules="[val => !!val || 'KM harus diisi number']"
+                  <q-input v-model.number="formData.km" :label="$t('pages.rekapPenjualanPage.kmLabel')" outlined dense type="number"
+                           :rules="[val => !!val || $t('pages.rekapPenjualanPage.kmRequiredMessage')]"
                            hide-bottom-space readonly/>
-                  <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea" rows="2"
+                  <q-input v-model="formData.keterangan" :label="$t('notes')" outlined dense type="textarea" rows="2"
                            autogrow readonly/>
                 </q-card-section>
                 <q-card-section>
@@ -160,13 +160,13 @@
             <!-- Penjualan Information Section -->
             <q-card flat bordered class="q-mt-md">
               <q-card-section>
-                <div class="text-caption text-bold q-mb-md">Informasi Penjualan</div>
+                <div class="text-caption text-bold q-mb-md">{{ $t('pages.rekapPenjualanPage.salesInfoLabel') }}</div>
                 <div class="row q-col-gutter-md">
                   <div class="col-12 col-md-6">
-                    <q-input v-model="formData.noPenjualan" label="No Faktur Penjualan" outlined dense readonly/>
+                    <q-input v-model="formData.noPenjualan" :label="$t('pages.rekapPenjualanPage.noFakturPenjualanLabel')" outlined dense readonly/>
                   </div>
                   <div class="col-12 col-md-6">
-                    <q-field label="Tanggal Penjualan" outlined dense stack-label>
+                    <q-field :label="$t('pages.rekapPenjualanPage.tanggalPenjualanLabel')" outlined dense stack-label>
                       <template v-slot:control>
                         <div class="self-center full-width no-outline" tabindex="0">
                           {{ formatDateTime(formData.tanggalJamPenjualan) }}
@@ -175,41 +175,41 @@
                     </q-field>
                   </div>
                   <div class="col-12 col-md-6">
-                    <q-field label="Total Tagihan" outlined dense stack-label>
+                    <q-field :label="$t('pages.rekapPenjualanPage.totalTagihanLabel')" outlined dense stack-label>
                       <template v-slot:control>
                         <div class="self-center full-width no-outline" tabindex="0">{{ formatCurrency(formData.grandTotal) }}</div>
                       </template>
                     </q-field>
                   </div>
                   <div class="col-12 col-md-6">
-                    <q-field label="Discount" outlined dense stack-label>
+                    <q-field :label="$t('pages.rekapPenjualanPage.discountLabel')" outlined dense stack-label>
                       <template v-slot:control>
                         <div class="self-center full-width no-outline" tabindex="0">{{ formatCurrency(formData.discount) }}</div>
                       </template>
                     </q-field>
                   </div>
                   <div class="col-12 col-md-6">
-                    <q-field label="Uang Dibayar" outlined dense stack-label>
+                    <q-field :label="$t('pages.rekapPenjualanPage.uangDibayarLabel')" outlined dense stack-label>
                       <template v-slot:control>
                         <div class="self-center full-width no-outline" tabindex="0">{{ formatCurrency(formData.uangDibayar) }}</div>
                       </template>
                     </q-field>
                   </div>
                   <div class="col-12 col-md-6">
-                    <q-field label="Kembalian" outlined dense stack-label>
+                    <q-field :label="$t('pages.rekapPenjualanPage.kembalianLabel')" outlined dense stack-label>
                       <template v-slot:control>
                         <div class="self-center full-width no-outline" tabindex="0">{{ formatCurrency(formData.kembalian) }}</div>
                       </template>
                     </q-field>
                   </div>
                   <div class="col-12 col-md-6">
-                    <q-input v-model="formData.metodePembayaran" label="Metode Pembayaran" outlined dense readonly/>
+                    <q-input v-model="formData.metodePembayaran" :label="$t('pages.rekapPenjualanPage.metodePembayaranLabel')" outlined dense readonly/>
                   </div>
                   <div class="col-12 col-md-6">
-                    <q-input v-model="formData.statusPembayaran" label="Status Pembayaran" outlined dense readonly>
+                    <q-input v-model="formData.statusPembayaran" :label="$t('paymentStatus')" outlined dense readonly>
                       <template v-slot:append>
                         <q-badge :color="getPaymentStatusColor(formData.statusPembayaran)">
-                          {{ formData.statusPembayaran || 'N/A' }}
+                          {{ formData.statusPembayaran || $t('pages.rekapPenjualanPage.naLabel') }}
                         </q-badge>
                       </template>
                     </q-input>
@@ -220,7 +220,7 @@
 
             <div class="row justify-end q-gutter-sm">
               <div v-if="formData.statusSpk === 'SELESAI'">
-                <q-btn label="Print" type="button" @click="printSpk" style="width: 100px;"
+                <q-btn :label="$t('print')" type="button" @click="printSpk" style="width: 100px;"
                        :loading="saving" class="q-mr-sm"/>
               </div>
             </div>
@@ -230,25 +230,25 @@
     </q-splitter>
 
     <!-- Print Preview Dialog -->
-    <GenericDialog v-model="showPrintDialog" title="Print Preview" min-width="800px" max-width="90vw">
+    <GenericDialog v-model="showPrintDialog" :title="$t('pages.rekapPenjualanPage.printTitle')" min-width="800px" max-width="90vw">
       <div class="q-pa-sm" style="height: 70vh; width: 100%;">
         <iframe :srcdoc="printPreviewContent" style="width: 100%; height: 100%; border: 1px solid #ccc;"></iframe>
       </div>
       <template #actions>
-        <q-btn flat label="Tutup" color="primary" @click="showPrintDialog = false"/>
-        <q-btn label="Print" icon="print" color="secondary" @click="confirmPrint"/>
+        <q-btn flat :label="$t('close')" color="primary" @click="showPrintDialog = false"/>
+        <q-btn :label="$t('print')" icon="print" color="secondary" @click="confirmPrint"/>
       </template>
     </GenericDialog>
 
     <!-- Payment Dialog -->
-    <GenericDialog v-model="showPaymentDialog" title="Konfirmasi Pembayaran" min-width="500px">
+    <GenericDialog v-model="showPaymentDialog" :title="$t('pages.rekapPenjualanPage.confirmPaymentTitle')" min-width="500px">
       <div class="q-pa-md">
         <div class="row q-col-gutter-md">
           <div class="col-12">
-            <q-input v-model="paymentData.noPenjualan" label="No Penjualan" outlined dense readonly/>
+            <q-input v-model="paymentData.noPenjualan" :label="$t('pages.rekapPenjualanPage.noPenjualanLabel')" outlined dense readonly/>
           </div>
           <div class="col-12">
-            <q-field label="Total Tagihan" outlined dense stack-label>
+            <q-field :label="$t('pages.rekapPenjualanPage.totalTagihanLabel')" outlined dense stack-label>
               <template v-slot:control>
                 <div class="self-center full-width no-outline" tabindex="0">{{ formatCurrency(grandTotal) }}</div>
               </template>
@@ -256,22 +256,22 @@
           </div>
           <div class="col-12">
             <q-select v-model="paymentData.metodePembayaran" :options="['CASH', 'TRANSFER', 'DEBIT', 'KREDIT']"
-                      label="Metode Pembayaran" outlined dense/>
+                      :label="$t('pages.rekapPenjualanPage.metodePembayaranLabel')" outlined dense/>
           </div>
           <div class="col-12">
-            <q-input v-model.number="paymentData.uangDibayar" label="Uang Dibayar" outlined dense type="number"
+            <q-input v-model.number="paymentData.uangDibayar" :label="$t('pages.rekapPenjualanPage.uangDibayarLabel')" outlined dense type="number"
                      prefix="Rp" @update:model-value="calculateKembalian" autofocus
-                     :rules="[val => val >= grandTotal || 'Uang dibayar kurang dari total tagihan']"/>
+                     :rules="[val => val >= grandTotal || $t('pages.rekapPenjualanPage.uangDibayarLessThanTotalMessage')]"/>
           </div>
           <div class="col-12">
-            <q-input v-model="paymentData.kembalian" label="Kembalian" outlined dense readonly
+            <q-input v-model="paymentData.kembalian" :label="$t('pages.rekapPenjualanPage.kembalianLabel')" outlined dense readonly
                      :model-value="formatCurrency(paymentData.kembalian)" stack-label/>
           </div>
         </div>
       </div>
       <template #actions>
-        <q-btn flat label="Batal" color="primary" @click="showPaymentDialog = false"/>
-        <q-btn label="Konfirmasi & Selesai" color="green" @click="confirmPayment" :loading="saving"/>
+        <q-btn flat :label="$t('cancel')" color="primary" @click="showPaymentDialog = false"/>
+        <q-btn :label="$t('pages.rekapPenjualanPage.confirmFinishButton')" color="green" @click="confirmPayment" :loading="saving"/>
       </template>
     </GenericDialog>
   </q-page>
@@ -281,6 +281,7 @@
 import {ref, onMounted, watch, computed, nextTick, onBeforeUnmount} from 'vue'
 import {api} from 'boot/axios'
 import {useQuasar, date} from 'quasar'
+import {useI18n} from 'vue-i18n'
 import { useDateFilter } from 'src/composables/useDateFilter'
 import GenericDialog from 'components/GenericDialog.vue'
 import {useKeyboardShortcuts} from 'src/composables/useKeyboardShortcuts'
@@ -291,6 +292,8 @@ import SPKCustomerInfo from 'components/SPKCustomerInfo.vue'
 import renderFaktur from 'assets/template/faktur.template?compiled'
 
 const $q = useQuasar()
+
+const { t } = useI18n()
 
 // LocalStorage key for filter persistence
 const FILTER_STORAGE_KEY = 'spk_status_filter'
@@ -329,12 +332,12 @@ const filterToday = ref(false)
 // Values as stored by determinePaymentStatus() when a payment is confirmed.
 // 'Semua' keeps the filter out of the query, so rows of every status - including the ones
 // still without a penjualan, which have no status at all - are listed.
-const statusPembayaranOptions = [
-  {label: 'Semua', value: ''},
-  {label: 'Lunas', value: 'LUNAS'},
-  {label: 'DP', value: 'DP'},
-  {label: 'Belum Lunas', value: 'BELUM_LUNAS'}
-]
+const statusPembayaranOptions = computed(() => [
+  {label: t('pages.rekapPenjualanPage.statusSemuaOption'), value: ''},
+  {label: t('pages.rekapPenjualanPage.statusLunasOption'), value: 'LUNAS'},
+  {label: t('pages.rekapPenjualanPage.statusDPOption'), value: 'DP'},
+  {label: t('pages.rekapPenjualanPage.statusBelumLunasOption'), value: 'BELUM_LUNAS'}
+])
 const statusPembayaranFilter = ref('')
 const summaryStats = ref(null)
 const loadingSummary = ref(false)
@@ -449,10 +452,10 @@ const formatDateTime = (value) => {
 }
 
 // Table columns
-const columns = [
+const columns = computed(() => [
   {
     name: 'statusSpk',
-    label: 'Status',
+    label: t('status'),
     align: 'center',
     field: 'statusSpk',
     sortable: true
@@ -460,63 +463,63 @@ const columns = [
   {
     name: 'noSpk',
     required: true,
-    label: 'No SPK',
+    label: t('pages.rekapPenjualanPage.noSpkLabel'),
     align: 'left',
     field: 'noSpk',
     sortable: true
   },
   {
     name: 'noAntrian',
-    label: 'No Antrian',
+    label: t('pages.rekapPenjualanPage.noAntrianLabel'),
     align: 'center',
     field: 'noAntrian',
     sortable: true
   },
   {
     name: 'namaPelanggan',
-    label: 'Pelanggan',
+    label: t('pages.rekapPenjualanPage.pelangganColumn'),
     align: 'left',
     field: 'namaPelanggan',
     sortable: true
   },
   {
     name: 'nopol',
-    label: 'Nopol',
+    label: t('pages.rekapPenjualanPage.nopolColumn'),
     align: 'left',
     field: 'nopol',
     sortable: true
   },
   {
     name: 'km',
-    label: 'KM',
+    label: t('pages.rekapPenjualanPage.kmLabel'),
     align: 'center',
     field: 'km',
     sortable: true
   },
   {
     name: 'tanggalJamSpk',
-    label: 'Tanggal/Jam',
+    label: t('pages.rekapPenjualanPage.tanggalJamColumn'),
     align: 'left',
     field: 'tanggalJamSpk',
     sortable: true
   },
   {
     name: 'startedAt',
-    label: 'Mulai',
+    label: t('pages.rekapPenjualanPage.mulaiColumn'),
     align: 'left',
     field: 'startedAt',
     sortable: true
   },
   {
     name: 'finishedAt',
-    label: 'Selesai',
+    label: t('pages.rekapPenjualanPage.selesaiColumn'),
     align: 'left',
     field: 'finishedAt',
     sortable: true
   },
   {
     name: 'namaKaryawan',
-    label: 'Mekanik',
+    label: t('pages.rekapPenjualanPage.mekanikColumn'),
     align: 'left',
     field: 'namaKaryawan',
     sortable: true
@@ -524,14 +527,14 @@ const columns = [
   {
     name: 'noPenjualan',
     required: true,
-    label: 'No Faktur Penjualan',
+    label: t('pages.rekapPenjualanPage.noFakturPenjualanLabel'),
     align: 'left',
     field: 'noPenjualan',
     sortable: true
   },
   {
     name: 'discount',
-    label: 'Diskon',
+    label: t('pages.rekapPenjualanPage.diskonColumn'),
     align: 'left',
     field: 'discount',
     sortable: true
@@ -539,40 +542,40 @@ const columns = [
   {
     name: 'grandTotal',
     required: true,
-    label: 'Total',
+    label: t('pages.rekapPenjualanPage.totalColumn'),
     align: 'left',
     field: 'grandTotal',
     sortable: true
   },
   {
     name: 'uangDibayar',
-    label: 'Dibayar',
+    label: t('pages.rekapPenjualanPage.dibayarColumn'),
     align: 'left',
     field: 'uangDibayar',
     sortable: true
   },
   {
     name: 'kembalian',
-    label: 'Kembalian',
+    label: t('pages.rekapPenjualanPage.kembalianLabel'),
     align: 'left',
     field: 'kembalian',
     sortable: true
   },
   {
     name: 'metodePembayaran',
-    label: 'Metode pembayaran',
+    label: t('pages.rekapPenjualanPage.metodePembayaranColumn'),
     align: 'left',
     field: 'metodePembayaran',
     sortable: true
   },
   {
     name: 'statusPembayaran',
-    label: 'Status pembayaran',
+    label: t('pages.rekapPenjualanPage.statusPembayaranLabel'),
     align: 'left',
     field: 'statusPembayaran',
     sortable: true
   }
-]
+])
 
 
 // Filters shared by the table query and the summary above it, so the two always describe
@@ -645,7 +648,7 @@ const fetchSpk = async (paginationData = pagination.value) => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to fetch SPK data',
+      message: t('pages.rekapPenjualanPage.fetchSpkFailed'),
       caption: error.response?.data?.message || error.message
     })
   } finally {
@@ -662,7 +665,7 @@ const fetchNextSpkNumber = async () => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to fetch SPK data',
+      message: t('pages.rekapPenjualanPage.fetchSpkFailed'),
       caption: error.response?.data?.message || error.message
     })
   }
@@ -679,7 +682,7 @@ const fetchPelanggan = async () => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to fetch pelanggan data',
+      message: t('pages.rekapPenjualanPage.fetchPelangganFailed'),
       caption: error.response?.data?.message || error.message
     })
   } finally {
@@ -716,7 +719,7 @@ const onNopolChange = async (nopol) => {
     } catch (error) {
       $q.notify({
         type: 'negative',
-        message: 'Failed to fetch pelanggan details',
+        message: t('pages.rekapPenjualanPage.fetchPelangganDetailsFailed'),
         caption: error.response?.data?.message || error.message
       })
     }
@@ -729,7 +732,7 @@ const onNopolChange = async (nopol) => {
     formData.value.jenis = ''
     $q.notify({
       type: 'info',
-      message: 'New customer - Please fill in customer details',
+      message: t('pages.rekapPenjualanPage.newCustomerInfoMessage'),
       timeout: 2000
     })
   }
@@ -745,7 +748,7 @@ const fetchKaryawan = async () => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to fetch karyawan data',
+      message: t('pages.rekapPenjualanPage.fetchKaryawanFailed'),
       caption: error.response?.data?.message || error.message
     })
   } finally {
@@ -1006,7 +1009,7 @@ const saveSpk = async () => {
       if (!formData.value.namaPelanggan || !formData.value.merk) {
         $q.notify({
           type: 'warning',
-          message: 'Please fill in required customer fields (Nama, Merk)'
+          message: t('pages.rekapPenjualanPage.newCustomerRequiredMessage')
         })
         //saving.value = false
         return
@@ -1028,7 +1031,7 @@ const saveSpk = async () => {
         }
         $q.notify({
           type: 'positive',
-          message: 'New customer created successfully'
+          message: t('pages.rekapPenjualanPage.newCustomerCreated')
         })
         // Refresh pelanggan list
         await fetchPelanggan()
@@ -1036,7 +1039,7 @@ const saveSpk = async () => {
       } catch (error) {
         $q.notify({
           type: 'negative',
-          message: 'Failed to create new customer',
+          message: t('pages.rekapPenjualanPage.newCustomerCreateFailed'),
           caption: error.response?.data?.message || error.message
         })
         saving.value = false
@@ -1063,7 +1066,7 @@ const saveSpk = async () => {
       const result = response.data.data
       $q.notify({
         type: 'positive',
-        message: isEditMode.value ? 'SPK updated successfully' : 'SPK created successfully'
+        message: isEditMode.value ? t('pages.rekapPenjualanPage.spkUpdatedSuccess') : t('pages.rekapPenjualanPage.spkCreatedSuccess')
       })
       await fetchSpk()
       if (result) {
@@ -1080,7 +1083,7 @@ const saveSpk = async () => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to save SPK',
+      message: t('pages.rekapPenjualanPage.saveSpkFailed'),
       caption: error.response?.data?.message || error.message
     })
   } finally {
@@ -1109,7 +1112,7 @@ const confirmPayment = async () => {
     if (paymentData.value.uangDibayar <= 0) {
       $q.notify({
         type: 'warning',
-        message: 'Please enter a valid payment amount'
+        message: t('pages.rekapPenjualanPage.paymentAmountInvalidMessage')
       })
       saving.value = false
       return
@@ -1185,7 +1188,7 @@ const confirmPayment = async () => {
     if (spkResponse.data.success) {
       $q.notify({
         type: 'positive',
-        message: 'Payment processed successfully',
+        message: t('pages.rekapPenjualanPage.paymentProcessSuccess'),
         caption: `Invoice ${paymentData.value.noPenjualan} created`
       })
 
@@ -1199,7 +1202,7 @@ const confirmPayment = async () => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to process payment',
+      message: t('pages.rekapPenjualanPage.paymentProcessFailed'),
       caption: error.response?.data?.message || error.message
     })
   } finally {
@@ -1297,7 +1300,7 @@ const handleUpdateMasterJasa = async (payload) => {
     if (response.data.success) {
       $q.notify({
         type: 'positive',
-        message: 'Master data Jasa updated successfully'
+        message: t('pages.rekapPenjualanPage.updateMasterJasaSuccess')
       })
       await fetchJasa()
     }
@@ -1305,7 +1308,7 @@ const handleUpdateMasterJasa = async (payload) => {
     console.error('Failed to update master jasa', error)
     $q.notify({
       type: 'negative',
-      message: 'Failed to update master data Jasa',
+      message: t('pages.rekapPenjualanPage.updateMasterJasaFailed'),
       caption: error.response?.data?.message || error.message
     })
   }
@@ -1317,7 +1320,7 @@ const handleUpdateMasterBarang = async (payload) => {
     if (response.data.success) {
       $q.notify({
         type: 'positive',
-        message: 'Master data Barang updated successfully'
+        message: t('pages.rekapPenjualanPage.updateMasterBarangSuccess')
       })
       await fetchBarang()
     }
@@ -1325,7 +1328,7 @@ const handleUpdateMasterBarang = async (payload) => {
     console.error('Failed to update master barang', error)
     $q.notify({
       type: 'negative',
-      message: 'Failed to update master data Barang',
+      message: t('pages.rekapPenjualanPage.updateMasterBarangFailed'),
       caption: error.response?.data?.message || error.message
     })
   }

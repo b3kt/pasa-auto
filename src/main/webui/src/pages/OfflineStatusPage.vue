@@ -10,7 +10,7 @@
                 :color="isOnline ? 'positive' : 'negative'"
                 class="q-mr-sm"
               />
-              Network Status
+              {{ $t('pages.offlineStatusPage.networkStatusTitle') }}
             </div>
 
             <q-list>
@@ -22,9 +22,9 @@
                   />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label>Connection Status</q-item-label>
+                  <q-item-label>{{ $t('pages.offlineStatusPage.connectionStatusLabel') }}</q-item-label>
                   <q-item-label caption>
-                    {{ isOnline ? 'Online' : 'Offline' }}
+                    {{ isOnline ? $t('pages.offlineStatusPage.online') : $t('pages.offlineStatusPage.offline') }}
                   </q-item-label>
                 </q-item-section>
               </q-item>
@@ -34,9 +34,9 @@
                   <q-icon name="router" color="primary" />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label>Connection Type</q-item-label>
+                  <q-item-label>{{ $t('pages.offlineStatusPage.connectionTypeLabel') }}</q-item-label>
                   <q-item-label caption>
-                    {{ connectionType || 'Unknown' }}
+                    {{ connectionType || $t('pages.offlineStatusPage.unknown') }}
                   </q-item-label>
                 </q-item-section>
               </q-item>
@@ -46,9 +46,9 @@
                   <q-icon name="speed" color="primary" />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label>Connection Speed</q-item-label>
+                  <q-item-label>{{ $t('pages.offlineStatusPage.connectionSpeedLabel') }}</q-item-label>
                   <q-item-label caption>
-                    {{ connectionSpeed || 'Unknown' }}
+                    {{ connectionSpeed || $t('pages.offlineStatusPage.unknown') }}
                   </q-item-label>
                 </q-item-section>
               </q-item>
@@ -58,7 +58,7 @@
                   <q-icon name="sync" color="primary" />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label>Sync Status</q-item-label>
+                  <q-item-label>{{ $t('pages.offlineStatusPage.syncStatusLabel') }}</q-item-label>
                   <q-item-label caption>
                     {{ syncStatusText }}
                   </q-item-label>
@@ -70,13 +70,13 @@
           <q-separator />
 
           <q-card-section>
-            <div class="text-h6 q-mb-md">Offline Actions</div>
+            <div class="text-h6 q-mb-md">{{ $t('pages.offlineStatusPage.offlineActionsTitle') }}</div>
 
             <div class="q-gutter-md">
               <q-btn
                 color="primary"
                 icon="sync"
-                label="Force Sync Now"
+                :label="$t('pages.offlineStatusPage.forceSyncButton')"
                 :loading="isSyncing"
                 @click="handleForceSync"
                 :disable="!isOnline"
@@ -85,14 +85,14 @@
               <q-btn
                 color="warning"
                 icon="clear"
-                label="Clear Offline Data"
+                :label="$t('pages.offlineStatusPage.clearOfflineDataButton')"
                 @click="handleClearData"
               />
 
               <q-btn
                 color="info"
                 icon="info"
-                label="Storage Info"
+                :label="$t('pages.offlineStatusPage.storageInfoButton')"
                 @click="showStorageInfo"
               />
             </div>
@@ -101,10 +101,10 @@
           <q-separator />
 
           <q-card-section>
-            <div class="text-h6 q-mb-md">Pending Requests</div>
+            <div class="text-h6 q-mb-md">{{ $t('pages.offlineStatusPage.pendingRequestsTitle') }}</div>
 
             <div v-if="pendingRequests.length === 0" class="text-grey-6">
-              No pending requests
+              {{ $t('pages.offlineStatusPage.noPendingRequestsLabel') }}
             </div>
 
             <q-list v-else dense>
@@ -129,7 +129,7 @@
               <q-item v-if="pendingRequests.length > 5">
                 <q-item-section>
                   <q-item-label caption>
-                    ... and {{ pendingRequests.length - 5 }} more
+                    {{ $t('pages.offlineStatusPage.andMoreLabel', { count: pendingRequests.length - 5 }) }}
                   </q-item-label>
                 </q-item-section>
               </q-item>
@@ -143,6 +143,7 @@
 
 <script>
 import { defineComponent, ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useNetworkStatus } from '../composables/useNetworkStatus.js'
 import syncService from '../services/syncService.js'
 import { Notify, date } from 'quasar'
@@ -150,13 +151,14 @@ import { Notify, date } from 'quasar'
 export default defineComponent({
   name: 'OfflineStatusPage',
   setup() {
+    const { t } = useI18n()
     const { isOnline, connectionType, connectionSpeed } = useNetworkStatus()
     
     const pendingRequests = ref([])
     const isSyncing = ref(false)
     const lastSyncTime = ref(null)
 
-    const syncStatusText = ref('Checking...')
+    const syncStatusText = ref(t('pages.offlineStatusPage.syncChecking'))
 
     const updateSyncStatus = async () => {
       try {
@@ -166,15 +168,15 @@ export default defineComponent({
         lastSyncTime.value = status.lastSyncTime
 
         if (status.isSyncing) {
-          syncStatusText.value = 'Syncing...'
+          syncStatusText.value = t('pages.offlineStatusPage.syncSyncing')
         } else if (status.pendingRequests > 0) {
-          syncStatusText.value = `${status.pendingRequests} pending requests`
+          syncStatusText.value = t('pages.offlineStatusPage.pendingRequestsCount', { count: status.pendingRequests })
         } else {
-          syncStatusText.value = 'All synced'
+          syncStatusText.value = t('pages.offlineStatusPage.syncAllSynced')
         }
       } catch (error) {
         console.error('Failed to get sync status:', error)
-        syncStatusText.value = 'Error checking status'
+        syncStatusText.value = t('pages.offlineStatusPage.syncError')
       }
     }
 
@@ -182,7 +184,7 @@ export default defineComponent({
       if (!isOnline.value) {
         Notify.create({
           type: 'warning',
-          message: 'Cannot sync while offline',
+          message: t('pages.offlineStatusPage.cannotSyncOffline'),
         })
         return
       }
@@ -197,7 +199,7 @@ export default defineComponent({
         console.error('Force sync failed:', error)
         Notify.create({
           type: 'negative',
-          message: 'Sync failed. Please try again.',
+          message: t('pages.offlineStatusPage.syncFailed'),
         })
       } finally {
         isSyncing.value = false
@@ -224,13 +226,13 @@ export default defineComponent({
 
           Notify.create({
             type: 'info',
-            message: `Storage: ${usedMB}MB used of ${quotaMB}MB`,
+            message: t('pages.offlineStatusPage.storageUsage', { used: usedMB, quota: quotaMB }),
             timeout: 5000
           })
         } else {
           Notify.create({
             type: 'info',
-            message: 'Storage information not available',
+            message: t('pages.offlineStatusPage.storageInfoUnavailable'),
           })
         }
       } catch (error) {

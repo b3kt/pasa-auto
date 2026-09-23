@@ -5,10 +5,10 @@
         <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
                       @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
                       :on-create="openCreateDialog" ref="tableRef"
-                      :on-edit="openEditDialog" :create-label="$t('create') + ' supplier'"
-                      search-placeholder="Search by name or email...">
+                      :on-edit="openEditDialog" :create-label="$t('create') + ' Supplier'"
+                      :search-placeholder="$t('pages.supplierPage.searchPlaceholder')">
           <template v-slot:title>
-            <div class="text-h6 q-mb-md">Master | Supplier</div>
+            <div class="text-h6 q-mb-md">{{ $t('pages.supplierPage.title') }}</div>
           </template>
         </GenericTable>
       </template>
@@ -19,27 +19,27 @@
             <div class="text-h6 q-mb-md">{{ isEditMode ? $t('edit') + ' Supplier' : $t('create') + ' Supplier' }}</div>
             <q-space/>
             <q-btn v-if="isEditMode" flat round dense icon="add" @click="openCreateDialog">
-              <q-tooltip>New</q-tooltip>
+              <q-tooltip>{{ $t('new') }}</q-tooltip>
             </q-btn>
           </div>
           <q-form @submit="handleSave" id="supplier-form" class="q-gutter-md">
-            <q-input v-model="formData.namaSupplier" label="Nama Supplier *" outlined dense
-                     :rules="[val => !!val || 'Nama Supplier harus diisi']" hide-bottom-space/>
+            <q-input v-model="formData.namaSupplier" :label="$t('pages.supplierPage.nameLabel')" outlined dense
+                     :rules="[val => !!val || $t('pages.supplierPage.nameRequired')]" hide-bottom-space/>
 
-            <q-input v-model="formData.email" label="Email" outlined dense type="email"/>
-            <q-input v-model="formData.noTelepon" label="No Telepon" outlined dense/>
+            <q-input v-model="formData.email" :label="$t('email')" outlined dense type="email"/>
+            <q-input v-model="formData.noTelepon" :label="$t('pages.supplierPage.phoneLabel')" outlined dense/>
 
-            <q-input v-model="formData.alamat" label="Alamat" outlined dense type="textarea" rows="2"/>
+            <q-input v-model="formData.alamat" :label="$t('pages.supplierPage.addressLabel')" outlined dense type="textarea" rows="2"/>
 
-            <q-input v-model="formData.kontakPerson" label="Kontak Person" outlined dense/>
-            <q-input v-model="formData.noHpKontak" label="No HP Kontak" outlined dense/>
+            <q-input v-model="formData.kontakPerson" :label="$t('pages.supplierPage.contactPersonLabel')" outlined dense/>
+            <q-input v-model="formData.noHpKontak" :label="$t('pages.supplierPage.contactPhoneLabel')" outlined dense/>
 
-            <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea" rows="2"/>
+            <q-input v-model="formData.keterangan" :label="$t('notes')" outlined dense type="textarea" rows="2"/>
 
             <div class="row justify-end q-mt-md q-gutter-sm">
-              <q-btn v-if="isEditMode" label="Hapus" color="negative" flat @click="confirmDelete(formData)"
+              <q-btn v-if="isEditMode" :label="$t('delete')" color="negative" flat @click="confirmDelete(formData)"
                      :loading="deleting"/>
-              <q-btn label="Simpan" type="submit" color="primary" :loading="saving"
+              <q-btn :label="$t('save')" type="submit" color="primary" :loading="saving"
                      :disable="isEditMode && !isDirty(formData)"/>
             </div>
           </q-form>
@@ -48,18 +48,19 @@
     </q-splitter>
 
     <!-- Delete Confirmation Dialog -->
-    <GenericDialog v-model="showDeleteDialog" title="Konfirmasi hapus data" min-width="400px" position="standard">
-      Are you sure you want to delete <strong>{{ itemToDelete?.namaSupplier }}</strong>?
+    <GenericDialog v-model="showDeleteDialog" :title="$t('confirmDeleteTitle')" min-width="400px" position="standard">
+      {{ $t('pages.supplierPage.confirmDeleteMessage', { item: itemToDelete?.namaSupplier }) }}
       <template #actions>
-        <q-btn flat label="Batalkan" color="primary" @click="showDeleteDialog = false"/>
-        <q-btn flat label="Hapus saja" color="negative" @click="deleteItem" :loading="deleting"/>
+        <q-btn flat :label="$t('cancel')" color="primary" @click="showDeleteDialog = false"/>
+        <q-btn flat :label="$t('deleteOnlyButton')" color="negative" @click="deleteItem" :loading="deleting"/>
       </template>
     </GenericDialog>
   </q-page>
 </template>
 
 <script setup>
-import {ref, onMounted} from 'vue'
+import {ref, computed, onMounted} from 'vue'
+import {useI18n} from 'vue-i18n'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
 import {useCrud} from 'src/composables/useCrud'
@@ -96,6 +97,7 @@ const {
   enableCache: true
 })
 
+const { t } = useI18n()
 const splitterModel = ref(70)
 const tableRef = ref(null)
 
@@ -174,41 +176,41 @@ useKeyboardShortcuts({
 })
 
 // Table Columns
-const columns = [
+const columns = computed(() => [
   {
     name: 'namaSupplier',
     required: true,
-    label: 'Nama Supplier',
+    label: t('pages.supplierPage.nameColumn'),
     align: 'left',
     field: 'namaSupplier',
     sortable: true
   },
   {
     name: 'email',
-    label: 'Email',
+    label: t('email'),
     align: 'left',
     field: 'email'
   },
   {
     name: 'noTelepon',
-    label: 'No Telepon',
+    label: t('pages.supplierPage.phoneColumn'),
     align: 'left',
     field: 'noTelepon'
   },
   {
     name: 'kota',
-    label: 'Kota',
+    label: t('pages.supplierPage.cityColumn'),
     align: 'left',
     field: 'kota',
     sortable: true
   },
   {
     name: 'kontakPerson',
-    label: 'Kontak Person',
+    label: t('pages.supplierPage.contactPersonColumn'),
     align: 'left',
     field: 'kontakPerson'
   }
-]
+])
 
 // Lifecycle
 onMounted(() => {

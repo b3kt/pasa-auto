@@ -7,7 +7,7 @@
                 <div class="q-pa-md scroll" style="height: 100%">
                     <q-card>
                         <q-card-section class="bg-primary text-white">
-                            <div class="text-h5">Absensi Karyawan</div>
+                            <div class="text-h5">{{ $t('pages.absensi.header') }}</div>
                             <div class="text-subtitle2">{{ currentDate }}</div>
                         </q-card-section>
 
@@ -16,44 +16,44 @@
                         <q-card-section>
                             <q-card flat bordered class="text-center q-pa-md q-mb-md">
                                 <div class="text-h3 text-primary">{{ currentTime }}</div>
-                                <div class="text-subtitle2 text-grey-7">Waktu Saat Ini</div>
+                                <div class="text-subtitle2 text-grey-7">{{ $t('pages.absensi.currentTime') }}</div>
                             </q-card>
 
                             <div v-if="!role.includes('Karyawan')">
                                 <q-select v-model="selectedKaryawan"
-                                    label="Pilih Karyawan (untuk absen masuk/keluar)" outlined dense clearable
+                                    :label="$t('pages.absensi.selectEmployeeLabel')" outlined dense clearable
                                     :options="filteredKaryawanOptions"
                                     option-label="namaKaryawan" option-value="id" emit-value map-options use-input
                                     input-debounce="300" @filter="filterKaryawan" :loading="loadingKaryawan">
                                     <template v-slot:no-option>
                                         <q-item>
                                             <q-item-section class="text-grey">
-                                                Tidak ada hasil
+                                                {{ $t('pages.absensi.noResults') }}
                                             </q-item-section>
                                         </q-item>
                                     </template>
                                 </q-select>
                                 <div class="text-caption text-grey-7 q-mt-xs">
-                                    Kosongkan untuk melihat riwayat absensi seluruh staf.
+                                    {{ $t('pages.absensi.allStaffHint') }}
                                 </div>
                             </div>
                             <div v-else>
-                                <q-input :model-value="user?.karyawanNama" label="Nama Karyawan" outlined dense readonly />
-                                <q-input style="display: none;" v-model="selectedKaryawan" label="ID Karyawan" outlined
+                                <q-input :model-value="user?.karyawanNama" :label="$t('pages.absensi.employeeNameLabel')" outlined dense readonly />
+                                <q-input style="display: none;" v-model="selectedKaryawan" :label="$t('pages.absensi.employeeIdLabel')" outlined
                                     dense readonly />
                             </div>
 
                             <!-- Today's Status Card -->
                             <q-card v-if="todayAttendance" flat bordered class="q-mt-md">
                                 <q-card-section>
-                                    <div class="text-subtitle1 text-weight-bold">Status Hari Ini</div>
+                                    <div class="text-subtitle1 text-weight-bold">{{ $t('pages.absensi.todayStatusTitle') }}</div>
                                     <div class="row q-col-gutter-sm q-mt-sm">
                                         <div class="col-6">
-                                            <div class="text-caption text-grey-7">Jam Masuk</div>
+                                            <div class="text-caption text-grey-7">{{ $t('pages.absensi.clockInLabel') }}</div>
                                             <div class="text-body1">{{ todayAttendance.jamMasuk || '-' }}</div>
                                         </div>
                                         <div class="col-6">
-                                            <div class="text-caption text-grey-7">Jam Keluar</div>
+                                            <div class="text-caption text-grey-7">{{ $t('pages.absensi.clockOutLabel') }}</div>
                                             <div class="text-body1">{{ todayAttendance.jamKeluar || '-' }}</div>
                                         </div>
                                         <div class="col-6 q-mt-sm">
@@ -63,15 +63,15 @@
                                             </q-badge>
                                         </div>
                                         <div class="col-6 q-mt-sm">
-                                            <div class="text-caption text-grey-7">Penanda</div>
+                                            <div class="text-caption text-grey-7">{{ $t('pages.absensi.flagsLabel') }}</div>
                                             <div>
                                                 <q-badge v-if="todayAttendance.terlambat" color="warning"
-                                                    class="q-mr-xs">Terlambat</q-badge>
+                                                    class="q-mr-xs">{{ $t('pages.absensi.late') }}</q-badge>
                                                 <q-badge v-if="todayAttendance.pulangCepat" color="orange"
-                                                    class="q-mr-xs">Pulang Cepat</q-badge>
-                                                <q-badge v-if="todayAttendance.lembur > 0" color="green">Lembur: {{
-                                                    todayAttendance.lembur }}m
-                                                </q-badge>
+                                                    class="q-mr-xs">{{ $t('pages.absensi.earlyLeave') }}</q-badge>
+                                                <q-badge v-if="todayAttendance.lembur > 0" color="green">{{
+                                                    $t('pages.absensi.overtime', { min: todayAttendance.lembur })
+                                                }}</q-badge>
                                             </div>
                                         </div>
                                     </div>
@@ -79,18 +79,18 @@
                             </q-card>
 
                             <!-- Optional note for clock-out; only relevant once clocked in and not yet clocked out -->
-                            <q-input v-if="canClockOut" v-model="clockOutNote" label="Catatan (opsional)" outlined
+                            <q-input v-if="canClockOut" v-model="clockOutNote" :label="$t('pages.absensi.noteLabel')" outlined
                                 dense type="textarea" rows="2" class="q-mt-md" />
 
                             <!-- Clock In/Out Buttons -->
                             <div class="row q-col-gutter-md q-mt-md">
                                 <div class="col-6">
-                                    <q-btn unelevated color="positive" icon="login" label="Absen Masuk" class="full-width"
+                                    <q-btn unelevated color="positive" icon="login" :label="$t('pages.absensi.clockInButton')" class="full-width"
                                         @click="clockIn" :loading="clocking"
                                         :disable="!selectedKaryawan || !!todayAttendance?.jamMasuk" />
                                 </div>
                                 <div class="col-6">
-                                    <q-btn unelevated color="negative" icon="logout" label="Absen Keluar"
+                                    <q-btn unelevated color="negative" icon="logout" :label="$t('pages.absensi.clockOutButton')"
                                         class="full-width" @click="confirmClockOut" :loading="clocking"
                                         :disable="!selectedKaryawan || !canClockOut" />
                                 </div>
@@ -108,18 +108,18 @@
                         @update:pagination="historyPagination = $event" @request="onHistoryRequest"
                         :enable-search="false">
                         <template v-slot:title>
-                            <div class="text-h6 q-mb-md">Riwayat Absensi</div>
+                            <div class="text-h6 q-mb-md">{{ $t('pages.absensi.historyTitle') }}</div>
                         </template>
 
                         <template v-slot:toolbar-filters>
                             <div class="row items-center q-gutter-sm">
-                                <q-input v-model="filters.startDate" label="Tanggal Mulai" outlined dense type="date"
+                                <q-input v-model="filters.startDate" :label="$t('pages.absensi.startDateLabel')" outlined dense type="date"
                                     style="min-width: 150px" />
-                                <q-input v-model="filters.endDate" label="Tanggal Akhir" outlined dense type="date"
+                                <q-input v-model="filters.endDate" :label="$t('pages.absensi.endDateLabel')" outlined dense type="date"
                                     style="min-width: 150px" />
                                 <q-select v-model="filters.status" label="Status" outlined dense clearable
                                     :options="['HADIR', 'IZIN', 'SAKIT', 'ALPHA', 'CUTI']" style="min-width: 150px" />
-                                <q-btn unelevated color="primary" label="Cari" icon="search"
+                                <q-btn unelevated color="primary" :label="$t('pages.absensi.searchButton')" icon="search"
                                     @click="fetchAttendanceHistory" />
                             </div>
                         </template>
@@ -135,15 +135,15 @@
                         </template>
 
                         <template v-slot:body-cell-flags="props">
-                                <q-badge v-if="props.row.terlambat" color="warning" class="q-mr-xs">Terlambat</q-badge>
-                                <q-badge v-if="props.row.pulangCepat" color="orange" class="q-mr-xs">Pulang Cepat</q-badge>
-                                <q-badge v-if="props.row.lembur > 0" color="green">Lembur: {{ props.row.lembur }}m</q-badge>
+                                <q-badge v-if="props.row.terlambat" color="warning" class="q-mr-xs">{{ $t('pages.absensi.late') }}</q-badge>
+                                <q-badge v-if="props.row.pulangCepat" color="orange" class="q-mr-xs">{{ $t('pages.absensi.earlyLeave') }}</q-badge>
+                                <q-badge v-if="props.row.lembur > 0" color="green">{{ $t('pages.absensi.overtime', { min: props.row.lembur }) }}</q-badge>
                         </template>
 
                         <template v-slot:body-cell-actions="props" v-if="isManager">
                                 <q-btn flat dense round icon="edit" color="primary"
                                     @click.stop="openMarkAbsenceDialog(props.row)">
-                                    <q-tooltip>Tandai Ketidakhadiran</q-tooltip>
+                                    <q-tooltip>{{ $t('pages.absensi.markAbsenceTooltip') }}</q-tooltip>
                                 </q-btn>
                         </template>
                     </GenericTable>
@@ -152,28 +152,28 @@
         </q-splitter>
 
         <!-- Clock-Out Confirmation Dialog -->
-        <GenericDialog v-model="showClockOutConfirm" title="Konfirmasi Absen Keluar" min-width="400px">
-            Apakah Anda yakin ingin melakukan absen keluar sekarang?
+        <GenericDialog v-model="showClockOutConfirm" :title="$t('pages.absensi.confirmClockOutTitle')" min-width="400px">
+            {{ $t('pages.absensi.confirmClockOutMessage') }}
             <template #actions>
-                <q-btn flat label="Batalkan" color="primary" @click="showClockOutConfirm = false" />
-                <q-btn label="Ya, Absen Keluar" color="negative" @click="clockOutConfirmed" :loading="clocking" />
+                <q-btn flat :label="$t('cancel')" color="primary" @click="showClockOutConfirm = false" />
+                <q-btn :label="$t('pages.absensi.confirmClockOutButton')" color="negative" @click="clockOutConfirmed" :loading="clocking" />
             </template>
         </GenericDialog>
 
         <!-- Mark Absence Dialog (Admin) -->
-        <GenericDialog v-model="showMarkAbsenceDialog" title="Tandai Ketidakhadiran" min-width="400px">
+        <GenericDialog v-model="showMarkAbsenceDialog" :title="$t('pages.absensi.markAbsenceTitle')" min-width="400px">
             <q-form @submit="markAbsence" id="absence-form" class="q-gutter-md">
-                <q-input v-model="absenceForm.tanggal" label="Tanggal *" outlined dense type="date"
-                    :rules="[val => !!val || 'Tanggal harus diisi']" />
+                <q-input v-model="absenceForm.tanggal" :label="$t('pages.absensi.dateLabel')" outlined dense type="date"
+                    :rules="[val => !!val || $t('pages.absensi.dateRequired')]" />
 
                 <q-select v-model="absenceForm.status" label="Status *" outlined dense
-                    :options="['IZIN', 'SAKIT', 'ALPHA', 'CUTI']" :rules="[val => !!val || 'Status harus diisi']" />
+                    :options="['IZIN', 'SAKIT', 'ALPHA', 'CUTI']" :rules="[val => !!val || $t('pages.absensi.statusRequired')]" />
 
-                <q-input v-model="absenceForm.keterangan" label="Keterangan" outlined dense type="textarea" rows="3" />
+                <q-input v-model="absenceForm.keterangan" :label="$t('pages.absensi.notesLabel')" outlined dense type="textarea" rows="3" />
             </q-form>
             <template #actions>
-                <q-btn flat label="Batalkan" color="primary" @click="closeMarkAbsenceDialog" />
-                <q-btn label="Simpan" type="submit" form="absence-form" color="primary" :loading="marking" />
+                <q-btn flat :label="$t('cancel')" color="primary" @click="closeMarkAbsenceDialog" />
+                <q-btn :label="$t('save')" type="submit" form="absence-form" color="primary" :loading="marking" />
             </template>
         </GenericDialog>
     </q-page>
@@ -183,6 +183,7 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import browserCache from '../../utils/browserCache.js'
 import GenericDialog from 'components/GenericDialog.vue'
 import GenericTable from 'components/GenericTable.vue'
@@ -190,6 +191,7 @@ import { useAuthStore } from 'stores/auth-store'
 import { computed } from 'vue'
 
 const $q = useQuasar()
+const { t } = useI18n()
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 // user briefly turns null while this page is still mounted during logout, right up until the
@@ -257,14 +259,14 @@ const absenceForm = ref({
 
 // Columns; Admin/Owner get a "Karyawan" column since they can view every employee's history at once
 const historyColumns = computed(() => [
-    { name: 'tanggal', label: 'Tanggal', align: 'left', field: 'tanggal', sortable: true },
-    ...(isManager.value ? [{ name: 'namaKaryawan', label: 'Karyawan', align: 'left', field: 'namaKaryawan' }] : []),
-    { name: 'jamMasuk', label: 'Jam Masuk', align: 'center', field: 'jamMasuk' },
-    { name: 'jamKeluar', label: 'Jam Keluar', align: 'center', field: 'jamKeluar' },
+    { name: 'tanggal', label: t('pages.absensi.dateColumn'), align: 'left', field: 'tanggal', sortable: true },
+    ...(isManager.value ? [{ name: 'namaKaryawan', label: t('pages.absensi.employeeColumn'), align: 'left', field: 'namaKaryawan' }] : []),
+    { name: 'jamMasuk', label: t('pages.absensi.clockInLabel'), align: 'center', field: 'jamMasuk' },
+    { name: 'jamKeluar', label: t('pages.absensi.clockOutLabel'), align: 'center', field: 'jamKeluar' },
     { name: 'status', label: 'Status', align: 'center', field: 'status', sortable: true },
-    { name: 'flags', label: 'Penanda', align: 'center', field: 'flags' },
-    { name: 'keterangan', label: 'Keterangan', align: 'left', field: 'keterangan' },
-    { name: 'actions', label: 'Aksi', align: 'center', field: 'actions' }
+    { name: 'flags', label: t('pages.absensi.flagsLabel'), align: 'center', field: 'flags' },
+    { name: 'keterangan', label: t('pages.absensi.notesColumn'), align: 'left', field: 'keterangan' },
+    { name: 'actions', label: t('pages.absensi.actionsColumn'), align: 'center', field: 'actions' }
 ])
 
 // Clock interval
@@ -288,7 +290,7 @@ const fetchKaryawan = async () => {
     } catch (error) {
         $q.notify({
             type: 'negative',
-            message: 'Gagal memuat data karyawan',
+            message: t('pages.absensi.fetchEmployeesFailed'),
             caption: error.response?.data?.message || error.message
         })
     } finally {
@@ -335,7 +337,7 @@ const clockIn = async () => {
         if (response.data.success) {
             $q.notify({
                 type: 'positive',
-                message: 'Absen masuk berhasil',
+                message: t('pages.absensi.clockInSuccess'),
                 icon: 'check_circle'
             })
             await fetchTodayAttendance()
@@ -344,7 +346,7 @@ const clockIn = async () => {
     } catch (error) {
         $q.notify({
             type: 'negative',
-            message: 'Absen masuk gagal',
+            message: t('pages.absensi.clockInFailed'),
             caption: error.response?.data?.message || error.message
         })
     } finally {
@@ -373,7 +375,7 @@ const clockOut = async () => {
         if (response.data.success) {
             $q.notify({
                 type: 'positive',
-                message: 'Absen keluar berhasil',
+                message: t('pages.absensi.clockOutSuccess'),
                 icon: 'check_circle'
             })
             clockOutNote.value = ''
@@ -383,7 +385,7 @@ const clockOut = async () => {
     } catch (error) {
         $q.notify({
             type: 'negative',
-            message: 'Absen keluar gagal',
+            message: t('pages.absensi.clockOutFailed'),
             caption: error.response?.data?.message || error.message
         })
     } finally {
@@ -414,7 +416,7 @@ const fetchAttendanceHistory = async () => {
     } catch (error) {
         $q.notify({
             type: 'negative',
-            message: 'Gagal memuat riwayat absensi',
+            message: t('pages.absensi.fetchHistoryFailed'),
             caption: error.response?.data?.message || error.message
         })
     } finally {
@@ -458,7 +460,7 @@ const markAbsence = async () => {
         if (response.data.success) {
             $q.notify({
                 type: 'positive',
-                message: 'Ketidakhadiran berhasil dicatat'
+                message: t('pages.absensi.markAbsenceSuccess')
             })
             closeMarkAbsenceDialog()
             await fetchTodayAttendance()
@@ -467,7 +469,7 @@ const markAbsence = async () => {
     } catch (error) {
         $q.notify({
             type: 'negative',
-            message: 'Gagal mencatat ketidakhadiran',
+            message: t('pages.absensi.markAbsenceFailed'),
             caption: error.response?.data?.message || error.message
         })
     } finally {

@@ -2,45 +2,42 @@
   <q-page padding>
     <q-card flat bordered>
       <q-card-section>
-        <div class="text-h6">Persetujuan Akun Google</div>
+        <div class="text-h6">{{ $t('pages.pendingApprovalPage.title') }}</div>
         <div class="text-caption text-grey-7">
-          Akun yang dibuat lewat login Google dan menunggu persetujuan. Akun yang disetujui belum
-          memiliki hak akses apa pun &mdash; tetapkan role lewat halaman Users.
+          {{ $t('pages.pendingApprovalPage.description') }}
         </div>
       </q-card-section>
 
       <q-separator />
 
       <q-table :rows="rows" :columns="columns" row-key="id" :loading="loading" flat
-               :rows-per-page-options="[10, 25, 50]" no-data-label="Tidak ada akun yang menunggu persetujuan">
+               :rows-per-page-options="[10, 25, 50]" :no-data-label="$t('pages.pendingApprovalPage.noDataLabel')">
         <template v-slot:body-cell-createdAt="props">
           <q-td :props="props">{{ formatDateTime(props.row.createdAt) }}</q-td>
         </template>
 
         <template v-slot:body-cell-actions="props">
           <q-td :props="props" class="q-gutter-xs">
-            <q-btn dense color="positive" icon="check" label="Setujui" no-caps
+            <q-btn dense color="positive" icon="check" :label="$t('pages.pendingApprovalPage.approveButton')" no-caps
                    :loading="actingOn === props.row.id" @click="confirm(props.row, 'approve')" />
-            <q-btn dense flat color="negative" icon="block" label="Tolak" no-caps
+            <q-btn dense flat color="negative" icon="block" :label="$t('pages.pendingApprovalPage.rejectButton')" no-caps
                    :loading="actingOn === props.row.id" @click="confirm(props.row, 'reject')" />
           </q-td>
         </template>
       </q-table>
     </q-card>
 
-    <GenericDialog v-model="showConfirm" :title="pendingAction === 'approve' ? 'Setujui akun' : 'Tolak akun'"
+    <GenericDialog v-model="showConfirm" :title="pendingAction === 'approve' ? $t('pages.pendingApprovalPage.approveTitle') : $t('pages.pendingApprovalPage.rejectTitle')"
                    min-width="400px" position="standard">
       <template v-if="pendingAction === 'approve'">
-        Setujui <strong>{{ selected?.username }}</strong> ({{ selected?.email }})? Akun menjadi aktif,
-        tetapi belum bisa mengakses apa pun sampai Anda menetapkan role.
+        {{ $t('pages.pendingApprovalPage.approveMessage', { username: selected?.username, email: selected?.email }) }}
       </template>
       <template v-else>
-        Tolak <strong>{{ selected?.username }}</strong> ({{ selected?.email }})? Sesi yang sedang
-        berjalan untuk akun ini akan diakhiri.
+        {{ $t('pages.pendingApprovalPage.rejectMessage', { username: selected?.username, email: selected?.email }) }}
       </template>
       <template #actions>
-        <q-btn flat label="Batal" color="primary" @click="showConfirm = false" />
-        <q-btn flat :label="pendingAction === 'approve' ? 'Setujui' : 'Tolak'"
+        <q-btn flat :label="$t('cancel')" color="primary" @click="showConfirm = false" />
+        <q-btn flat :label="pendingAction === 'approve' ? $t('pages.pendingApprovalPage.approveButton') : $t('pages.pendingApprovalPage.rejectButton')"
                :color="pendingAction === 'approve' ? 'positive' : 'negative'" @click="act" />
       </template>
     </GenericDialog>
@@ -48,12 +45,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useQuasar, date } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import { api } from 'boot/axios'
 import GenericDialog from 'components/GenericDialog.vue'
 
 const $q = useQuasar()
+const { t } = useI18n()
 
 const rows = ref([])
 const loading = ref(false)
@@ -62,12 +61,12 @@ const showConfirm = ref(false)
 const selected = ref(null)
 const pendingAction = ref('approve')
 
-const columns = [
-  { name: 'username', label: 'Username', field: 'username', align: 'left', sortable: true },
-  { name: 'email', label: 'Email', field: 'email', align: 'left', sortable: true },
-  { name: 'createdAt', label: 'Didaftarkan', field: 'createdAt', align: 'left', sortable: true },
-  { name: 'actions', label: 'Aksi', field: 'actions', align: 'right' }
-]
+const columns = computed(() => [
+  { name: 'username', label: t('username'), field: 'username', align: 'left', sortable: true },
+  { name: 'email', label: t('email'), field: 'email', align: 'left', sortable: true },
+  { name: 'createdAt', label: t('pages.pendingApprovalPage.registeredColumn'), field: 'createdAt', align: 'left', sortable: true },
+  { name: 'actions', label: t('actions'), field: 'actions', align: 'right' }
+])
 
 const formatDateTime = (value) => (value ? date.formatDate(value, 'YYYY-MM-DD HH:mm') : '')
 
@@ -79,7 +78,7 @@ const fetchPending = async () => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Gagal memuat daftar persetujuan',
+      message: t('pages.pendingApprovalPage.fetchFailed'),
       caption: error.response?.data?.message || error.message
     })
   } finally {
@@ -103,14 +102,14 @@ const act = async () => {
     $q.notify({
       type: 'positive',
       message: pendingAction.value === 'approve'
-        ? `${row.username} disetujui. Tetapkan role lewat halaman Users.`
-        : `${row.username} ditolak.`
+        ? t('pages.pendingApprovalPage.approvedNotify', { username: row.username })
+        : t('pages.pendingApprovalPage.rejectedNotify', { username: row.username })
     })
     await fetchPending()
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Gagal memproses akun',
+      message: t('pages.pendingApprovalPage.actionFailed'),
       caption: error.response?.data?.message || error.message
     })
   } finally {

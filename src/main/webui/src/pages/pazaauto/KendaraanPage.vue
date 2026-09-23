@@ -8,12 +8,12 @@
             <GenericTable :rows="merkRows" :columns="merkColumns" :loading="merkLoading" :pagination="merkPagination"
                           @update:pagination="merkPagination = $event" @request="merkOnRequest" @search="merkOnSearch"
                           :on-edit="openMerkEdit" ref="merkTableRef" :table-height="merkTableHeight"
-                          search-placeholder="Cari merk...">
+                          :search-placeholder="$t('pages.kendaraanPage.merkSearchPlaceholder')">
               <template v-slot:title>
               <div class="row items-center q-px-sm">
-                <div class="text-h6 q-mb-md">Master | Merk Kendaraan</div>
+                <div class="text-h6 q-mb-md">{{ $t('pages.kendaraanPage.merkTitle') }}</div>
                   <q-space/>
-                <q-btn flat dense icon="add" label="Merk" color="primary" @click="openMerkCreate"/>
+                <q-btn flat dense icon="add" :label="$t('pages.kendaraanPage.merkButton')" color="primary" @click="openMerkCreate"/>
               </div>
 
 
@@ -27,24 +27,24 @@
                           :loading="kendaraanLoading" :pagination="kendaraanPagination"
                           @update:pagination="kendaraanPagination = $event" @request="onKendaraanRequest"
                           @search="onKendaraanSearch" :on-edit="openKendaraanEdit" ref="kendaraanTableRef"
-                          :table-height="kendaraanTableHeight" search-placeholder="Cari jenis / model...">
+                          :table-height="kendaraanTableHeight" :search-placeholder="$t('pages.kendaraanPage.kendaraanSearchPlaceholder')">
               <template v-slot:title>
               <div class="row items-center q-px-sm q-pt-md">
 
-                <div class="text-h6 q-mb-md">Master | Jenis Kendaraan |
+                <div class="text-h6 q-mb-md">{{ $t('pages.kendaraanPage.jenisTitle') }}
                   <span v-if="selectedMerk" class="text-primary"> {{ selectedMerk.nama }}</span>
                 </div>
                 <q-space/>
-                <q-btn flat dense icon="add" label="Kendaraan" color="primary" :disable="!selectedMerk"
+                <q-btn flat dense icon="add" :label="$t('pages.kendaraanPage.kendaraanButton')" color="primary" :disable="!selectedMerk"
                        @click="openKendaraanCreate">
-                  <q-tooltip v-if="!selectedMerk">Pilih merk terlebih dahulu</q-tooltip>
+                  <q-tooltip v-if="!selectedMerk">{{ $t('pages.kendaraanPage.selectMerkFirst') }}</q-tooltip>
                 </q-btn>
               </div>
 
               </template>
               <template v-slot:no-data>
                 <div class="full-width text-center text-grey q-pa-md">
-                  {{ selectedMerk ? 'Belum ada kendaraan untuk merk ini' : 'Pilih merk untuk melihat kendaraan' }}
+                  {{ selectedMerk ? $t('pages.kendaraanPage.noKendaraanForMerk') : $t('pages.kendaraanPage.selectMerkToView') }}
                 </div>
               </template>
             </GenericTable>
@@ -57,22 +57,22 @@
           <!-- Merk form -->
           <template v-if="activeForm === 'merk'">
             <div class="row items-center q-mb-md">
-              <div class="text-h6">{{ merkIsEditMode ? 'Edit Merk Kendaraan' : 'Tambah Merk Kendaraan' }}</div>
+              <div class="text-h6">{{ merkIsEditMode ? $t('pages.kendaraanPage.editMerkTitle') : $t('pages.kendaraanPage.createMerkTitle') }}</div>
               <q-space/>
               <q-btn v-if="merkIsEditMode" flat round dense icon="add" @click="openMerkCreate">
-                <q-tooltip>Merk baru</q-tooltip>
+                <q-tooltip>{{ $t('pages.kendaraanPage.newMerkTooltip') }}</q-tooltip>
               </q-btn>
             </div>
             <q-form @submit="handleMerkSave" class="q-gutter-md">
-              <q-input v-model="merkForm.nama" label="Nama Merk *" outlined dense maxlength="50"
-                       hint="Disimpan dalam huruf kapital, mis. HONDA"
-                       :rules="[val => !!val && !!val.trim() || 'Nama merk harus diisi']"/>
-              <q-input v-model="merkForm.keterangan" label="Keterangan" outlined dense type="textarea" rows="2"/>
+              <q-input v-model="merkForm.nama" :label="$t('pages.kendaraanPage.merkNameLabel')" outlined dense maxlength="50"
+                       :hint="$t('pages.kendaraanPage.merkNameHint')"
+                       :rules="[val => !!val && !!val.trim() || $t('pages.kendaraanPage.merkNameRequired')]"/>
+              <q-input v-model="merkForm.keterangan" :label="$t('notes')" outlined dense type="textarea" rows="2"/>
 
               <div class="row justify-end q-mt-md q-gutter-sm">
-                <q-btn v-if="merkIsEditMode" label="Hapus" color="negative" flat
+                <q-btn v-if="merkIsEditMode" :label="$t('delete')" color="negative" flat
                        @click="merkConfirmDelete(merkForm)" :loading="merkDeleting"/>
-                <q-btn label="Simpan" type="submit" color="primary" :loading="merkSaving"
+                <q-btn :label="$t('save')" type="submit" color="primary" :loading="merkSaving"
                        :disable="merkIsEditMode && !merkIsDirty(merkForm)"/>
               </div>
             </q-form>
@@ -81,26 +81,26 @@
           <!-- Kendaraan form -->
           <template v-else>
             <div class="row items-center q-mb-md">
-              <div class="text-h6">{{ kendaraanIsEditMode ? 'Edit Kendaraan' : 'Tambah data Kendaraan' }}</div>
+              <div class="text-h6">{{ kendaraanIsEditMode ? $t('pages.kendaraanPage.editKendaraanTitle') : $t('pages.kendaraanPage.createKendaraanTitle') }}</div>
               <q-space/>
               <q-btn v-if="kendaraanIsEditMode" flat round dense icon="add" @click="openKendaraanCreate">
-                <q-tooltip>Kendaraan baru</q-tooltip>
+                <q-tooltip>{{ $t('pages.kendaraanPage.newKendaraanTooltip') }}</q-tooltip>
               </q-btn>
             </div>
             <q-form @submit="handleKendaraanSave" class="q-gutter-md">
-              <q-select v-model="kendaraanForm.merkId" label="Merk *" outlined dense
+              <q-select v-model="kendaraanForm.merkId" :label="$t('pages.kendaraanPage.merkLabel')" outlined dense
                         :options="merkOptions" option-value="id" option-label="nama" emit-value map-options
                         :disable="kendaraanIsEditMode"
-                        :rules="[val => !!val || 'Merk harus dipilih']" hide-bottom-space/>
-              <q-input v-model="kendaraanForm.jenis" label="Jenis *" outlined dense
-                       :rules="[val => !!val || 'Jenis harus diisi']" hide-bottom-space/>
-              <q-input v-model="kendaraanForm.model" label="Model" outlined dense/>
-              <q-input v-model="kendaraanForm.keterangan" label="Keterangan" outlined dense type="textarea" rows="2"/>
+                        :rules="[val => !!val || $t('pages.kendaraanPage.merkRequired')]" hide-bottom-space/>
+              <q-input v-model="kendaraanForm.jenis" :label="$t('pages.kendaraanPage.jenisLabel')" outlined dense
+                       :rules="[val => !!val || $t('pages.kendaraanPage.jenisRequired')]" hide-bottom-space/>
+              <q-input v-model="kendaraanForm.model" :label="$t('pages.kendaraanPage.modelLabel')" outlined dense/>
+              <q-input v-model="kendaraanForm.keterangan" :label="$t('notes')" outlined dense type="textarea" rows="2"/>
 
               <div class="row justify-end q-mt-md q-gutter-sm">
-                <q-btn v-if="kendaraanIsEditMode" label="Hapus" color="negative" flat
+                <q-btn v-if="kendaraanIsEditMode" :label="$t('delete')" color="negative" flat
                        @click="kendaraanConfirmDelete(kendaraanForm)" :loading="kendaraanDeleting"/>
-                <q-btn label="Simpan" type="submit" color="primary" :loading="kendaraanSaving"
+                <q-btn :label="$t('save')" type="submit" color="primary" :loading="kendaraanSaving"
                        :disable="kendaraanIsEditMode && !kendaraanIsDirty(kendaraanForm)"/>
               </div>
             </q-form>
@@ -110,20 +110,20 @@
     </q-splitter>
 
     <!-- Delete Confirmation Dialogs -->
-    <GenericDialog v-model="merkShowDeleteDialog" title="Konfirmasi hapus data" min-width="400px" position="standard">
-      Hapus merk {{ merkForm.nama }}? Merk yang masih memiliki kendaraan tidak dapat dihapus.
+    <GenericDialog v-model="merkShowDeleteDialog" :title="$t('confirmDeleteTitle')" min-width="400px" position="standard">
+      {{ $t('pages.kendaraanPage.confirmDeleteMerkMessage', { nama: merkForm.nama }) }}
       <template #actions>
-        <q-btn flat label="Batalkan" color="primary" @click="merkShowDeleteDialog = false"/>
-        <q-btn flat label="Hapus saja" color="negative" @click="deleteMerk" :loading="merkDeleting"/>
+        <q-btn flat :label="$t('cancel')" color="primary" @click="merkShowDeleteDialog = false"/>
+        <q-btn flat :label="$t('deleteOnlyButton')" color="negative" @click="deleteMerk" :loading="merkDeleting"/>
       </template>
     </GenericDialog>
 
-    <GenericDialog v-model="kendaraanShowDeleteDialog" title="Konfirmasi hapus data" min-width="400px"
+    <GenericDialog v-model="kendaraanShowDeleteDialog" :title="$t('confirmDeleteTitle')" min-width="400px"
                    position="standard">
-      Are you sure you want to delete this kendaraan?
+      {{ $t('pages.kendaraanPage.confirmDeleteKendaraanMessage') }}
       <template #actions>
-        <q-btn flat label="Batalkan" color="primary" @click="kendaraanShowDeleteDialog = false"/>
-        <q-btn flat label="Hapus saja" color="negative" @click="deleteKendaraan" :loading="kendaraanDeleting"/>
+        <q-btn flat :label="$t('cancel')" color="primary" @click="kendaraanShowDeleteDialog = false"/>
+        <q-btn flat :label="$t('deleteOnlyButton')" color="negative" @click="deleteKendaraan" :loading="kendaraanDeleting"/>
       </template>
     </GenericDialog>
   </q-page>
@@ -132,11 +132,13 @@
 <script setup>
 import {ref, computed, watch, onMounted} from 'vue'
 import {api} from 'boot/axios'
+import {useI18n} from 'vue-i18n'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
 import {useCrud} from 'src/composables/useCrud'
 import {useKeyboardShortcuts} from 'src/composables/useKeyboardShortcuts'
 
+const { t } = useI18n()
 const MERK_API = '/api/pazaauto/merk-kendaraan'
 const KENDARAAN_API = '/api/pazaauto/kendaraan'
 
@@ -359,16 +361,16 @@ useKeyboardShortcuts({
 })
 
 // Table Columns
-const merkColumns = [
-  {name: 'nama', required: true, label: 'Merk', align: 'left', field: 'nama', sortable: true},
-  {name: 'keterangan', label: 'Keterangan', align: 'left', field: 'keterangan', sortable: true}
-]
+const merkColumns = computed(() => [
+  {name: 'nama', required: true, label: t('pages.kendaraanPage.merkColumn'), align: 'left', field: 'nama', sortable: true},
+  {name: 'keterangan', label: t('notes'), align: 'left', field: 'keterangan', sortable: true}
+])
 
-const kendaraanColumns = [
-  {name: 'jenis', required: true, label: 'Jenis', align: 'left', field: 'jenis', sortable: true},
-  {name: 'model', label: 'Model', align: 'left', field: 'model', sortable: true},
-  {name: 'keterangan', label: 'Keterangan', align: 'left', field: 'keterangan', sortable: true}
-]
+const kendaraanColumns = computed(() => [
+  {name: 'jenis', required: true, label: t('pages.kendaraanPage.jenisColumn'), align: 'left', field: 'jenis', sortable: true},
+  {name: 'model', label: t('pages.kendaraanPage.modelColumn'), align: 'left', field: 'model', sortable: true},
+  {name: 'keterangan', label: t('notes'), align: 'left', field: 'keterangan', sortable: true}
+])
 
 // Lifecycle
 onMounted(() => {

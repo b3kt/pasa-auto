@@ -5,14 +5,14 @@
         <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
                       @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
                       :on-create="openCreateDialog"
-                      :on-edit="openEditDialog" create-label="Tambah data Karyawan" ref="tableRef"
-                      search-placeholder="Search by name or email...">
+                      :on-edit="openEditDialog" :create-label="$t('pages.karyawanPage.createLabel')" ref="tableRef"
+                      :search-placeholder="$t('pages.karyawanPage.searchPlaceholder')">
           <template v-slot:title>
-            <div class="text-h6 q-mb-md">Master | Karyawan</div>
+            <div class="text-h6 q-mb-md">{{ $t('pages.karyawanPage.title') }}</div>
           </template>
           <template v-slot:body-cell-jenisKelamin="props">
               <q-badge :color="props.row.jenisKelamin === 'L' ? 'blue' : 'pink'">
-                {{ props.row.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan' }}
+                {{ props.row.jenisKelamin === 'L' ? $t('pages.karyawanPage.male') : $t('pages.karyawanPage.female') }}
               </q-badge>
           </template>
         </GenericTable>
@@ -21,41 +21,41 @@
       <template v-slot:after>
         <div class="q-pa-md scroll" style="height: 100%">
           <div class="row items-center q-mb-md">
-            <div class="text-h6 q-mb-md">{{ isEditMode ? 'Edit Karyawan' : 'Tambah data Karyawan' }}</div>
+            <div class="text-h6 q-mb-md">{{ isEditMode ? $t('pages.karyawanPage.editTitle') : $t('pages.karyawanPage.createLabel') }}</div>
             <q-space/>
             <q-btn v-if="isEditMode" flat round dense icon="add" @click="openCreateDialog">
-              <q-tooltip>New</q-tooltip>
+              <q-tooltip>{{ $t('new') }}</q-tooltip>
             </q-btn>
           </div>
           <q-form @submit="handleSave" id="karyawan-form" class="q-gutter-md">
-            <q-input v-model="formData.namaKaryawan" label="Nama Karyawan *" outlined dense
-                     :rules="[val => !!val || 'Nama Karyawan harus diisi']"
+            <q-input v-model="formData.namaKaryawan" :label="$t('pages.karyawanPage.nameLabel')" outlined dense
+                     :rules="[val => !!val || $t('pages.karyawanPage.nameRequired')]"
                      hide-bottom-space/>
 
-            <q-select v-model="formData.idPosisi" label="Posisi *" outlined dense :options="filteredPosisiOptions"
+            <q-select v-model="formData.idPosisi" :label="$t('pages.karyawanPage.positionLabel')" outlined dense :options="filteredPosisiOptions"
                       option-label="posisi" option-value="id" emit-value map-options use-input input-debounce="300"
-                      @filter="filterPosisi" :rules="[val => !!val || 'Posisi harus diisi']" :loading="loadingPosisi"
+                      @filter="filterPosisi" :rules="[val => !!val || $t('pages.karyawanPage.positionRequired')]" :loading="loadingPosisi"
                       hide-bottom-space>
               <template v-slot:no-option>
                 <q-item>
                   <q-item-section class="text-grey">
-                    No results
+                    {{ $t('noResults') }}
                   </q-item-section>
                 </q-item>
               </template>
             </q-select>
 
-            <q-input v-model="formData.alamat" label="Alamat" outlined dense type="textarea" rows="2"/>
+            <q-input v-model="formData.alamat" :label="$t('pages.karyawanPage.addressLabel')" outlined dense type="textarea" rows="2"/>
 
-            <q-input v-model="formData.tanggalBergabung" label="Tanggal Bergabung" outlined dense type="date"/>
+            <q-input v-model="formData.tanggalBergabung" :label="$t('pages.karyawanPage.joinDateLabel')" outlined dense type="date"/>
 
-            <q-input v-model="formData.email" label="Email" outlined dense type="email"/>
-            <q-input v-model="formData.noTelepon" label="No Telepon" outlined dense/>
+            <q-input v-model="formData.email" :label="$t('email')" outlined dense type="email"/>
+            <q-input v-model="formData.noTelepon" :label="$t('pages.karyawanPage.phoneLabel')" outlined dense/>
 
             <div class="row justify-end q-mt-md q-gutter-sm">
-              <q-btn v-if="isEditMode" label="Hapus" color="negative" flat @click="confirmDelete(formData)"
+              <q-btn v-if="isEditMode" :label="$t('delete')" color="negative" flat @click="confirmDelete(formData)"
                      :loading="deleting"/>
-              <q-btn label="Simpan" type="submit" color="primary" :loading="saving" :disable="isEditMode && !isDirty(formData)"/>
+              <q-btn :label="$t('save')" type="submit" color="primary" :loading="saving" :disable="isEditMode && !isDirty(formData)"/>
             </div>
           </q-form>
         </div>
@@ -63,21 +63,21 @@
     </q-splitter>
 
     <!-- Delete Confirmation Dialog -->
-    <GenericDialog v-model="showDeleteDialog" title="Konfirmasi hapus data" min-width="400px" position="standard">
-      Are you sure you want to delete <strong>{{ itemToDelete?.namaKaryawan }}</strong>?
+    <GenericDialog v-model="showDeleteDialog" :title="$t('pages.karyawanPage.confirmDeleteTitle')" min-width="400px" position="standard">
+      {{ $t('pages.karyawanPage.confirmDeleteMessage', { item: itemToDelete?.namaKaryawan }) }}
       <template #actions>
-        <q-btn flat label="Batalkan" color="primary" @click="showDeleteDialog = false"/>
-        <q-btn flat label="Hapus saja" color="negative" @click="deleteItem" :loading="deleting"/>
+        <q-btn flat :label="$t('cancel')" color="primary" @click="showDeleteDialog = false"/>
+        <q-btn flat :label="$t('pages.karyawanPage.deleteOnlyButton')" color="negative" @click="deleteItem" :loading="deleting"/>
       </template>
     </GenericDialog>
 
     <!-- Login created for a new employee: the temporary password is shown only this once -->
-    <GenericDialog v-model="showCredentials" title="Akun login karyawan" min-width="400px" position="standard">
-      <p>Berikan data login ini kepada karyawan. Password hanya ditampilkan sekali dan harus diganti saat login pertama.</p>
+    <GenericDialog v-model="showCredentials" :title="$t('pages.karyawanPage.credentialsTitle')" min-width="400px" position="standard">
+      <p>{{ $t('pages.karyawanPage.credentialsNotice') }}</p>
       <q-list bordered separator dense>
         <q-item>
           <q-item-section>
-            <q-item-label caption>Username</q-item-label>
+            <q-item-label caption>{{ $t('username') }}</q-item-label>
             <q-item-label>{{ credentials?.username }}</q-item-label>
           </q-item-section>
           <q-item-section side>
@@ -86,7 +86,7 @@
         </q-item>
         <q-item>
           <q-item-section>
-            <q-item-label caption>Password sementara</q-item-label>
+            <q-item-label caption>{{ $t('pages.karyawanPage.temporaryPassword') }}</q-item-label>
             <q-item-label class="text-weight-bold" style="font-family: monospace">{{ credentials?.password }}</q-item-label>
           </q-item-section>
           <q-item-section side>
@@ -95,15 +95,16 @@
         </q-item>
       </q-list>
       <template #actions>
-        <q-btn flat label="Selesai" color="primary" @click="closeCredentials"/>
+        <q-btn flat :label="$t('pages.karyawanPage.doneButton')" color="primary" @click="closeCredentials"/>
       </template>
     </GenericDialog>
   </q-page>
 </template>
 
 <script setup>
-import {ref, onMounted} from 'vue'
+import {ref, computed, onMounted} from 'vue'
 import {copyToClipboard, useQuasar} from 'quasar'
+import {useI18n} from 'vue-i18n'
 import {api} from 'boot/axios'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
@@ -134,6 +135,7 @@ const {
   enableCache: true
 })
 
+const { t } = useI18n()
 const splitterModel = ref(70)
 const tableRef = ref(null)
 
@@ -245,9 +247,9 @@ const closeCredentials = () => {
 const copy = async (text) => {
   try {
     await copyToClipboard(text)
-    $q.notify({ type: 'positive', message: 'Disalin', timeout: 1000 })
+    $q.notify({ type: 'positive', message: t('pages.karyawanPage.copiedNotify'), timeout: 1000 })
   } catch {
-    $q.notify({ type: 'warning', message: 'Gagal menyalin' })
+    $q.notify({ type: 'warning', message: t('pages.karyawanPage.copyFailedNotify') })
   }
 }
 
@@ -286,11 +288,11 @@ useKeyboardShortcuts({
 })
 
 // Table Columns
-const columns = [
+const columns = computed(() => [
   {
     name: 'namaKaryawan',
     required: true,
-    label: 'Nama Karyawan',
+    label: t('pages.karyawanPage.nameLabel'),
     align: 'left',
     field: 'namaKaryawan',
     sortable: true
@@ -298,32 +300,32 @@ const columns = [
   {
     name: 'alamat',
     required: true,
-    label: 'Alamat',
+    label: t('pages.karyawanPage.addressLabel'),
     align: 'left',
     field: 'alamat',
     sortable: true
   },
   {
     name: 'idPosisi',
-    label: 'Posisi',
+    label: t('pages.karyawanPage.positionColumn'),
     align: 'center',
     field: 'namePosisi',
     sortable: true
   },
   {
     name: 'tanggalBergabung',
-    label: 'Tanggal Bergabung',
+    label: t('pages.karyawanPage.joinDateColumn'),
     align: 'center',
     field: 'tanggalBergabung',
     sortable: true
   },
   {
     name: 'noTelepon',
-    label: 'No Telepon',
+    label: t('pages.karyawanPage.phoneLabel'),
     align: 'left',
     field: 'noTelepon'
   }
-]
+])
 
 // Lifecycle
 onMounted(() => {

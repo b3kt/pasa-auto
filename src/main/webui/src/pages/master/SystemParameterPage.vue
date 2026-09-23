@@ -5,28 +5,28 @@
         <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
           @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
           :on-create="openCreateDialog" :on-edit="openEditDialog" ref="tableRef"
-          create-label="Tambah data System Parameter" search-placeholder="Search by name or value..." />
+          :create-label="$t('pages.systemParameterPage.createLabel')" :search-placeholder="$t('pages.systemParameterPage.searchPlaceholder')" />
       </template>
 
       <template v-slot:after>
         <div class="q-pa-md scroll" style="height: 100%">
           <div class="row items-center q-mb-md">
-            <div class="text-h6">{{ isEditMode ? 'Edit System Parameter' : 'Tambah data System Parameter' }}</div>
+            <div class="text-h6">{{ isEditMode ? $t('pages.systemParameterPage.editTitle') : $t('pages.systemParameterPage.createLabel') }}</div>
             <q-space />
             <q-btn v-if="isEditMode" flat round dense icon="add" @click="openCreateDialog">
-              <q-tooltip>New</q-tooltip>
+              <q-tooltip>{{ $t('new') }}</q-tooltip>
             </q-btn>
           </div>
           <q-form @submit="handleSave" id="system-parameter-form" class="q-gutter-md">
-            <q-input v-model="formData.name" label="Parameter Name *" outlined dense
-              :rules="[val => !!val || 'Name harus diisi']" :readonly="isEditMode" />
+            <q-input v-model="formData.name" :label="$t('pages.systemParameterPage.parameterNameLabel')" outlined dense
+              :rules="[val => !!val || $t('nameRequired')]" :readonly="isEditMode" />
 
-            <q-input v-model="formData.value" label="Value *" outlined dense
-              :rules="[val => !!val || 'Value harus diisi']" />
+            <q-input v-model="formData.value" :label="$t('pages.systemParameterPage.valueLabel')" outlined dense
+              :rules="[val => !!val || $t('pages.systemParameterPage.valueRequired')]" />
 
             <div class="row justify-end q-mt-md q-gutter-sm">
-              <q-btn v-if="isEditMode" label="Hapus" color="negative" flat @click="confirmDelete(formData)" :loading="deleting" />
-              <q-btn label="Simpan" type="submit" color="primary" :loading="saving" :disable="isEditMode && !isDirty(formData)" />
+              <q-btn v-if="isEditMode" :label="$t('delete')" color="negative" flat @click="confirmDelete(formData)" :loading="deleting" />
+              <q-btn :label="$t('save')" type="submit" color="primary" :loading="saving" :disable="isEditMode && !isDirty(formData)" />
             </div>
           </q-form>
         </div>
@@ -34,18 +34,19 @@
     </q-splitter>
 
     <!-- Delete Confirmation Dialog -->
-        <GenericDialog v-model="showDeleteDialog" title="Confirm Delete" min-width="400px" position="standard">
-            Are you sure you want to delete parameter <strong>{{ itemToDelete?.name }}</strong>?
+        <GenericDialog v-model="showDeleteDialog" :title="$t('confirmDelete')" min-width="400px" position="standard">
+            {{ $t('pages.systemParameterPage.confirmDeleteMessage', { item: itemToDelete?.name }) }}
             <template #actions>
-                <q-btn flat label="Cancel" color="primary" @click="showDeleteDialog = false" />
-                <q-btn flat label="Hapus" color="negative" @click="deleteItem" :loading="deleting" />
+                <q-btn flat :label="$t('cancel')" color="primary" @click="showDeleteDialog = false" />
+                <q-btn flat :label="$t('delete')" color="negative" @click="deleteItem" :loading="deleting" />
             </template>
         </GenericDialog>
     </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
 import { useCrud } from 'src/composables/useCrud'
@@ -74,6 +75,7 @@ const {
     baseApiUrl: '/api/system-parameters'
 })
 
+const { t } = useI18n()
 const splitterModel = ref(70)
 const tableRef = ref(null)
 
@@ -138,11 +140,11 @@ useKeyboardShortcuts({
 })
 
 // Table Columns
-const columns = [
+const columns = computed(() => [
     {
         name: 'name',
         required: true,
-        label: 'Parameter Name',
+        label: t('pages.systemParameterPage.parameterNameLabel'),
         align: 'left',
         field: 'name',
         sortable: true
@@ -150,17 +152,17 @@ const columns = [
     {
         name: 'value',
         required: true,
-        label: 'Value',
+        label: t('pages.systemParameterPage.valueColumn'),
         align: 'left',
         field: 'value'
     },
     {
         name: 'actions',
-        label: 'Actions',
+        label: t('actions'),
         align: 'center',
         field: 'actions'
     }
-]
+])
 
 // Lifecycle
 onMounted(() => {

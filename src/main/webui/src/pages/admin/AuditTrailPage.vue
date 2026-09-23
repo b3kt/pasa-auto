@@ -4,15 +4,15 @@
     <!-- Results table: search box filters by table name, toolbar holds the action / user filters -->
     <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
                   @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
-                  :on-edit="showDiff" search-placeholder="Cari nama tabel...">
+                  :on-edit="showDiff" :search-placeholder="$t('pages.auditTrailPage.searchPlaceholder')">
 
                     <template v-slot:title>
-                      <div class="text-h6 q-mb-md">Log Aktifitas</div>
+                      <div class="text-h6 q-mb-md">{{ $t('pages.auditTrailPage.title') }}</div>
                     </template>
       <template v-slot:toolbar-filters>
-        <q-select v-model="filters.action" dense outlined bg-color="white" label="Aksi" :options="actionOptions"
+        <q-select v-model="filters.action" dense outlined bg-color="white" :label="$t('actions')" :options="actionOptions"
                   clearable style="min-width: 140px"/>
-        <q-select v-model="filters.username" dense outlined bg-color="white" label="User" :options="userOptions"
+        <q-select v-model="filters.username" dense outlined bg-color="white" :label="$t('pages.auditTrailPage.userLabel')" :options="userOptions"
                   clearable style="min-width: 160px"/>
       </template>
 
@@ -24,7 +24,7 @@
 
       <template v-slot:body-cell-changes="props">
         <q-btn flat dense size="sm" icon="compare_arrows" color="primary" @click.stop="showDiff(props.row)">
-          <q-tooltip>Lihat perubahan</q-tooltip>
+          <q-tooltip>{{ $t('pages.auditTrailPage.viewChangesTooltip') }}</q-tooltip>
         </q-btn>
       </template>
 
@@ -38,7 +38,7 @@
       <q-card>
         <q-card-section class="row items-center">
           <div class="text-h6">
-            Perubahan: {{ selectedRow?.tableName }} ({{ selectedRow?.action }})
+            {{ $t('pages.auditTrailPage.diffTitle', { tableName: selectedRow?.tableName, action: selectedRow?.action }) }}
             <q-chip :color="getActionColor(selectedRow?.action)" text-color="white" size="sm">
               {{ selectedRow?.action }}
             </q-chip>
@@ -49,9 +49,9 @@
 
         <q-card-section class="q-pa-none">
           <div class="text-caption q-mb-sm text-grey">
-            User: {{ selectedRow?.username || 'system' }} |
-            Record ID: {{ selectedRow?.recordId }} |
-            Waktu: {{ formatDate(selectedRow?.timestamp) }}
+            {{ $t('pages.auditTrailPage.userLabel') }}: {{ selectedRow?.username || 'system' }} |
+            {{ $t('pages.auditTrailPage.recordIdColumn') }}: {{ selectedRow?.recordId }} |
+            {{ $t('pages.auditTrailPage.timeColumn') }}: {{ formatDate(selectedRow?.timestamp) }}
           </div>
         </q-card-section>
 
@@ -63,7 +63,7 @@
             <div class="col-12 col-md-6" style="height: 100%">
               <div class="text-subtitle2 q-mb-sm text-negative">
                 <q-icon name="arrow_back" class="q-mr-xs" />
-                SEBELUM
+                {{ $t('pages.auditTrailPage.beforeColumn') }}
               </div>
               <div class="diff-viewer q-pa-sm bg-grey-2 rounded-borders" style="height: calc(100% - 30px); overflow: auto;">
                 <template v-if="diffData.before">
@@ -79,12 +79,12 @@
                       </tr>
                     </template>
                     <tr v-if="!diffData.before || Object.keys(diffData.before).length === 0">
-                      <td class="text-grey">(tidak ada)</td>
+                      <td class="text-grey">{{ $t('pages.auditTrailPage.noValueLabel') }}</td>
                     </tr>
                   </table>
                 </template>
                 <template v-else>
-                  <div class="text-grey">(tidak ada)</div>
+                  <div class="text-grey">{{ $t('pages.auditTrailPage.noValueLabel') }}</div>
                 </template>
               </div>
             </div>
@@ -93,7 +93,7 @@
             <div class="col-12 col-md-6" style="height: 100%">
               <div class="text-subtitle2 q-mb-sm text-positive">
                 <q-icon name="arrow_forward" class="q-mr-xs" />
-                SESUDAH
+                {{ $t('pages.auditTrailPage.afterColumn') }}
               </div>
               <div class="diff-viewer q-pa-sm bg-grey-2 rounded-borders" style="height: calc(100% - 30px); overflow: auto;">
                 <template v-if="diffData.after">
@@ -109,12 +109,12 @@
                       </tr>
                     </template>
                     <tr v-if="!diffData.after || Object.keys(diffData.after).length === 0">
-                      <td class="text-grey">(tidak ada)</td>
+                      <td class="text-grey">{{ $t('pages.auditTrailPage.noValueLabel') }}</td>
                     </tr>
                   </table>
                 </template>
                 <template v-else>
-                  <div class="text-grey">(tidak ada)</div>
+                  <div class="text-grey">{{ $t('pages.auditTrailPage.noValueLabel') }}</div>
                 </template>
               </div>
             </div>
@@ -126,12 +126,14 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
 import GenericTable from 'components/GenericTable.vue'
 
 const $q = useQuasar()
+const { t } = useI18n()
 
 const loading = ref(false)
 const rows = ref([])
@@ -150,15 +152,15 @@ const diffDialog = ref(false)
 const selectedRow = ref(null)
 const diffData = ref({ before: null, after: null })
 
-const columns = [
-  { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true },
-  { name: 'table_name', label: 'Tabel', field: 'tableName', align: 'left', sortable: true },
-  { name: 'action', label: 'Aksi', field: 'action', align: 'center', sortable: true },
-  { name: 'username', label: 'User', field: 'username', align: 'left', sortable: true },
-  { name: 'timestamp', label: 'Waktu', field: 'timestamp', align: 'left', sortable: true },
-  { name: 'record_id', label: 'Record ID', field: 'recordId', align: 'right', sortable: true },
-  { name: 'changes', label: 'Perubahan', field: 'changes', align: 'center' }
-]
+const columns = computed(() => [
+  { name: 'id', label: t('pages.auditTrailPage.idColumn'), field: 'id', align: 'left', sortable: true },
+  { name: 'table_name', label: t('pages.auditTrailPage.tableColumn'), field: 'tableName', align: 'left', sortable: true },
+  { name: 'action', label: t('actions'), field: 'action', align: 'center', sortable: true },
+  { name: 'username', label: t('pages.auditTrailPage.userColumn'), field: 'username', align: 'left', sortable: true },
+  { name: 'timestamp', label: t('pages.auditTrailPage.timeColumn'), field: 'timestamp', align: 'left', sortable: true },
+  { name: 'record_id', label: t('pages.auditTrailPage.recordIdColumn'), field: 'recordId', align: 'right', sortable: true },
+  { name: 'changes', label: t('pages.auditTrailPage.changesColumn'), field: 'changes', align: 'center' }
+])
 
 function onRequest(props) {
   const { page, rowsPerPage, sortBy, descending } = props.pagination
@@ -207,7 +209,7 @@ async function loadData() {
     }
   } catch (e) {
     console.error(e);
-    $q.notify({ type: 'negative', message: 'Gagal memuat data audit trail' })
+    $q.notify({ type: 'negative', message: t('pages.auditTrailPage.fetchFailed') })
   } finally {
     loading.value = false
   }

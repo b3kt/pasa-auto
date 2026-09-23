@@ -4,31 +4,31 @@
       <template v-slot:before>
         <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
                       @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
-                      :on-create="openCreateDialog" :on-edit="openEditDialog" create-label="Tambah Pembelian"
+                      :on-create="openCreateDialog" :on-edit="openEditDialog" :create-label="$t('pages.pembelianPage.createLabel')"
                       row-key="noPembelian" ref="tableRef"
-                      search-placeholder="Search by No Pembelian..."
+                      :search-placeholder="$t('pages.pembelianPage.searchPlaceholder')"
                       dense>
                         <template v-slot:title>
-                          <div class="text-h6 q-mb-md">Transaksi | Pembelian</div>
+                          <div class="text-h6 q-mb-md">{{ $t('pages.pembelianPage.title') }}</div>
                         </template>
 
           <template v-slot:toolbar-filters>
             <div class="row items-center q-gutter-sm">
-              <q-select v-model="filterJenisPembelian" :options="jenisPembelianOptions" label="Jenis Pembelian"
+              <q-select v-model="filterJenisPembelian" :options="jenisPembelianOptions" :label="$t('purchaseType')"
                         dense options-dense flat outlined clearable style="min-width: 150px"/>
               <q-select v-model="filterKategoriOperasional" :options="kategoriOperasionalOptions"
-                        label="Kategori Operasional" dense options-dense flat outlined clearable
+                        :label="$t('operationalCategory')" dense options-dense flat outlined clearable
                         style="min-width: 150px"/>
-              <q-select v-model="filterStatus" multiple :options="statusOptions" label="Status Pembayaran"
+              <q-select v-model="filterStatus" multiple :options="statusOptions" :label="$t('paymentStatus')"
                         dense options-dense flat outlined style="min-width: 150px"/>
-              <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly>
+              <q-input :model-value="dateRangeText" :label="$t('dateRange')" outlined dense readonly>
                 <template v-slot:append>
                   <q-icon name="event" class="cursor-pointer">
                     <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                       <q-date v-model="dateRange" range>
                         <div class="row items-center justify-end q-gutter-sm">
-                          <q-btn label="Clear" color="primary" flat @click="clearDateRange"/>
-                          <q-btn label="OK" color="primary" flat v-close-popup/>
+                          <q-btn :label="$t('clear')" color="primary" flat @click="clearDateRange"/>
+                          <q-btn :label="$t('ok')" color="primary" flat v-close-popup/>
                         </div>
                       </q-date>
                     </q-popup-proxy>
@@ -54,7 +54,7 @@
 
           <template v-slot:body-cell-actions="props">
               <q-btn flat dense round icon="delete" color="negative" @click.stop="confirmDelete(props.row)">
-                <q-tooltip>Delete</q-tooltip>
+                <q-tooltip>{{ $t('delete') }}</q-tooltip>
               </q-btn>
           </template>
         </GenericTable>
@@ -63,34 +63,34 @@
       <template v-slot:after>
         <div class="q-pa-md scroll" style="height: 100%">
           <div class="row items-center q-mb-lg">
-            <div class="text-h6">{{ isEditMode ? 'Edit Pembelian' : 'Tambah Pembelian' }}</div>
+            <div class="text-h6">{{ isEditMode ? $t('pages.pembelianPage.editTitle') : $t('pages.pembelianPage.createLabel') }}</div>
             <q-space/>
             <q-btn flat round dense icon="add" @click="openCreateDialog" >
-              <q-tooltip>New</q-tooltip>
+              <q-tooltip>{{ $t('new') }}</q-tooltip>
             </q-btn>
           </div>
 
           <q-form class="q-gutter-md" @submit="handleSave">
             <!-- Purchase Information Section -->
             <div class="q-mb-lg">
-              <div class="text-subtitle text-weight-bold text-grey-8 q-mb-sm">Informasi Pembelian</div>
+              <div class="text-subtitle text-weight-bold text-grey-8 q-mb-sm">{{ $t('pages.pembelianPage.purchaseInfoLabel') }}</div>
               <div class="row q-col-gutter-sm">
                 <div class="col-12">
-                  <q-input v-model="formData.noPembelian" label="No Pembelian" outlined dense
+                  <q-input v-model="formData.noPembelian" :label="$t('pages.pembelianPage.noPembelianLabel')" outlined dense
                            readonly/>
                 </div>
                 <div class="col-12">
-                  <q-input v-model="formData.tanggalPembelian" label="Tanggal Pembelian" outlined
+                  <q-input v-model="formData.tanggalPembelian" :label="$t('pages.pembelianPage.purchaseDateLabel')" outlined
                            dense type="datetime-local" stack-label :readonly="!isEditable"
-                           :rules="[val => !!val || 'Tanggal pembelian harus diisi']"
+                           :rules="[val => !!val || $t('pages.pembelianPage.purchaseDateRequired')]"
                            hide-bottom-space
                   />
                 </div>
                 <div class="col-12">
                   <q-select v-model="formData.jenisPembelian" :options="jenisPembelianRadioOptions"
-                            label="Jenis Pembelian" outlined dense :disable="!isEditable"
+                            :label="$t('purchaseType')" outlined dense :disable="!isEditable"
                             option-label="label" option-value="value" emit-value map-options
-                            :rules="[val => !!val || 'Jenis pembelian harus diisi']"
+                            :rules="[val => !!val || $t('pages.pembelianPage.purchaseTypeRequired')]"
                             hide-bottom-space/>
                 </div>
               </div>
@@ -98,30 +98,30 @@
 
             <!-- Operational Expense Fields -->
             <div v-if="formData.jenisPembelian === 'OPERASIONAL'" class="q-mb-lg">
-              <div class="text-subtitle text-weight-bold text-grey-8 q-mb-sm">Informasi Operasional</div>
+              <div class="text-subtitle text-weight-bold text-grey-8 q-mb-sm">{{ $t('pages.pembelianPage.operationalInfoLabel') }}</div>
               <div class="row q-col-gutter-sm">
                 <div class="col-6">
-                  <q-input v-model="formData.jenisOperasional" label="Jenis Operasional" outlined dense
+                  <q-input v-model="formData.jenisOperasional" :label="$t('pages.pembelianPage.operationalTypeLabel')" outlined dense
                            :readonly="!isEditable"
-                           :rules="[val => formData.jenisPembelian === 'OPERASIONAL' ? !!val || 'Jenis operasional harus diisi' : true]"/>
+                           :rules="[val => formData.jenisPembelian === 'OPERASIONAL' ? !!val || $t('pages.pembelianPage.operationalTypeRequired') : true]"/>
                 </div>
                 <div class="col-6">
                   <q-select v-model="formData.kategoriOperasional" :options="kategoriOperasionalOptions"
-                            label="Kategori Operasional" outlined dense :disable="!isEditable"
-                            :rules="[val => formData.jenisPembelian === 'OPERASIONAL' ? !!val || 'Kategori operasional harus diisi' : true]"/>
+                            :label="$t('operationalCategory')" outlined dense :disable="!isEditable"
+                            :rules="[val => formData.jenisPembelian === 'OPERASIONAL' ? !!val || $t('pages.pembelianPage.operationalCategoryRequired') : true]"/>
                 </div>
               </div>
             </div>
 
             <!-- Supplier Field -->
             <div v-if="formData.jenisPembelian === 'SPAREPART'" class="q-mb-lg">
-              <div class="text-subtitle text-weight-bold text-grey-8 q-mb-sm">Informasi Supplier</div>
+              <div class="text-subtitle text-weight-bold text-grey-8 q-mb-sm">{{ $t('pages.pembelianPage.supplierInfoLabel') }}</div>
               <div class="row q-col-gutter-sm">
                 <div class="col-12">
                   <q-select
                     v-model="formData.supplierId"
                     :options="filteredSupplierOptions"
-                    label="Supplier"
+                    :label="$t('pages.pembelianPage.supplierLabel')"
                     outlined
                     dense
                     :disable="!isEditable"
@@ -133,20 +133,20 @@
                     input-debounce="300"
                     @filter="filterSuppliers"
                     @input-value="onSupplierInput"
-                    :rules="[val => formData.jenisPembelian === 'SPAREPART' ? !!val || 'Supplier harus diisi' : true]"
+                    :rules="[val => formData.jenisPembelian === 'SPAREPART' ? !!val || $t('pages.pembelianPage.supplierRequired') : true]"
                     hide-bottom-space
                   >
                     <template v-slot:no-option>
                       <q-item>
                         <q-item-section class="text-grey-6">
-                          No results
+                          {{ $t('noResults') }}
                         </q-item-section>
                       </q-item>
                       <q-item clickable @click="openSupplierDialog" v-if="supplierSearchText">
                         <q-item-section>
                           <div class="text-primary">
                             <q-icon name="add" class="q-mr-sm"/>
-                            Tambah supplier baru: "{{ supplierSearchText }}"
+                            {{ $t('pages.pembelianPage.addNewSupplierLink', { text: supplierSearchText }) }}
                           </div>
                         </q-item-section>
                       </q-item>
@@ -159,7 +159,7 @@
             <div class="q-mb-lg">
               <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">
                 <div class="row items-center justify-between">
-                  <div>Detail pembelian</div>
+                  <div>{{ $t('pages.pembelianPage.detailsTitle') }}</div>
                   <q-btn
                     color="primary"
                     icon="add"
@@ -167,7 +167,7 @@
                     @click="openDetailDialog"
                     :disable="!isEditable"
                   >
-                    <q-tooltip>Tambah item pembelian</q-tooltip>
+                    <q-tooltip>{{ $t('pages.pembelianPage.addItemTooltip') }}</q-tooltip>
                   </q-btn>
                 </div>
               </div>
@@ -205,7 +205,7 @@
                       @click="editDetail(props.row)"
                       :disable="!isEditable"
                     >
-                      <q-tooltip>Edit</q-tooltip>
+                      <q-tooltip>{{ $t('edit') }}</q-tooltip>
                     </q-btn>
                     <q-btn
                       flat
@@ -216,14 +216,14 @@
                       @click="deleteDetail(props.row)"
                       :disable="!isEditable"
                     >
-                      <q-tooltip>Delete</q-tooltip>
+                      <q-tooltip>{{ $t('delete') }}</q-tooltip>
                     </q-btn>
                   </q-td>
                 </template>
 
                 <template v-slot:no-data>
                   <div class="full-width row flex-center text-grey-6 q-pa-md">
-                    <div>Belum ada item pembelian</div>
+                    <div>{{ $t('pages.pembelianPage.noItemsLabel') }}</div>
                   </div>
                 </template>
               </q-table>
@@ -231,10 +231,10 @@
 
             <!-- Payment Details Section -->
             <div class="bg-grey-2 q-pa-md rounded-borders q-mb-lg">
-              <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Payment Details</div>
+              <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">{{ $t('pages.pembelianPage.paymentDetailsTitle') }}</div>
               <div class="row q-col-gutter-sm">
                 <div class="col-12">
-                  <q-field label="Total" outlined dense stack-label>
+                  <q-field :label="$t('pages.pembelianPage.totalLabel')" outlined dense stack-label>
                     <template v-slot:control>
                       <div class="self-center full-width no-outline" tabindex="0">{{ formatCurrency(grandTotal) }}</div>
                     </template>
@@ -242,30 +242,30 @@
                 </div>
                 <div class="col-12">
                   <q-select v-model="formData.statusPembayaran" :options="statusOptions"
-                            label="Status Pembayaran" outlined dense :disable="!isEditable"
-                            :rules="[val => !!val || 'Status pembayaran harus diisi']"/>
+                            :label="$t('paymentStatus')" outlined dense :disable="!isEditable"
+                            :rules="[val => !!val || $t('pages.pembelianPage.paymentStatusRequired')]"/>
                 </div>
                 <div class="col-12">
                   <q-select v-model="formData.jenisPembayaran" :options="['CASH', 'TRANSFER', 'DEBIT', 'KREDIT']"
-                            label="Metode Pembayaran" outlined dense :disable="!isEditable"
-                            :rules="[val => !!val || 'Metode pembayaran harus diisi']"/>
+                            :label="$t('pages.penjualanPage.paymentMethodLabel')" outlined dense :disable="!isEditable"
+                            :rules="[val => !!val || $t('pages.pembelianPage.paymentMethodRequired')]"/>
                 </div>
               </div>
             </div>
 
             <!-- Additional Notes -->
             <div>
-              <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Informasi Tambahan</div>
-              <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea"
+              <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">{{ $t('pages.pembelianPage.additionalInfoLabel') }}</div>
+              <q-input v-model="formData.keterangan" :label="$t('notes')" outlined dense type="textarea"
                        rows="3" :readonly="!isEditable"/>
             </div>
 
             <div class="row justify-end q-mt-md q-gutter-sm">
-              <q-btn v-if="isEditMode && isEditable" label="Hapus" color="negative" flat
+              <q-btn v-if="isEditMode && isEditable" :label="$t('delete')" color="negative" flat
                      @click="confirmDelete(formData)" :loading="deleting"/>
-              <q-btn label="Simpan" type="submit" color="primary" :loading="saving" v-if="isEditable">
+              <q-btn :label="$t('save')" type="submit" color="primary" :loading="saving" v-if="isEditable">
                 <q-tooltip v-if="hasUnsavedChanges">
-                  Ada perubahan yang belum disimpan
+                  {{ $t('pages.pembelianPage.unsavedChangesTooltip') }}
                 </q-tooltip>
               </q-btn>
             </div>
@@ -275,11 +275,11 @@
     </q-splitter>
 
     <!-- Delete Confirmation Dialog -->
-    <GenericDialog v-model="showDeleteDialog" title="Konfirmasi hapus data" min-width="400px" position="standard">
-      Apakah Anda yakin ingin menghapus data Pembelian <strong>{{ itemToDelete?.noPembelian }} ?</strong>?
+    <GenericDialog v-model="showDeleteDialog" :title="$t('confirmDeleteTitle')" min-width="400px" position="standard">
+      {{ $t('pages.pembelianPage.confirmDeleteMessage', { item: itemToDelete?.noPembelian }) }}
       <template #actions>
-        <q-btn flat label="Batalkan" color="primary" @click="showDeleteDialog = false"/>
-        <q-btn flat label="Hapus saja" color="negative" @click="deletePembelian" :loading="deleting"/>
+        <q-btn flat :label="$t('cancel')" color="primary" @click="showDeleteDialog = false"/>
+        <q-btn flat :label="$t('deleteOnlyButton')" color="negative" @click="deletePembelian" :loading="deleting"/>
       </template>
     </GenericDialog>
 
@@ -287,7 +287,7 @@
     <q-dialog v-model="showDetailDialog" persistent>
       <q-card style="min-width: 500px">
         <q-card-section>
-          <div class="text-h6">{{ isEditingDetail ? 'Edit Item' : 'Tambah Item' }}</div>
+          <div class="text-h6">{{ isEditingDetail ? $t('pages.pembelianPage.editItemTitle') : $t('pages.pembelianPage.addItemTitle') }}</div>
         </q-card-section>
 
         <q-separator/>
@@ -298,10 +298,10 @@
               <div class="col-12">
                 <q-input
                   v-model="detailForm.namaItem"
-                  label="Nama Item*"
+                  :label="$t('pages.pembelianPage.itemNameLabel')"
                   outlined
                   dense
-                  :rules="[val => !!val || 'Nama item harus diisi']"
+                  :rules="[val => !!val || $t('pages.pembelianPage.itemNameRequired')]"
                   hide-bottom-space
                 />
               </div>
@@ -309,7 +309,7 @@
                 <q-select
                   v-model="detailForm.kategoriItem"
                   :options="kategoriItemOptions"
-                  label="Kategori Item"
+                  :label="$t('pages.pembelianPage.itemCategoryLabel')"
                   outlined
                   dense
                   option-label="label"
@@ -323,13 +323,13 @@
               <div class="col-6">
                 <q-input
                   v-model="detailForm.harga"
-                  label="Harga*"
+                  :label="$t('pages.pembelianPage.priceLabel')"
                   outlined
                   dense
                   type="number"
                   step="0.01"
                   min="0"
-                  :rules="[val => !!val && val > 0 || 'Harga harus diisi dan lebih dari 0']"
+                  :rules="[val => !!val && val > 0 || $t('pages.pembelianPage.priceInvalid')]"
                   hide-bottom-space
                   @update:model-value="calculateDetailTotal"
                 />
@@ -337,18 +337,18 @@
               <div class="col-6">
                 <q-input
                   v-model="detailForm.kuantiti"
-                  label="Kuantiti*"
+                  :label="$t('pages.pembelianPage.quantityLabel')"
                   outlined
                   dense
                   type="number"
                   min="1"
-                  :rules="[val => !!val && val > 0 || 'Kuantiti harus diisi dan lebih dari 0']"
+                  :rules="[val => !!val && val > 0 || $t('pages.pembelianPage.quantityInvalid')]"
                   hide-bottom-space
                   @update:model-value="calculateDetailTotal"
                 />
               </div>
               <div class="col-12">
-                <q-field label="Total" outlined dense stack-label>
+                <q-field :label="$t('pages.pembelianPage.totalLabel')" outlined dense stack-label>
                   <template v-slot:control>
                     <div class="self-center full-width no-outline" tabindex="0">
                       {{ formatCurrency(detailForm.total) }}
@@ -359,7 +359,7 @@
               <div class="col-12">
                 <q-input
                   v-model="detailForm.keterangan"
-                  label="Keterangan"
+                  :label="$t('notes')"
                   outlined
                   dense
                   type="textarea"
@@ -373,8 +373,8 @@
         <q-separator/>
 
         <q-card-actions align="right">
-          <q-btn flat label="Batal" color="primary" @click="closeDetailDialog"/>
-          <q-btn flat label="Simpan" color="primary" @click="saveDetail"/>
+          <q-btn flat :label="$t('cancel')" color="primary" @click="closeDetailDialog"/>
+          <q-btn flat :label="$t('save')" color="primary" @click="saveDetail"/>
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -383,7 +383,7 @@
     <q-dialog v-model="showSupplierDialog" persistent>
       <q-card style="min-width: 500px">
         <q-card-section>
-          <div class="text-h6">Add New Supplier</div>
+          <div class="text-h6">{{ $t('pages.pembelianPage.addSupplierTitle') }}</div>
         </q-card-section>
 
         <q-separator/>
@@ -394,17 +394,17 @@
               <div class="col-12">
                 <q-input
                   v-model="newSupplierForm.namaSupplier"
-                  label="Supplier Name*"
+                  :label="$t('pages.pembelianPage.supplierNameLabel')"
                   outlined
                   dense
-                  :rules="[val => !!val || 'Supplier name is required']"
+                  :rules="[val => !!val || $t('pages.pembelianPage.supplierNameRequired')]"
                   hide-bottom-space
                 />
               </div>
               <div class="col-12">
                 <q-input
                   v-model="newSupplierForm.alamat"
-                  label="Address"
+                  :label="$t('pages.pembelianPage.supplierAddressLabel')"
                   outlined
                   dense
                   type="textarea"
@@ -414,7 +414,7 @@
               <div class="col-6">
                 <q-input
                   v-model="newSupplierForm.telepon"
-                  label="Phone"
+                  :label="$t('pages.pembelianPage.supplierPhoneLabel')"
                   outlined
                   dense
                 />
@@ -422,7 +422,7 @@
               <div class="col-6">
                 <q-input
                   v-model="newSupplierForm.email"
-                  label="Email"
+                  :label="$t('email')"
                   outlined
                   dense
                   type="email"
@@ -431,7 +431,7 @@
               <div class="col-6">
                 <q-input
                   v-model="newSupplierForm.kontakPerson"
-                  label="Contact Person"
+                  :label="$t('pages.pembelianPage.contactPersonLabel')"
                   outlined
                   dense
                 />
@@ -439,7 +439,7 @@
               <div class="col-6">
                 <q-input
                   v-model="newSupplierForm.noHpKontak"
-                  label="Contact Phone"
+                  :label="$t('pages.pembelianPage.contactPhoneLabel')"
                   outlined
                   dense
                 />
@@ -447,7 +447,7 @@
               <div class="col-6">
                 <q-input
                   v-model="newSupplierForm.kota"
-                  label="City"
+                  :label="$t('pages.pembelianPage.cityLabel')"
                   outlined
                   dense
                 />
@@ -455,7 +455,7 @@
               <div class="col-6">
                 <q-input
                   v-model="newSupplierForm.kodePos"
-                  label="Postal Code"
+                  :label="$t('pages.pembelianPage.postalCodeLabel')"
                   outlined
                   dense
                 />
@@ -463,7 +463,7 @@
               <div class="col-12">
                 <q-input
                   v-model="newSupplierForm.keterangan"
-                  label="Notes"
+                  :label="$t('notes')"
                   outlined
                   dense
                   type="textarea"
@@ -477,20 +477,20 @@
         <q-separator/>
 
         <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="primary" @click="closeSupplierDialog"/>
-          <q-btn flat label="Save" color="primary" @click="createNewSupplier" :loading="savingSupplier"/>
+          <q-btn flat :label="$t('cancel')" color="primary" @click="closeSupplierDialog"/>
+          <q-btn flat :label="$t('save')" color="primary" @click="createNewSupplier" :loading="savingSupplier"/>
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Print Preview Dialog -->
-    <GenericDialog v-model="showPrintDialog" title="Print Preview" min-width="800px" max-width="90vw">
+    <GenericDialog v-model="showPrintDialog" :title="$t('pages.penjualanPage.printPreviewTitle')" min-width="800px" max-width="90vw">
       <div class="q-pa-sm" style="height: 70vh; width: 100%;">
         <iframe :srcdoc="printPreviewContent" style="width: 100%; height: 100%; border: 1px solid #ccc;"></iframe>
       </div>
       <template #actions>
-        <q-btn flat label="Tutup" color="primary" @click="showPrintDialog = false" />
-        <q-btn label="Print" icon="print" color="secondary" @click="confirmPrint" />
+        <q-btn flat :label="$t('close')" color="primary" @click="showPrintDialog = false" />
+        <q-btn :label="$t('print')" icon="print" color="secondary" @click="confirmPrint" />
       </template>
     </GenericDialog>
   </q-page>
@@ -498,6 +498,7 @@
 
 <script setup>
 import {ref, onMounted, watch, nextTick, computed, onBeforeUnmount} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {api} from 'boot/axios'
 import {useQuasar, date} from 'quasar'
 import { useDateFilter } from 'src/composables/useDateFilter'
@@ -505,6 +506,7 @@ import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
 
 const $q = useQuasar()
+const { t } = useI18n()
 
 // LocalStorage key for filter persistence
 const FILTER_STORAGE_KEY = 'pembelian_status_filter'
@@ -553,11 +555,11 @@ const supplierName = ref('')
 
 // Options
 const jenisPembelianOptions = ['SPAREPART', 'OPERASIONAL', 'BARANG']
-const jenisPembelianRadioOptions = [
-  {label: 'Pembelian Sparepart', value: 'SPAREPART'},
-  {label: 'Pembelian Barang (Non-Supplier)', value: 'BARANG'},
-  {label: 'Pengeluaran Operasional', value: 'OPERASIONAL'}
-]
+const jenisPembelianRadioOptions = computed(() => [
+  {label: t('pages.pembelianPage.sparepartPurchaseLabel'), value: 'SPAREPART'},
+  {label: t('pages.pembelianPage.productPurchaseLabel'), value: 'BARANG'},
+  {label: t('pages.pembelianPage.operationalExpenseLabel'), value: 'OPERASIONAL'}
+])
 const kategoriOperasionalOptions = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY', 'ON_DEMAND']
 const statusOptions = ref(['LUNAS', 'BELUM_LUNAS', 'DP'])
 
@@ -593,64 +595,64 @@ const detailForm = ref({
   keterangan: ''
 })
 
-const kategoriItemOptions = [
-  {label: 'Sparepart', value: 'SPAREPART'},
-  {label: 'Barang', value: 'BARANG'},
-  {label: 'Operasional', value: 'OPERASIONAL'}
-]
+const kategoriItemOptions = computed(() => [
+  {label: t('pages.pembelianPage.itemCategorySparepart'), value: 'SPAREPART'},
+  {label: t('pages.pembelianPage.itemCategoryBarang'), value: 'BARANG'},
+  {label: t('pages.pembelianPage.itemCategoryOperasional'), value: 'OPERASIONAL'}
+])
 
 // Detail table columns
-const detailColumns = [
+const detailColumns = computed(() => [
   {
     name: 'namaItem',
-    label: 'Nama Item',
+    label: t('pages.pembelianPage.itemNameColumn'),
     align: 'left',
     field: 'namaItem',
     sortable: false
   },
   {
     name: 'kategoriItem',
-    label: 'Kategori',
+    label: t('pages.pembelianPage.categoryColumn'),
     align: 'left',
     field: 'kategoriItem',
     sortable: false
   },
   {
     name: 'harga',
-    label: 'Harga',
+    label: t('pages.pembelianPage.priceColumn'),
     align: 'right',
     field: 'harga',
     sortable: false
   },
   {
     name: 'kuantiti',
-    label: 'Qty',
+    label: t('pages.pembelianPage.quantityColumn'),
     align: 'center',
     field: 'kuantiti',
     sortable: false
   },
   {
     name: 'total',
-    label: 'Total',
+    label: t('pages.pembelianPage.totalLabel'),
     align: 'right',
     field: 'total',
     sortable: false
   },
   {
     name: 'keterangan',
-    label: 'Keterangan',
+    label: t('notes'),
     align: 'left',
     field: 'keterangan',
     sortable: false
   },
   {
     name: 'actions',
-    label: 'Actions',
+    label: t('actions'),
     align: 'center',
     field: 'actions',
     sortable: false
   }
-]
+])
 
 // Computed values
 const grandTotal = computed(() => {
@@ -702,11 +704,11 @@ const hasUnsavedChanges = computed(() => {
 })
 
 // Table columns
-const columns = [
+const columns = computed(() => [
 
   {
     name: 'tanggalPembelian',
-    label: 'Tanggal',
+    label: t('pages.penjualanPage.dateColumn'),
     align: 'left',
     field: 'tanggalPembelian',
     sortable: true
@@ -714,28 +716,28 @@ const columns = [
   {
     name: 'noPembelian',
     required: true,
-    label: 'No Pembelian',
+    label: t('pages.pembelianPage.noPembelianLabel'),
     align: 'left',
     field: 'noPembelian',
     sortable: true
   },
   {
     name: 'jenisPembelian',
-    label: 'Jenis Pengeluaran',
+    label: t('pages.pembelianPage.expenseTypeColumn'),
     align: 'center',
     field: 'jenisPembelian',
     sortable: true
   },
   {
     name: 'jenisOperasional',
-    label: 'Jenis Operasional',
+    label: t('pages.pembelianPage.operationalTypeLabel'),
     align: 'left',
     field: 'jenisOperasional',
     sortable: true
   },
   {
     name: 'kategoriOperasional',
-    label: 'Kategori Operasional',
+    label: t('operationalCategory'),
     align: 'left',
     field: 'kategoriOperasional',
     sortable: true
@@ -743,21 +745,21 @@ const columns = [
 
   {
     name: 'namaSupplier',
-    label: 'Supplier',
+    label: t('pages.pembelianPage.supplierLabel'),
     align: 'left',
     field: 'namaSupplier',
     sortable: true
   },
   {
     name: 'grandTotal',
-    label: 'Jumlah Biaya',
+    label: t('pages.pembelianPage.totalCostColumn'),
     align: 'right',
     field: 'grandTotal',
     sortable: true
   },
   {
     name: 'jenisPembayaran',
-    label: 'Jenis Pembayaran',
+    label: t('pages.pembelianPage.paymentTypeColumn'),
     align: 'center',
     field: 'jenisPembayaran',
     sortable: true
@@ -765,7 +767,7 @@ const columns = [
 
   {
     name: 'keterangan',
-    label: 'Keterangan',
+    label: t('notes'),
     align: 'center',
     field: 'keterangan',
     sortable: true
@@ -773,18 +775,18 @@ const columns = [
 
   {
     name: 'statusPembayaran',
-    label: 'Status',
+    label: t('status'),
     align: 'center',
     field: 'statusPembayaran',
     sortable: true
   },
   {
     name: 'actions',
-    label: 'Actions',
+    label: t('actions'),
     align: 'center',
     field: 'actions'
   }
-]
+])
 
 // Methods
 const fetchPembelian = async (paginationData = pagination.value) => {
@@ -836,7 +838,7 @@ const fetchPembelian = async (paginationData = pagination.value) => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to fetch pembelian data',
+      message: t('pages.pembelianPage.fetchPembelianFailed'),
       caption: error.response?.data?.message || error.message
     })
   } finally {
@@ -925,7 +927,7 @@ const deletePembelian = async () => {
     if (response.data.success) {
       $q.notify({
         type: 'positive',
-        message: 'Pembelian deleted successfully'
+        message: t('pages.pembelianPage.deletedNotify')
       })
       showDeleteDialog.value = false
       itemToDelete.value = null
@@ -934,7 +936,7 @@ const deletePembelian = async () => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to delete pembelian',
+      message: t('pages.pembelianPage.deleteFailed'),
       caption: error.response?.data?.message || error.message
     })
   } finally {
@@ -992,7 +994,7 @@ const fetchNextPembelianNumber = async () => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to fetch pembelian number',
+      message: t('pages.pembelianPage.fetchNumberFailed'),
       caption: error.response?.data?.message || error.message
     })
   }
@@ -1008,7 +1010,7 @@ const fetchSuppliers = async () => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to fetch suppliers',
+      message: t('pages.pembelianPage.fetchSuppliersFailed'),
       caption: error.response?.data?.message || error.message
     })
   }
@@ -1063,7 +1065,7 @@ const createNewSupplier = async () => {
     if (response.data.success) {
       $q.notify({
         type: 'positive',
-        message: 'Supplier created successfully'
+        message: t('pages.pembelianPage.supplierCreatedNotify')
       })
 
       // Add new supplier to options
@@ -1078,7 +1080,7 @@ const createNewSupplier = async () => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to create supplier',
+      message: t('pages.pembelianPage.supplierCreateFailed'),
       caption: error.response?.data?.message || error.message
     })
   } finally {
@@ -1130,7 +1132,7 @@ const saveDetail = () => {
   if (!detailForm.value.namaItem || !detailForm.value.harga || !detailForm.value.kuantiti) {
     $q.notify({
       type: 'negative',
-      message: 'Mohon lengkapi field yang wajib diisi'
+      message: t('pages.pembelianPage.requiredFieldsNotify')
     })
     return
   }
@@ -1138,7 +1140,7 @@ const saveDetail = () => {
   if (detailForm.value.harga <= 0 || detailForm.value.kuantiti <= 0) {
     $q.notify({
       type: 'negative',
-      message: 'Harga dan kuantiti harus lebih dari 0'
+      message: t('pages.pembelianPage.priceQuantityInvalid')
     })
     return
   }
@@ -1164,14 +1166,14 @@ const saveDetail = () => {
 
   $q.notify({
     type: 'positive',
-    message: isEditingDetail.value ? 'Item berhasil diupdate' : 'Item berhasil ditambahkan'
+    message: isEditingDetail.value ? t('pages.pembelianPage.itemUpdatedNotify') : t('pages.pembelianPage.itemAddedNotify')
   })
 }
 
 const deleteDetail = async (detail) => {
   $q.dialog({
-    title: 'Konfirmasi Hapus',
-    message: `Apakah Anda yakin ingin menghapus item "${detail.namaItem}"?`,
+    title: t('confirmDelete'),
+    message: t('pages.pembelianPage.confirmDeleteItemMessage', { item: detail.namaItem }),
     cancel: true,
     persistent: true
   }).onOk(async () => {
@@ -1187,13 +1189,13 @@ const deleteDetail = async (detail) => {
         formData.value.details.splice(index, 1)
         $q.notify({
           type: 'positive',
-          message: 'Item berhasil dihapus'
+          message: t('pages.pembelianPage.itemDeletedNotify')
         })
       }
     } catch (error) {
       $q.notify({
         type: 'negative',
-        message: 'Failed to delete item',
+        message: t('pages.pembelianPage.itemDeleteFailed'),
         caption: error.response?.data?.message || error.message
       })
     }
@@ -1238,7 +1240,7 @@ const handleSave = async () => {
     if (response.data.success) {
       $q.notify({
         type: 'positive',
-        message: isEditMode.value ? 'Pembelian updated successfully' : 'Pembelian created successfully'
+        message: isEditMode.value ? t('pages.pembelianPage.updatedNotify') : t('pages.pembelianPage.createdNotify')
       })
       await fetchPembelian()
       if (!isEditMode.value) {
@@ -1251,7 +1253,7 @@ const handleSave = async () => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to save pembelian',
+      message: t('pages.pembelianPage.saveFailed'),
       caption: error.response?.data?.message || error.message
     })
   } finally {

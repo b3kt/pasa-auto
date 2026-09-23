@@ -72,7 +72,7 @@
             </div>
             <q-menu>
               <q-list dense style="min-width: 150px">
-                <q-item-label header>User Info</q-item-label>
+                <q-item-label header>{{ $t('pages.mainLayout.userInfo') }}</q-item-label>
                 <q-item clickable v-close-popup>
                   <q-item-section>
                     <q-item-label>{{ user.username }}</q-item-label>
@@ -84,7 +84,7 @@
                   <q-item-section avatar>
                     <q-icon name="key" />
                   </q-item-section>
-                  <q-item-section>Ganti Password</q-item-section>
+                  <q-item-section>{{ $t('changePassword') }}</q-item-section>
                 </q-item>
                 <q-item clickable v-close-popup @click="handleLogout">
                   <q-item-section avatar>
@@ -314,7 +314,7 @@ async function handleLogout() {
   router.replace('/login')
   $q.notify({
     type: 'info',
-    message: 'Logged out successfully',
+    message: t('loggedOutSuccessfully'),
   })
 }
 

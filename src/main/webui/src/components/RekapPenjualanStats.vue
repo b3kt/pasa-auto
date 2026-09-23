@@ -20,6 +20,9 @@
 
 <script setup>
 import {computed} from 'vue'
+import {useI18n} from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   // Totals from /api/pazaauto/rekap-penjualan/summary, null until the first response
@@ -41,37 +44,37 @@ const formatDuration = (seconds) => {
   if (seconds === null || seconds === undefined) return '-'
   const total = Math.round(seconds)
   const parts = [
-    {value: Math.floor(total / 3600), unit: 'jam'},
-    {value: Math.floor((total % 3600) / 60), unit: 'mnt'},
-    {value: total % 60, unit: 'dtk'}
+    {value: Math.floor(total / 3600), unit: t('hourShort')},
+    {value: Math.floor((total % 3600) / 60), unit: t('minuteShort')},
+    {value: total % 60, unit: t('secondShort')}
   ]
   const shown = parts.slice(parts.findIndex(p => p.value > 0)).slice(0, 2).filter(p => p.value > 0)
-  return shown.length ? shown.map(p => `${p.value} ${p.unit}`).join(' ') : '0 dtk'
+  return shown.length ? shown.map(p => `${p.value} ${p.unit}`).join(' ') : `0 ${t('secondShort')}`
 }
 
 const statCards = computed(() => {
   const s = props.stats
   return [
     {
-      label: 'Pelanggan / Kendaraan',
+      label: t('components.rekapPenjualanStats.pelangganKendaraanLabel'),
       icon: 'groups',
       color: 'primary',
       value: `${s?.totalPelanggan ?? 0} / ${s?.totalKendaraan ?? 0}`,
-      caption: `dari ${s?.totalSpk ?? 0} SPK`
+      caption: t('components.rekapPenjualanStats.fromSpkCaption', { count: s?.totalSpk ?? 0 })
     },
     {
-      label: 'Total dibayar',
+      label: t('components.rekapPenjualanStats.totalDibayarLabel'),
       icon: 'payments',
       color: 'green',
       value: formatCurrency(s?.totalDibayar),
-      caption: 'sesuai filter yang dipilih'
+      caption: t('components.rekapPenjualanStats.perFilterCaption')
     },
     {
-      label: 'Rata-rata pengerjaan',
+      label: t('components.rekapPenjualanStats.avgCompletionLabel'),
       icon: 'schedule',
       color: 'orange',
       value: formatDuration(s?.avgCompletionSeconds),
-      caption: `dari ${s?.completedCount ?? 0} SPK yang tercatat waktunya`
+      caption: t('components.rekapPenjualanStats.recordedTimeCaption', { count: s?.completedCount ?? 0 })
     }
   ]
 })

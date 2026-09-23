@@ -4,28 +4,28 @@
       <!-- Header with Back Button -->
       <div class="row items-center q-mb-lg">
         <q-btn flat round dense icon="arrow_back" color="primary" @click="goBack">
-          <q-tooltip>Back to Roles</q-tooltip>
+          <q-tooltip>{{ $t('pages.roleViewPage.backToRoles') }}</q-tooltip>
         </q-btn>
-        <div class="text-h5 q-ml-md">Role Details</div>
+        <div class="text-h5 q-ml-md">{{ $t('pages.roleViewPage.title') }}</div>
       </div>
 
       <!-- Role Details Card -->
       <q-card class="q-mb-lg">
         <q-card-section>
           <div class="text-h6">{{ roleData.name }}</div>
-          <div class="text-caption text-grey-7">{{ roleData.description || 'No description' }}</div>
+          <div class="text-caption text-grey-7">{{ roleData.description || $t('pages.roleViewPage.noDescription') }}</div>
         </q-card-section>
         <q-separator />
         <q-card-section>
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6">
-              <div class="text-caption text-grey-7">Status</div>
+              <div class="text-caption text-grey-7">{{ $t('status') }}</div>
               <q-badge :color="roleData.active ? 'green' : 'red'">
-                {{ roleData.active ? 'Active' : 'Inactive' }}
+                {{ roleData.active ? $t('active') : $t('inactive') }}
               </q-badge>
             </div>
             <div class="col-12 col-md-6">
-              <div class="text-caption text-grey-7">Role ID</div>
+              <div class="text-caption text-grey-7">{{ $t('pages.roleViewPage.roleId') }}</div>
               <div>{{ roleData.id }}</div>
             </div>
           </div>
@@ -33,19 +33,19 @@
       </q-card>
 
       <!-- User Assignment Section -->
-      <div class="text-h6 q-mb-md">User Assignment</div>
+      <div class="text-h6 q-mb-md">{{ $t('pages.roleViewPage.userAssignment') }}</div>
       <div class="row q-col-gutter-md">
         <!-- Available Users -->
         <div class="col-12 col-md-6">
           <q-card>
             <q-card-section class="bg-grey-2">
               <div class="row items-center">
-                <div class="text-subtitle1 col">Available Users</div>
+                <div class="text-subtitle1 col">{{ $t('pages.roleViewPage.availableUsers') }}</div>
                 <q-chip dense color="primary" text-color="white">
                   {{ availableUsers.length }}
                 </q-chip>
               </div>
-              <q-input v-model="searchAvailable" dense outlined placeholder="Search users..." class="q-mt-sm">
+              <q-input v-model="searchAvailable" dense outlined :placeholder="$t('pages.roleViewPage.searchUsers')" class="q-mt-sm">
                 <template v-slot:prepend>
                   <q-icon name="search" />
                 </template>
@@ -68,13 +68,13 @@
                   </q-item-section>
                   <q-item-section side>
                     <q-btn flat dense round icon="arrow_forward" color="primary" size="sm" @click="assignUser(user)">
-                      <q-tooltip>Assign to role</q-tooltip>
+                      <q-tooltip>{{ $t('pages.roleViewPage.assignTooltip') }}</q-tooltip>
                     </q-btn>
                   </q-item-section>
                 </q-item>
                 <q-item v-if="filteredAvailableUsers.length === 0">
                   <q-item-section class="text-center text-grey-6">
-                    No available users
+                    {{ $t('pages.roleViewPage.noAvailableUsers') }}
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -88,12 +88,12 @@
             @dragleave="onDragLeave('assigned')" :class="{ 'drop-zone-active': dropZone === 'assigned' }">
             <q-card-section class="bg-primary text-white">
               <div class="row items-center">
-                <div class="text-subtitle1 col">Assigned Users</div>
+                <div class="text-subtitle1 col">{{ $t('pages.roleViewPage.assignedUsers') }}</div>
                 <q-chip dense color="white" text-color="primary">
                   {{ assignedUsers.length }}
                 </q-chip>
               </div>
-              <q-input v-model="searchAssigned" dense outlined dark placeholder="Search users..." class="q-mt-sm">
+              <q-input v-model="searchAssigned" dense outlined dark :placeholder="$t('pages.roleViewPage.searchUsers')" class="q-mt-sm">
                 <template v-slot:prepend>
                   <q-icon name="search" />
                 </template>
@@ -116,13 +116,13 @@
                   </q-item-section>
                   <q-item-section side>
                     <q-btn flat dense round icon="close" color="negative" size="sm" @click="unassignUser(user)">
-                      <q-tooltip>Remove from role</q-tooltip>
+                      <q-tooltip>{{ $t('pages.roleViewPage.removeTooltip') }}</q-tooltip>
                     </q-btn>
                   </q-item-section>
                 </q-item>
                 <q-item v-if="filteredAssignedUsers.length === 0">
                   <q-item-section class="text-center text-grey-6">
-                    No assigned users
+                    {{ $t('pages.roleViewPage.noAssignedUsers') }}
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -133,8 +133,8 @@
 
       <!-- Action Buttons -->
       <div class="row justify-end q-mt-lg q-gutter-sm">
-        <q-btn flat label="Cancel" color="primary" @click="goBack" />
-        <q-btn label="Save Changes" color="primary" @click="saveChanges" :loading="saving" />
+        <q-btn flat :label="$t('cancel')" color="primary" @click="goBack" />
+        <q-btn :label="$t('pages.roleViewPage.saveChanges')" color="primary" @click="saveChanges" :loading="saving" />
       </div>
     </div>
   </q-page>
@@ -145,10 +145,12 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
+import { useI18n } from 'vue-i18n'
 
 const route = useRoute()
 const router = useRouter()
 const $q = useQuasar()
+const { t } = useI18n()
 
 // State
 const loading = ref(false)
@@ -203,7 +205,7 @@ const fetchRoleDetails = async () => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to fetch role details',
+      message: t('pages.roleViewPage.fetchRoleFailed'),
       caption: error.response?.data?.message || error.message
     })
     goBack()
@@ -221,7 +223,7 @@ const fetchAllUsers = async () => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to fetch users',
+      message: t('pages.roleViewPage.fetchUsersFailed'),
       caption: error.response?.data?.message || error.message
     })
   }
@@ -237,7 +239,7 @@ const fetchAssignedUsers = async () => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to fetch assigned users',
+      message: t('pages.roleViewPage.fetchAssignedFailed'),
       caption: error.response?.data?.message || error.message
     })
   }
@@ -248,7 +250,7 @@ const assignUser = (user) => {
     assignedUsers.value.push(user)
     $q.notify({
       type: 'positive',
-      message: `${user.username} assigned to role`,
+      message: t('pages.roleViewPage.assignedNotify', { username: user.username }),
       timeout: 1000
     })
   }
@@ -260,7 +262,7 @@ const unassignUser = (user) => {
     assignedUsers.value.splice(index, 1)
     $q.notify({
       type: 'positive',
-      message: `${user.username} removed from role`,
+      message: t('pages.roleViewPage.removedNotify', { username: user.username }),
       timeout: 1000
     })
   }
@@ -316,14 +318,14 @@ const saveChanges = async () => {
     if (response.data.success) {
       $q.notify({
         type: 'positive',
-        message: 'Role users updated successfully'
+        message: t('pages.roleViewPage.saveSuccess')
       })
       goBack()
     }
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to save changes',
+      message: t('pages.roleViewPage.saveFailed'),
       caption: error.response?.data?.message || error.message
     })
   } finally {

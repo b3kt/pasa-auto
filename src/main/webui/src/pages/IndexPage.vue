@@ -8,8 +8,7 @@
       <template v-slot:avatar>
         <q-icon name="hourglass_top" />
       </template>
-      Akun Anda sudah aktif, tetapi administrator belum menetapkan hak akses. Hubungi administrator
-      agar menu dan data bisa diakses.
+      {{ $t('pages.indexPage.noRolesBanner') }}
     </q-banner>
 
     <img alt="Pasa Auto" src="~assets/pasa.svg" style="width: 100%; height: auto; max-height: 640px; ">

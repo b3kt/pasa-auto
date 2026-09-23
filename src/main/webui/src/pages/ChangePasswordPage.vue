@@ -2,25 +2,25 @@
   <q-page class="flex flex-center" padding>
     <q-card style="width: 400px; max-width: 100%">
       <q-card-section>
-        <div class="text-h6">Change Password</div>
+        <div class="text-h6">{{ $t('changePassword') }}</div>
         <div v-if="mustChange" class="text-caption text-grey-8 q-mt-xs">
-          You are signed in with a temporary password. Choose a new password to continue.
+          {{ $t('pages.changePassword.temporaryNotice') }}
         </div>
       </q-card-section>
 
       <q-card-section>
         <q-form @submit="onSubmit" class="q-gutter-md">
-          <q-input v-model="currentPassword" :label="mustChange ? 'Temporary password' : 'Current password'"
+          <q-input v-model="currentPassword" :label="mustChange ? $t('pages.changePassword.temporaryPasswordLabel') : $t('pages.changePassword.currentPasswordLabel')"
             type="password" autocomplete="current-password" outlined dense
-            :rules="[val => !!val || 'Password lama harus diisi']" />
+            :rules="[val => !!val || $t('pages.changePassword.currentPasswordRequired')]" />
 
-          <q-input v-model="newPassword" label="New password" :type="showNew ? 'text' : 'password'"
+          <q-input v-model="newPassword" :label="$t('pages.changePassword.newPasswordLabel')" :type="showNew ? 'text' : 'password'"
             autocomplete="new-password" outlined dense
-            :hint="`At least ${MIN_LENGTH} characters`"
+            :hint="$t('pages.changePassword.newPasswordHint', { min: MIN_LENGTH })"
             :rules="[
-              val => !!val || 'Password baru harus diisi',
-              val => val.length >= MIN_LENGTH || `Minimal ${MIN_LENGTH} karakter`,
-              val => val !== currentPassword || 'Password baru harus berbeda'
+              val => !!val || $t('pages.changePassword.newPasswordRequired'),
+              val => val.length >= MIN_LENGTH || $t('pages.changePassword.minLengthMessage', { min: MIN_LENGTH }),
+              val => val !== currentPassword || $t('pages.changePassword.mustDifferMessage')
             ]">
             <template v-slot:append>
               <q-icon :name="showNew ? 'visibility_off' : 'visibility'" class="cursor-pointer"
@@ -28,16 +28,16 @@
             </template>
           </q-input>
 
-          <q-input v-model="confirmPassword" label="Confirm new password" :type="showNew ? 'text' : 'password'"
+          <q-input v-model="confirmPassword" :label="$t('pages.changePassword.confirmPasswordLabel')" :type="showNew ? 'text' : 'password'"
             autocomplete="new-password" outlined dense
-            :rules="[val => val === newPassword || 'Konfirmasi password tidak sama']" />
+            :rules="[val => val === newPassword || $t('pages.changePassword.confirmMismatchMessage')]" />
 
           <q-banner v-if="error" class="bg-negative text-white" dense>{{ error }}</q-banner>
 
           <div class="row justify-end q-gutter-sm">
-            <q-btn v-if="mustChange" flat label="Logout" color="primary" @click="logout" />
-            <q-btn v-else flat label="Cancel" color="primary" @click="router.back()" />
-            <q-btn type="submit" label="Change password" color="primary" :loading="saving" />
+            <q-btn v-if="mustChange" flat :label="$t('logout')" color="primary" @click="logout" />
+            <q-btn v-else flat :label="$t('cancel')" color="primary" @click="router.back()" />
+            <q-btn type="submit" :label="$t('pages.changePassword.submitButton')" color="primary" :loading="saving" />
           </div>
         </q-form>
       </q-card-section>
@@ -49,6 +49,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from 'stores/auth-store'
 
 // Mirrors PasswordPolicy.MIN_LENGTH on the server, which is the source of truth
@@ -56,6 +57,7 @@ const MIN_LENGTH = 8
 
 const router = useRouter()
 const $q = useQuasar()
+const { t } = useI18n()
 const authStore = useAuthStore()
 
 const mustChange = computed(() => authStore.user?.mustChangePassword === true)
@@ -72,7 +74,7 @@ const onSubmit = async () => {
   try {
     const result = await authStore.changePassword(currentPassword.value, newPassword.value)
     if (result.success) {
-      $q.notify({ type: 'positive', message: 'Password changed' })
+      $q.notify({ type: 'positive', message: t('pages.changePassword.successMessage') })
       router.replace('/')
     } else {
       error.value = result.error

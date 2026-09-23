@@ -5,10 +5,10 @@
         <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
                       @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
                       :on-create="openCreateDialog" ref="tableRef"
-                      :on-edit="openEditDialog" create-label="Tambah data Pelanggan"
-                      search-placeholder="Search by name, nopol, or email...">
+                      :on-edit="openEditDialog" :create-label="$t('pages.pelangganPage.createLabel')"
+                      :search-placeholder="$t('pages.pelangganPage.searchPlaceholder')">
                         <template v-slot:title>
-                          <div class="text-h6 q-mb-md">Master | Pelanggan</div>
+                          <div class="text-h6 q-mb-md">{{ $t('pages.pelangganPage.title') }}</div>
                         </template>
         </GenericTable>
       </template>
@@ -16,56 +16,56 @@
       <template v-slot:after>
         <div class="q-pa-md scroll" style="height: 100%">
           <div class="row items-center q-mb-md">
-            <div class="text-h6 q-mb-md">{{ isEditMode ? 'Edit Pelanggan' : 'Tambah data Pelanggan' }}</div>
+            <div class="text-h6 q-mb-md">{{ isEditMode ? $t('pages.pelangganPage.editTitle') : $t('pages.pelangganPage.createLabel') }}</div>
             <q-space/>
             <q-btn v-if="isEditMode" flat round dense icon="add" @click="openCreateDialog">
-              <q-tooltip>New</q-tooltip>
+              <q-tooltip>{{ $t('new') }}</q-tooltip>
             </q-btn>
           </div>
           <q-form @submit="handleSave" id="pelanggan-form" class="q-gutter-md">
 
-            <q-input v-model="formData.nopol" label="Nopol *" outlined dense
-                     :rules="[val => !!val || 'Nopol harus diisi']"
+            <q-input v-model="formData.nopol" :label="$t('pages.pelangganPage.nopolLabel')" outlined dense
+                     :rules="[val => !!val || $t('pages.pelangganPage.nopolRequired')]"
                      hide-bottom-space/>
-            <q-input v-model="formData.namaPelanggan" label="Nama Pelanggan *" outlined dense
-                     :rules="[val => !!val || 'Nama Pelanggan harus diisi']"
+            <q-input v-model="formData.namaPelanggan" :label="$t('pages.pelangganPage.nameLabel')" outlined dense
+                     :rules="[val => !!val || $t('pages.pelangganPage.nameRequired')]"
                      hide-bottom-space/>
-            <q-input v-model="formData.email" label="Email" outlined dense type="email"/>
-            <q-input v-model="formData.noHp" label="No HP" outlined dense/>
-            <q-input v-model="formData.alamat" label="Alamat" outlined dense type="textarea" rows="2"/>
-            <q-input v-model="formData.kota" label="Kota" outlined dense/>
-            <q-input v-model="formData.tanggalJoin" label="Tanggal Join" outlined dense type="date"/>
+            <q-input v-model="formData.email" :label="$t('email')" outlined dense type="email"/>
+            <q-input v-model="formData.noHp" :label="$t('pages.pelangganPage.phoneLabel')" outlined dense/>
+            <q-input v-model="formData.alamat" :label="$t('pages.pelangganPage.addressLabel')" outlined dense type="textarea" rows="2"/>
+            <q-input v-model="formData.kota" :label="$t('pages.pelangganPage.cityLabel')" outlined dense/>
+            <q-input v-model="formData.tanggalJoin" :label="$t('pages.pelangganPage.joinDateLabel')" outlined dense type="date"/>
 
-            <div class="text-subtitle2 q-mt-md">Informasi Kendaraan</div>
-            <q-select :model-value="formData.merk" @update:model-value="onMerkChange" label="Merk *" outlined dense
+            <div class="text-subtitle2 q-mt-md">{{ $t('pages.pelangganPage.vehicleInfo') }}</div>
+            <q-select :model-value="formData.merk" @update:model-value="onMerkChange" :label="$t('pages.pelangganPage.merkLabel')" outlined dense
                       use-input input-debounce="300"
                       new-value-mode="add-unique" :options="filteredMerkOptions" @filter="filterMerk"
-                      :rules="[val => !!val || 'Merk harus diisi']"
+                      :rules="[val => !!val || $t('pages.pelangganPage.merkRequired')]"
                       hide-bottom-space/>
             <!-- Typed text is the value itself (fill-input + input-value), so a jenis not in the list is kept
                  and the backend creates it as a new tb_kendaraan under the selected merk on save. -->
             <q-select :model-value="formData.jenis" @input-value="val => formData.jenis = val"
-                      :label="formData.merk ? 'Jenis *' : 'Jenis'" outlined dense
+                      :label="formData.merk ? $t('pages.pelangganPage.jenisLabelRequired') : $t('pages.pelangganPage.jenisLabel')" outlined dense
                       use-input fill-input hide-selected input-debounce="300"
                       :options="filteredJenisOptions" @filter="filterJenis"
                       @update:model-value="val => formData.jenis = val"
-                      :rules="[val => !formData.merk || !!(val && val.trim()) || 'Jenis harus diisi']"
-                      :hint="isNewJenis ? `Jenis baru, akan ditambahkan ke merk ${formData.merk}` : ''"
+                      :rules="[val => !formData.merk || !!(val && val.trim()) || $t('pages.pelangganPage.jenisRequired')]"
+                      :hint="isNewJenis ? $t('pages.pelangganPage.newJenisHint', { merk: formData.merk }) : ''"
                       hide-bottom-space/>
 
-            <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea" rows="2"/>
+            <q-input v-model="formData.keterangan" :label="$t('notes')" outlined dense type="textarea" rows="2"/>
 
             <div class="row justify-end q-mt-md q-gutter-sm">
-              <q-btn v-if="isEditMode" label="Hapus" color="negative" flat @click="confirmDelete(formData)" :loading="deleting" />
-              <q-btn label="Simpan" type="submit" color="primary" :loading="saving" :disable="isEditMode && !isDirty(formData)"/>
+              <q-btn v-if="isEditMode" :label="$t('delete')" color="negative" flat @click="confirmDelete(formData)" :loading="deleting" />
+              <q-btn :label="$t('save')" type="submit" color="primary" :loading="saving" :disable="isEditMode && !isDirty(formData)"/>
             </div>
           </q-form>
 
-          <q-expansion-item v-if="isEditMode" icon="directions_car" label="Kendaraan Terdaftar" class="q-mt-md"
+          <q-expansion-item v-if="isEditMode" icon="directions_car" :label="$t('pages.pelangganPage.registeredVehicles')" class="q-mt-md"
                             expand-icon-toggle default-closed>
             <div class="row items-center q-mb-sm q-gutter-sm">
               <q-space/>
-              <q-btn label="Tambah Kendaraan" color="primary" dense unelevated icon="add" @click="openAttachDialog"/>
+              <q-btn :label="$t('pages.pelangganPage.addVehicle')" color="primary" dense unelevated icon="add" @click="openAttachDialog"/>
             </div>
             <q-table flat bordered :rows="vehicles" :columns="vehicleColumns" row-key="id"
                      :pagination="{rowsPerPage: 5}" :loading="loadingVehicles" class="bg-white"
@@ -73,12 +73,12 @@
               <template v-slot:body-cell-current="props">
                 <q-td :props="props">
                   <q-chip :color="props.value ? 'positive' : 'grey'" text-color="white" size="sm" dense>
-                    {{ props.value ? 'Aktif' : 'Lama' }}
+                    {{ props.value ? $t('pages.pelangganPage.activeStatus') : $t('pages.pelangganPage.oldStatus') }}
                   </q-chip>
                 </q-td>
               </template>
               <template v-slot:no-data>
-                <div class="text-grey q-pa-md">Belum ada kendaraan terdaftar.</div>
+                <div class="text-grey q-pa-md">{{ $t('pages.pelangganPage.noVehicles') }}</div>
               </template>
             </q-table>
           </q-expansion-item>
@@ -87,28 +87,28 @@
     </q-splitter>
 
     <!-- Delete Confirmation Dialog -->
-    <GenericDialog v-model="showDeleteDialog" title="Konfirmasi hapus data" min-width="400px" position="standard">
-      Are you sure you want to delete <strong>{{ itemToDelete?.namaPelanggan }}</strong>?
+    <GenericDialog v-model="showDeleteDialog" :title="$t('confirmDeleteTitle')" min-width="400px" position="standard">
+      {{ $t('pages.pelangganPage.confirmDeleteMessage', { item: itemToDelete?.namaPelanggan }) }}
       <template #actions>
-        <q-btn flat label="Batalkan" color="primary" @click="showDeleteDialog = false"/>
-        <q-btn flat label="Hapus saja" color="negative" @click="deleteItem" :loading="deleting"/>
+        <q-btn flat :label="$t('cancel')" color="primary" @click="showDeleteDialog = false"/>
+        <q-btn flat :label="$t('deleteOnlyButton')" color="negative" @click="deleteItem" :loading="deleting"/>
       </template>
     </GenericDialog>
 
     <!-- Attach Vehicle Dialog -->
-    <GenericDialog v-model="showAttachDialog" title="Tambah Kendaraan" min-width="500px" position="standard">
+    <GenericDialog v-model="showAttachDialog" :title="$t('pages.pelangganPage.addVehicle')" min-width="500px" position="standard">
       <q-form @submit="doAttachVehicle" class="q-gutter-md q-mt-sm">
-        <q-input v-model="attachForm.nopol" label="Nopol *" outlined dense
-                 :rules="[val => !!val || 'Nopol harus diisi']" hide-bottom-space/>
-        <q-select v-model="attachForm.merk" label="Merk *" outlined dense use-input input-debounce="300"
+        <q-input v-model="attachForm.nopol" :label="$t('pages.pelangganPage.nopolLabel')" outlined dense
+                 :rules="[val => !!val || $t('pages.pelangganPage.nopolRequired')]" hide-bottom-space/>
+        <q-select v-model="attachForm.merk" :label="$t('pages.pelangganPage.merkLabel')" outlined dense use-input input-debounce="300"
                   new-value-mode="add-unique" :options="filteredMerkOptions" @filter="filterMerk"
-                  :rules="[val => !!val || 'Merk harus diisi']" hide-bottom-space/>
-        <q-input v-model="attachForm.jenis" label="Jenis" outlined dense/>
-        <q-input v-model="attachForm.tanggalMulai" label="Tanggal Mulai" outlined dense type="date"/>
-        <q-input v-model="attachForm.keterangan" label="Keterangan" outlined dense type="textarea" rows="2"/>
+                  :rules="[val => !!val || $t('pages.pelangganPage.merkRequired')]" hide-bottom-space/>
+        <q-input v-model="attachForm.jenis" :label="$t('pages.pelangganPage.jenisLabel')" outlined dense/>
+        <q-input v-model="attachForm.tanggalMulai" :label="$t('pages.pelangganPage.startDateLabel')" outlined dense type="date"/>
+        <q-input v-model="attachForm.keterangan" :label="$t('notes')" outlined dense type="textarea" rows="2"/>
         <div class="row justify-end q-mt-md q-gutter-sm">
-          <q-btn flat label="Batalkan" color="primary" @click="showAttachDialog = false"/>
-          <q-btn label="Simpan" type="submit" color="primary" :loading="attaching"/>
+          <q-btn flat :label="$t('cancel')" color="primary" @click="showAttachDialog = false"/>
+          <q-btn :label="$t('save')" type="submit" color="primary" :loading="attaching"/>
         </div>
       </q-form>
     </GenericDialog>
@@ -118,6 +118,7 @@
 <script setup>
 import {ref, computed, onMounted, watch} from 'vue'
 import {useQuasar} from 'quasar'
+import {useI18n} from 'vue-i18n'
 import {api} from 'boot/axios'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
@@ -125,6 +126,7 @@ import {useCrud} from 'src/composables/useCrud'
 import { useKeyboardShortcuts } from 'src/composables/useKeyboardShortcuts'
 
 const $q = useQuasar()
+const { t } = useI18n()
 
 // Use CRUD Composable
 const {
@@ -236,14 +238,14 @@ const handleSave = async () => {
 // Vehicles owned by this pelanggan (via tb_pelanggan_kendaraan)
 const vehicles = ref([])
 const loadingVehicles = ref(false)
-const vehicleColumns = [
-  {name: 'nopol', label: 'Nopol', field: 'nopol', sortable: true},
-  {name: 'merk', label: 'Merk', field: 'merk'},
-  {name: 'jenis', label: 'Jenis', field: 'jenis'},
-  {name: 'tanggalMulai', label: 'Mulai', field: 'tanggalMulai'},
-  {name: 'tanggalAkhir', label: 'Berakhir', field: 'tanggalAkhir'},
-  {name: 'current', label: 'Status', field: 'current'}
-]
+const vehicleColumns = computed(() => [
+  {name: 'nopol', label: t('pages.pelangganPage.nopolColumn'), field: 'nopol', sortable: true},
+  {name: 'merk', label: t('pages.pelangganPage.merkColumn'), field: 'merk'},
+  {name: 'jenis', label: t('pages.pelangganPage.jenisColumn'), field: 'jenis'},
+  {name: 'tanggalMulai', label: t('pages.pelangganPage.startColumn'), field: 'tanggalMulai'},
+  {name: 'tanggalAkhir', label: t('pages.pelangganPage.endColumn'), field: 'tanggalAkhir'},
+  {name: 'current', label: t('status'), field: 'current'}
+])
 
 const fetchVehicles = async (pelangganId) => {
   if (!pelangganId) return
@@ -290,15 +292,15 @@ const doAttachVehicle = async () => {
     }
     const response = await api.post(`/api/pazaauto/pelanggan/${formData.value.id}/kendaraan`, body)
     if (response.data.success) {
-      $q.notify({type: 'positive', message: response.data.message || 'Kendaraan ditambahkan'})
+      $q.notify({type: 'positive', message: response.data.message || t('pages.pelangganPage.vehicleAdded')})
       showAttachDialog.value = false
       await fetchVehicles(formData.value.id)
     } else {
-      $q.notify({type: 'negative', message: response.data.message || 'Gagal menambahkan kendaraan'})
+      $q.notify({type: 'negative', message: response.data.message || t('pages.pelangganPage.vehicleAddFailed')})
     }
   } catch (error) {
     console.error('Failed to attach vehicle', error)
-    $q.notify({type: 'negative', message: 'Gagal menambahkan kendaraan: ' + (error.response?.data?.message || error.message)})
+    $q.notify({type: 'negative', message: t('pages.pelangganPage.vehicleAddError', { error: error.response?.data?.message || error.message })})
   } finally {
     attaching.value = false
   }
@@ -412,11 +414,11 @@ watch(() => formData.value.merk, (newMerk) => {
 })
 
 // Table Columns
-const columns = [
+const columns = computed(() => [
   {
     name: 'nopol',
     required: true,
-    label: 'Nopol',
+    label: t('pages.pelangganPage.nopolColumn'),
     align: 'left',
     field: 'nopol',
     sortable: true
@@ -424,37 +426,37 @@ const columns = [
   {
     name: 'namaPelanggan',
     required: true,
-    label: 'Nama Pelanggan',
+    label: t('pages.pelangganPage.nameColumn'),
     align: 'left',
     field: 'namaPelanggan',
     sortable: true
   },
   {
     name: 'email',
-    label: 'Email',
+    label: t('email'),
     align: 'left',
     field: 'email'
   },
   {
     name: 'noHp',
-    label: 'No HP',
+    label: t('pages.pelangganPage.phoneColumn'),
     align: 'left',
     field: 'noHp'
   },
   {
     name: 'merk',
-    label: 'Merk',
+    label: t('pages.pelangganPage.merkColumn'),
     align: 'left',
     field: 'merk',
     sortable: true
   },
   {
     name: 'jenis',
-    label: 'Jenis',
+    label: t('pages.pelangganPage.jenisColumn'),
     align: 'left',
     field: 'jenis'
   }
-]
+])
 
 // Lifecycle
 onMounted(() => {

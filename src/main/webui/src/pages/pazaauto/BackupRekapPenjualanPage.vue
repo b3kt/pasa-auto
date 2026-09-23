@@ -7,23 +7,23 @@
                 <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
                     @update:pagination="pagination = $event" @request="onRequest" @search="onSearch"
                     :on-edit="openEditDialog" row-key="noPenjualan" ref="tableRef"
-                    search-placeholder="Search by No Penjualan or SPK..."
+                    :search-placeholder="$t('pages.backupPenjualanPage.searchPlaceholder')"
                     dense
-                    footerButtonLabel="Print"
+                    :footerButtonLabel="$t('print')"
                     :footerButtonAction="printTable">
 
                     <template v-slot:toolbar-filters>
                         <div class="row items-center q-gutter-sm">
-                            <q-select v-model="filterStatus" multiple :options="statusOptions" label="Status Pembayaran"
+                            <q-select v-model="filterStatus" multiple :options="statusOptions" :label="$t('paymentStatus')"
                                 dense options-dense flat outlined style="min-width: 150px" />
-                           <q-input :model-value="dateRangeText" label="Date Range" outlined dense readonly>
+                           <q-input :model-value="dateRangeText" :label="$t('dateRange')" outlined dense readonly>
                                <template v-slot:append>
                                    <q-icon name="event" class="cursor-pointer">
                                        <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                                            <q-date v-model="dateRange" range>
                                                <div class="row items-center justify-end q-gutter-sm">
-                                                   <q-btn label="Clear" color="primary" flat @click="clearDateRange" />
-                                                   <q-btn label="OK" color="primary" flat v-close-popup />
+                                                   <q-btn :label="$t('clear')" color="primary" flat @click="clearDateRange" />
+                                                   <q-btn :label="$t('ok')" color="primary" flat v-close-popup />
                                                </div>
                                            </q-date>
                                        </q-popup-proxy>
@@ -32,7 +32,7 @@
                            </q-input>
                           <q-btn :icon="showDetail ? 'chevron_right' : 'chevron_left'" @click="showDetailForm()">
                             <q-tooltip>
-                              Tampilkan lebih rinci
+                              {{ $t('pages.backupRekapPenjualanPage.showMoreDetailTooltip') }}
                             </q-tooltip>
                           </q-btn>
                         </div>
@@ -55,10 +55,10 @@
                     <template v-slot:body-cell-actions="props">
                         <q-td :props="props" class="text-center">
                             <q-btn flat dense round icon="print" color="secondary" @click.stop="printPenjualan(props.row)">
-                                <q-tooltip>Print</q-tooltip>
+                                <q-tooltip>{{ $t('print') }}</q-tooltip>
                             </q-btn>
                             <q-btn flat dense round icon="edit" color="primary" @click.stop="openEditDialog(props.row)">
-                                <q-tooltip>Edit</q-tooltip>
+                                <q-tooltip>{{ $t('edit') }}</q-tooltip>
                             </q-btn>
                         </q-td>
                     </template>
@@ -67,7 +67,7 @@
             <template v-slot:after>
                 <div class="q-pa-md scroll" style="height: calc(100vh - 100px)">
                     <div class="row items-center q-mb-lg">
-                        <div class="text-h6">Detail Penjualan</div>
+                        <div class="text-h6">{{ $t('pages.backupPenjualanPage.detailTitle') }}</div>
                         <q-space />
                     </div>
 
@@ -84,18 +84,18 @@
 
                         <!-- Invoice Information Section -->
                         <div class="q-mb-lg">
-                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Invoice Information</div>
+                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">{{ $t('pages.penjualanPage.invoiceInfoLabel') }}</div>
                             <div class="row q-col-gutter-sm">
                                 <div class="col-12">
-                                    <q-input v-model="formData.noPenjualan" label="No Penjualan" outlined dense
+                                    <q-input v-model="formData.noPenjualan" :label="$t('pages.penjualanPage.noPenjualanLabel')" outlined dense
                                         readonly />
                                 </div>
                                 <div class="col-12">
-                                    <q-input v-model="formData.tanggalJamPenjualan" label="Tanggal Penjualan" outlined
+                                    <q-input v-model="formData.tanggalJamPenjualan" :label="$t('pages.penjualanPage.salesDateLabel')" outlined
                                         dense type="datetime-local" stack-label readonly />
                                 </div>
                                 <div class="col-12">
-                                    <q-input v-model="formData.noSpk" label="No SPK" outlined dense readonly />
+                                    <q-input v-model="formData.noSpk" :label="$t('pages.penjualanPage.noSpkLabel')" outlined dense readonly />
                                 </div>
                             </div>
                         </div>
@@ -109,29 +109,29 @@
 
                         <!-- Payment Details Section -->
                         <div class="bg-grey-2 q-pa-md rounded-borders q-mb-lg">
-                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Payment Details</div>
+                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">{{ $t('pages.penjualanPage.paymentDetailsTitle') }}</div>
                             <div class="row q-col-gutter-sm">
                               <div class="col-12">
-                                <q-input v-model="formData.statusPembayaran" label="Total" outlined
+                                <q-input v-model="formData.statusPembayaran" :label="$t('pages.penjualanPage.totalLabel')" outlined
                                          dense readonly :model-value="formatCurrency(grandTotal)" />
                               </div>
                               <div class="col-12">
-                                    <q-input v-model="formData.statusPembayaran" label="Status Pembayaran" outlined
+                                    <q-input v-model="formData.statusPembayaran" :label="$t('paymentStatus')" outlined
                                         dense readonly :model-value="determinePaymentStatus()"
                                         :class="determinePaymentStatusStyle()"
                                     />
                                 </div>
                                 <div class="col-12">
-                                    <q-input v-model="formData.metodePembayaran" label="Metode Pembayaran" outlined
+                                    <q-input v-model="formData.metodePembayaran" :label="$t('pages.penjualanPage.paymentMethodLabel')" outlined
                                         dense readonly />
                                 </div>
                                 <div class="col-12">
-                                    <q-input v-model.number="formData.uangDibayar" label="Uang Dibayar" outlined dense
+                                    <q-input v-model.number="formData.uangDibayar" :label="$t('pages.penjualanPage.amountPaidLabel')" outlined dense
                                         type="number" prefix="Rp" readonly
                                         @update:model-value="calculateKembalian" />
                                 </div>
                                 <div class="col-12">
-                                    <q-input v-model.number="formData.kembalian" label="Kembalian" outlined dense
+                                    <q-input v-model.number="formData.kembalian" :label="$t('pages.penjualanPage.changeLabel')" outlined dense
                                         type="number" prefix="Rp" readonly />
                                 </div>
                             </div>
@@ -139,13 +139,13 @@
 
                         <!-- Additional Notes -->
                         <div>
-                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">Additional Information</div>
-                            <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea"
+                            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-sm">{{ $t('pages.backupPenjualanPage.additionalInfoLabel') }}</div>
+                            <q-input v-model="formData.keterangan" :label="$t('notes')" outlined dense type="textarea"
                                 rows="3" :readonly="!isEditable" />
                         </div>
 
                         <div class="row justify-end q-mt-md q-gutter-sm">
-                            <q-btn label="Print" icon="print" color="secondary" @click="printPenjualan(formData)"
+                            <q-btn :label="$t('print')" icon="print" color="secondary" @click="printPenjualan(formData)"
                                 v-if="formData.noPenjualan" />
                         </div>
                     </q-form>
@@ -155,23 +155,23 @@
 
         <!-- Keep Delete and Print Dialogs as they are global or large -->
         <!-- Delete Confirmation Dialog -->
-        <GenericDialog v-model="showDeleteDialog" title="Konfirmasi hapus data" min-width="400px" position="standard">
-            Are you sure you want to delete Penjualan <strong>{{ itemToDelete?.noPenjualan }}</strong>?
+        <GenericDialog v-model="showDeleteDialog" :title="$t('confirmDeleteTitle')" min-width="400px" position="standard">
+            {{ $t('pages.backupPenjualanPage.confirmDeleteMessage', { item: itemToDelete?.noPenjualan }) }}
             <template #actions>
-                <q-btn flat label="Batalkan" color="primary" @click="showDeleteDialog = false" />
-                <q-btn flat label="Hapus saja" color="negative" @click="deletePenjualan" :loading="deleting" />
+                <q-btn flat :label="$t('cancel')" color="primary" @click="showDeleteDialog = false" />
+                <q-btn flat :label="$t('deleteOnlyButton')" color="negative" @click="deletePenjualan" :loading="deleting" />
             </template>
         </GenericDialog>
 
         <!-- Print Preview Dialog -->
-        <GenericDialog v-model="showPrintDialog" title="Print Preview" min-width="800px" max-width="90vw">
+        <GenericDialog v-model="showPrintDialog" :title="$t('pages.penjualanPage.printPreviewTitle')" min-width="800px" max-width="90vw">
             <div class="q-pa-sm" style="height: 70vh; width: 100%;">
                 <iframe :srcdoc="printPreviewContent"
                     style="width: 100%; height: 100%; border: 1px solid #ccc;"></iframe>
             </div>
             <template #actions>
-                <q-btn flat label="Batalkan" color="primary" @click="showPrintDialog = false" />
-                <q-btn label="Print" icon="print" color="secondary" @click="confirmPrint" />
+                <q-btn flat :label="$t('cancel')" color="primary" @click="showPrintDialog = false" />
+                <q-btn :label="$t('print')" icon="print" color="secondary" @click="confirmPrint" />
             </template>
         </GenericDialog>
     </q-page>
@@ -179,6 +179,7 @@
 
 <script setup>
 import { ref, onMounted, watch, nextTick, computed, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { api } from 'boot/axios'
 import { useQuasar, date } from 'quasar'
 import { useDateFilter } from 'src/composables/useDateFilter'
@@ -189,6 +190,7 @@ import SPKCustomerInfo from 'components/SPKCustomerInfo.vue'
 import fakturTemplate from 'assets/template/rekap-penjualan.template?raw'
 
 const $q = useQuasar()
+const { t } = useI18n()
 
 // LocalStorage key for filter persistence
 const FILTER_STORAGE_KEY = 'penjualan_status_filter'
@@ -324,46 +326,46 @@ const formData = ref({
 })
 
 // Table columns
-const columns = [
+const columns = computed(() => [
 
 
   {
         name: 'noPenjualan',
         required: true,
-        label: 'No Penjualan',
+        label: t('pages.penjualanPage.noPenjualanLabel'),
         align: 'left',
         field: 'noPenjualan',
         sortable: true
     },
     {
         name: 'tanggalJamPenjualan',
-        label: 'Tanggal',
+        label: t('pages.penjualanPage.dateColumn'),
         align: 'left',
         field: 'tanggalJamPenjualan',
         sortable: true
     },
     {
         name: 'noSpk',
-        label: 'No SPK',
+        label: t('pages.penjualanPage.noSpkLabel'),
         align: 'left',
         field: 'noSpk',
         sortable: true
     },
   {
     name: 'statusPembayaran',
-    label: 'Status',
+    label: t('status'),
     align: 'center',
     field: 'statusPembayaran',
     sortable: true
   },
     {
         name: 'grandTotal',
-        label: 'Grand Total',
+        label: t('pages.backupPenjualanPage.grandTotalColumn'),
         align: 'right',
         field: 'grandTotal',
         sortable: true
     }
-]
+])
 
 // Methods
 const fetchPenjualan = async (paginationData = pagination.value) => {
@@ -411,7 +413,7 @@ const fetchPenjualan = async (paginationData = pagination.value) => {
     } catch (error) {
         $q.notify({
             type: 'negative',
-            message: 'Failed to fetch penjualan data',
+            message: t('pages.backupPenjualanPage.fetchFailed'),
             caption: error.response?.data?.message || error.message
         })
     } finally {
@@ -570,7 +572,7 @@ const handleSave = async () => {
         if (response.data.success) {
             $q.notify({
                 type: 'positive',
-                message: isEditMode.value ? 'Penjualan updated successfully' : 'Penjualan created successfully'
+                message: isEditMode.value ? t('pages.backupPenjualanPage.updatedNotify') : t('pages.backupPenjualanPage.createdNotify')
             })
             await fetchPenjualan()
             if (!isEditMode.value) {
@@ -580,7 +582,7 @@ const handleSave = async () => {
     } catch (error) {
         $q.notify({
             type: 'negative',
-            message: error.response?.data?.message || error.message || 'Failed to save penjualan',
+            message: error.response?.data?.message || error.message || t('pages.backupPenjualanPage.saveFailed'),
             caption: error.response?.data?.details || ''
         })
     } finally {
@@ -631,7 +633,7 @@ const deletePenjualan = async () => {
         if (response.data.success) {
             $q.notify({
                 type: 'positive',
-                message: 'Penjualan deleted successfully'
+                message: t('pages.backupPenjualanPage.deletedNotify')
             })
             showDeleteDialog.value = false
             itemToDelete.value = null
@@ -640,7 +642,7 @@ const deletePenjualan = async () => {
     } catch (error) {
         $q.notify({
             type: 'negative',
-            message: 'Failed to delete penjualan',
+            message: t('pages.backupPenjualanPage.deleteFailed'),
             caption: error.response?.data?.message || error.message
         })
     } finally {
@@ -697,7 +699,7 @@ const printPenjualan = async (row) => {
     } catch (error) {
         $q.notify({
             type: 'negative',
-            message: 'Failed to print penjualan',
+            message: t('pages.backupPenjualanPage.printFailed'),
             caption: error.response?.data?.message || error.message
         })
     }
@@ -775,8 +777,8 @@ const printTable = async () => {
       )
       
       const data = {
-        noPenjualan: 'LAPORAN PENJUALAN',
-        namaPelanggan: 'LAPORAN PENJUALAN', 
+        noPenjualan: t('pages.backupRekapPenjualanPage.laporanPenjualan'),
+        namaPelanggan: t('pages.backupRekapPenjualanPage.laporanPenjualan'), 
         tanggal: new Date().toLocaleDateString('id-ID'),
         grandTotal: recordsWithSpk.reduce((sum, item) => sum + (item.grandTotal || 0), 0),
         filters: {
@@ -813,7 +815,7 @@ const printTable = async () => {
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to fetch penjualan data for printing',
+      message: t('pages.backupRekapPenjualanPage.fetchPrintFailed'),
       caption: error.response?.data?.message || error.message
     })
   }

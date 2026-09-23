@@ -4,10 +4,10 @@
       <template v-slot:before>
         <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
           @update:pagination="pagination = $event" @request="onRequest" @search="onSearch" :on-create="openCreateDialog"
-          :on-edit="openEditDialog" create-label="Tambah data User" ref="tableRef"
-          search-placeholder="Search by username or email...">
+          :on-edit="openEditDialog" :create-label="$t('pages.userPage.createLabel')" ref="tableRef"
+          :search-placeholder="$t('pages.userPage.searchPlaceholder')">
             <template v-slot:title>
-              <div class="text-h6 q-mb-md">Admin | User</div>
+              <div class="text-h6 q-mb-md">{{ $t('pages.userPage.title') }}</div>
             </template>
           <template v-slot:body-cell-active="props">
               <q-badge :color="statusColor(props.row)">
@@ -20,26 +20,26 @@
       <template v-slot:after>
         <div class="q-pa-md scroll" style="height: 100%">
           <div class="row items-center q-mb-md">
-            <div class="text-h6">{{ isEditMode ? 'Edit User' : 'Tambah data User' }}</div>
+            <div class="text-h6">{{ isEditMode ? $t('pages.userPage.editTitle') : $t('pages.userPage.createLabel') }}</div>
             <q-space />
             <q-btn v-if="isEditMode" flat round dense icon="add" @click="openCreateDialog">
-              <q-tooltip>New</q-tooltip>
+              <q-tooltip>{{ $t('new') }}</q-tooltip>
             </q-btn>
           </div>
           <q-form @submit="handleSave" id="user-form" class="q-gutter-md">
-            <q-input v-model="formData.username" label="Username *" outlined dense
-              :rules="[val => !!val || 'Username harus diisi']" />
+            <q-input v-model="formData.username" :label="$t('pages.userPage.usernameLabel')" outlined dense
+              :rules="[val => !!val || $t('pages.userPage.usernameRequired')]" />
 
-            <q-input v-model="formData.email" label="Email *" outlined dense type="email"
-              :rules="[val => !!val || 'Email harus diisi']" />
+            <q-input v-model="formData.email" :label="$t('pages.userPage.emailLabel')" outlined dense type="email"
+              :rules="[val => !!val || $t('pages.userPage.emailRequired')]" />
 
             <!-- Always a temporary password: the user must change it at their next login -->
-            <q-input v-model="newPassword" :label="isEditMode ? 'Reset password' : 'Temporary password *'" outlined dense
+            <q-input v-model="newPassword" :label="isEditMode ? $t('pages.userPage.resetPasswordLabel') : $t('pages.userPage.temporaryPasswordLabel')" outlined dense
               autocomplete="new-password" :type="showPassword ? 'text' : 'password'"
-              :hint="isEditMode ? 'Leave empty to keep the current password. Setting one logs the user out.' : 'The user must change it at first login'"
+              :hint="isEditMode ? $t('pages.userPage.resetPasswordHint') : $t('pages.userPage.temporaryPasswordHint')"
               :rules="[
-                val => isEditMode || !!val || 'Password harus diisi',
-                val => !val || val.length >= 8 || 'Minimal 8 karakter'
+                val => isEditMode || !!val || $t('pages.userPage.passwordRequired'),
+                val => !val || val.length >= 8 || $t('pages.userPage.minLength8')
               ]">
               <template v-slot:append>
                 <q-icon :name="showPassword ? 'visibility_off' : 'visibility'" class="cursor-pointer"
@@ -48,29 +48,29 @@
             </q-input>
 
             <q-select v-model="formData.karyawanId" :options="filteredKaryawanOptions" option-value="id"
-              option-label="namaKaryawan" emit-value map-options label="Pilih Karyawan" outlined dense use-input
+              option-label="namaKaryawan" emit-value map-options :label="$t('pages.userPage.selectKaryawanLabel')" outlined dense use-input
               input-debounce="300" @filter="filterKaryawan" clearable>
               <template v-slot:no-option>
                 <q-item>
                   <q-item-section class="text-grey">
-                    No results
+                    {{ $t('noResults') }}
                   </q-item-section>
                 </q-item>
               </template>
             </q-select>
 
-            <q-checkbox v-model="formData.active" label="Active" />
+            <q-checkbox v-model="formData.active" :label="$t('active')" />
 
             <div>
-              <q-checkbox v-model="formData.googleLoginEnabled" label="Izinkan login dengan Google" />
+              <q-checkbox v-model="formData.googleLoginEnabled" :label="$t('pages.userPage.allowGoogleLoginLabel')" />
               <div class="text-caption text-grey-7 q-ml-lg">
-                Akun ini boleh diklaim oleh akun Google dengan email yang sama dan sudah terverifikasi.
+                {{ $t('pages.userPage.allowGoogleLoginHint') }}
               </div>
             </div>
 
             <div class="row justify-end q-mt-md q-gutter-sm">
-              <q-btn v-if="isEditMode" label="Hapus" color="negative" flat @click="confirmDelete(formData)" :loading="deleting" />
-              <q-btn label="Simpan" type="submit" color="primary" :loading="saving" :disable="isEditMode && !isDirty(formData) && !newPassword" />
+              <q-btn v-if="isEditMode" :label="$t('delete')" color="negative" flat @click="confirmDelete(formData)" :loading="deleting" />
+              <q-btn :label="$t('save')" type="submit" color="primary" :loading="saving" :disable="isEditMode && !isDirty(formData) && !newPassword" />
             </div>
           </q-form>
         </div>
@@ -78,19 +78,20 @@
     </q-splitter>
 
     <!-- Delete Confirmation Dialog -->
-    <GenericDialog v-model="showDeleteDialog" title="Confirm Delete" min-width="400px" position="standard">
-      Are you sure you want to delete <strong>{{ itemToDelete?.username }}</strong>?
+    <GenericDialog v-model="showDeleteDialog" :title="$t('confirmDelete')" min-width="400px" position="standard">
+      {{ $t('confirmDeleteMessage', { item: itemToDelete?.username }) }}
       <template #actions>
-        <q-btn flat label="Cancel" color="primary" @click="showDeleteDialog = false" />
-        <q-btn flat label="Hapus" color="negative" @click="deleteItem" :loading="deleting" />
+        <q-btn flat :label="$t('cancel')" color="primary" @click="showDeleteDialog = false" />
+        <q-btn flat :label="$t('delete')" color="negative" @click="deleteItem" :loading="deleting" />
       </template>
     </GenericDialog>
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { api } from 'boot/axios'
+import { useI18n } from 'vue-i18n'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
 import { useCrud } from 'src/composables/useCrud'
@@ -119,6 +120,7 @@ const {
   baseApiUrl: '/api/users'
 })
 
+const { t } = useI18n()
 const splitterModel = ref(70)
 const tableRef = ref(null)
 
@@ -131,9 +133,9 @@ const filteredKaryawanOptions = ref([])
 
 // A pending or rejected account is inactive too, so the status has to say which it is
 const statusLabel = (row) => {
-  if (row.approvalStatus === 'PENDING') return 'Menunggu persetujuan'
-  if (row.approvalStatus === 'REJECTED') return 'Ditolak'
-  return row.active ? 'Active' : 'Inactive'
+  if (row.approvalStatus === 'PENDING') return t('pages.userPage.pendingApproval')
+  if (row.approvalStatus === 'REJECTED') return t('pages.userPage.rejected')
+  return row.active ? t('active') : t('inactive')
 }
 
 const statusColor = (row) => {
@@ -262,11 +264,11 @@ const filterKaryawan = (val, update) => {
 }
 
 // Table Columns
-const columns = [
+const columns = computed(() => [
   {
     name: 'username',
     required: true,
-    label: 'Username',
+    label: t('username'),
     align: 'left',
     field: 'username',
     sortable: true
@@ -274,25 +276,25 @@ const columns = [
   {
     name: 'email',
     required: true,
-    label: 'Email',
+    label: t('email'),
     align: 'left',
     field: 'email',
     sortable: true
   },
   {
     name: 'active',
-    label: 'Status',
+    label: t('status'),
     align: 'center',
     field: 'active',
     sortable: true
   },
   {
     name: 'actions',
-    label: 'Actions',
+    label: t('actions'),
     align: 'center',
     field: 'actions'
   }
-]
+])
 
 // Lifecycle
 onMounted(() => {

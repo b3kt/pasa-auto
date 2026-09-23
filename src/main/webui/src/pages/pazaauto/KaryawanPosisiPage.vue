@@ -4,29 +4,29 @@
       <template v-slot:before>
         <GenericTable :rows="rows" :columns="columns" :loading="loading" :pagination="pagination"
           @update:pagination="pagination = $event" @request="onRequest" @search="onSearch" :on-create="openCreateDialog"
-          :on-edit="openEditDialog" create-label="Tambah data Posisi" ref="tableRef"
-          search-placeholder="Search...">
+          :on-edit="openEditDialog" :create-label="$t('pages.posisiPage.createLabel')" ref="tableRef"
+          :search-placeholder="$t('search')">
         </GenericTable>
       </template>
 
       <template v-slot:after>
         <div class="q-pa-md scroll" style="height: 100%">
           <div class="row items-center q-mb-md">
-            <div class="text-h6 q-mb-md">{{ isEditMode ? 'Edit Posisi' : 'Tambah data Posisi' }}</div>
+            <div class="text-h6 q-mb-md">{{ isEditMode ? $t('pages.posisiPage.editTitle') : $t('pages.posisiPage.createLabel') }}</div>
             <q-space />
             <q-btn v-if="isEditMode" flat round dense icon="add" @click="openCreateDialog">
-              <q-tooltip>New</q-tooltip>
+              <q-tooltip>{{ $t('new') }}</q-tooltip>
             </q-btn>
           </div>
           <q-form @submit="handleSave" id="posisi-form" class="q-gutter-md">
-            <q-input v-model="formData.posisi" label="Nama Posisi *" outlined dense
-              :rules="[val => !!val || 'Nama Posisi harus diisi']" />
+            <q-input v-model="formData.posisi" :label="$t('pages.posisiPage.nameLabel')" outlined dense
+              :rules="[val => !!val || $t('pages.posisiPage.nameRequired')]" />
 
-            <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea" rows="3" />
+            <q-input v-model="formData.keterangan" :label="$t('notes')" outlined dense type="textarea" rows="3" />
 
             <div class="row justify-end q-mt-md q-gutter-sm">
-              <q-btn v-if="isEditMode" label="Hapus" color="negative" flat @click="confirmDelete(formData)" :loading="deleting" />
-              <q-btn label="Simpan" type="submit" color="primary" :loading="saving" :disable="isEditMode && !isDirty(formData)" />
+              <q-btn v-if="isEditMode" :label="$t('delete')" color="negative" flat @click="confirmDelete(formData)" :loading="deleting" />
+              <q-btn :label="$t('save')" type="submit" color="primary" :loading="saving" :disable="isEditMode && !isDirty(formData)" />
             </div>
           </q-form>
         </div>
@@ -34,18 +34,19 @@
     </q-splitter>
 
     <!-- Delete Confirmation Dialog -->
-    <GenericDialog v-model="showDeleteDialog" title="Konfirmasi hapus data" min-width="400px" position="standard">
-      Are you sure you want to delete <strong>{{ itemToDelete?.posisi }}</strong>?
+    <GenericDialog v-model="showDeleteDialog" :title="$t('confirmDeleteTitle')" min-width="400px" position="standard">
+      {{ $t('confirmDeleteMessage', { item: itemToDelete?.posisi }) }}
       <template #actions>
-        <q-btn flat label="Batalkan" color="primary" @click="showDeleteDialog = false" />
-        <q-btn flat label="Hapus saja" color="negative" @click="deleteItem" :loading="deleting" />
+        <q-btn flat :label="$t('cancel')" color="primary" @click="showDeleteDialog = false" />
+        <q-btn flat :label="$t('deleteOnlyButton')" color="negative" @click="deleteItem" :loading="deleting" />
       </template>
     </GenericDialog>
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
 import { useCrud } from 'src/composables/useCrud'
@@ -74,6 +75,7 @@ const {
   baseApiUrl: '/api/pazaauto/karyawan-posisi'
 })
 
+const { t } = useI18n()
 const splitterModel = ref(70)
 const tableRef = ref(null)
 
@@ -138,28 +140,28 @@ useKeyboardShortcuts({
 })
 
 // Table Columns
-const columns = [
+const columns = computed(() => [
   {
     name: 'posisi',
     required: true,
-    label: 'Nama Posisi',
+    label: t('pages.posisiPage.nameColumn'),
     align: 'left',
     field: 'posisi',
     sortable: true
   },
   {
     name: 'keterangan',
-    label: 'Keterangan',
+    label: t('notes'),
     align: 'left',
     field: 'keterangan'
   },
   {
     name: 'actions',
-    label: 'Actions',
+    label: t('actions'),
     align: 'center',
     field: 'actions'
   }
-]
+])
 
 // Lifecycle
 onMounted(() => {

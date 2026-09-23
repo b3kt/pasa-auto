@@ -7,7 +7,7 @@
                       :on-create="openCreateDialog"
                       :on-edit="openEditDialog" v-model:search-value="searchText" ref="tableRef">
             <template v-slot:title>
-              <div class="text-h6 q-mb-md">Master | Barang</div>
+              <div class="text-h6 q-mb-md">{{ $t('pages.barangPage.title') }}</div>
           </template>
           <template v-slot:search-append>
             <q-btn round dense flat icon="qr_code_scanner" @click="openScanDialog('search')"/>
@@ -21,7 +21,7 @@
 
           <template v-slot:body-cell-active="props">
               <q-badge :color="props.row.active ? 'green' : 'red'">
-                {{ props.row.active ? 'Active' : 'Inactive' }}
+                {{ props.row.active ? $t('active') : $t('inactive') }}
               </q-badge>
           </template>
 
@@ -38,47 +38,47 @@
       <template v-slot:after>
         <div class="q-pa-md scroll" style="height: 100%">
           <div class="row items-center q-mb-md">
-            <div class="text-h6 q-mb-md">{{ isEditMode ? 'Edit Barang' : 'Tambah data Barang' }}</div>
+            <div class="text-h6 q-mb-md">{{ isEditMode ? $t('pages.barangPage.editTitle') : $t('pages.barangPage.createLabel') }}</div>
             <q-space/>
             <q-btn v-if="isEditMode" flat round dense icon="add" @click="openCreateDialog">
-              <q-tooltip>New</q-tooltip>
+              <q-tooltip>{{ $t('new') }}</q-tooltip>
             </q-btn>
           </div>
           <q-form @submit="handleSave" id="barang-form" class="q-gutter-md">
-            <q-input v-model="formData.namaBarang" label="Nama Barang *" outlined dense
-                     :rules="[val => !!val || 'Nama Barang harus diisi']" hide-bottom-space/>
+            <q-input v-model="formData.namaBarang" :label="$t('pages.barangPage.nameLabel')" outlined dense
+                     :rules="[val => !!val || $t('pages.barangPage.nameRequired')]" hide-bottom-space/>
 
-            <q-input v-model.number="formData.hargaJual" label="Harga Jual" outlined dense type="number" step="0.01"
+            <q-input v-model.number="formData.hargaJual" :label="$t('pages.barangPage.sellPriceLabel')" outlined dense type="number" step="0.01"
                      prefix="Rp"/>
-            <q-input v-model.number="formData.hargaBeli" label="Harga Beli" outlined dense type="number" step="0.01"
+            <q-input v-model.number="formData.hargaBeli" :label="$t('pages.barangPage.buyPriceLabel')" outlined dense type="number" step="0.01"
                      prefix="Rp"/>
 
-            <q-input v-model.number="formData.stok" label="Stok" outlined dense type="number"/>
-            <q-input v-model.number="formData.stokMinimal" label="Stok Minimal" outlined dense type="number"/>
+            <q-input v-model.number="formData.stok" :label="$t('pages.barangPage.stockLabel')" outlined dense type="number"/>
+            <q-input v-model.number="formData.stokMinimal" :label="$t('pages.barangPage.minStockLabel')" outlined dense type="number"/>
 
-            <q-input v-model="formData.satuan" label="Satuan" outlined dense placeholder="e.g., pcs, kg, liter"/>
+            <q-input v-model="formData.satuan" :label="$t('pages.barangPage.unitLabel')" outlined dense :placeholder="$t('pages.barangPage.unitPlaceholder')"/>
 
-            <q-select v-model="formData.supplierId" label="Supplier" outlined dense :options="filteredSupplierOptions"
+            <q-select v-model="formData.supplierId" :label="$t('pages.barangPage.supplierLabel')" outlined dense :options="filteredSupplierOptions"
                       option-label="namaSupplier" option-value="id" emit-value map-options use-input
                       input-debounce="300"
                       @filter="filterSupplier" :loading="loadingSupplier" clearable>
               <template v-slot:no-option>
                 <q-item>
                   <q-item-section class="text-grey">
-                    No results
+                    {{ $t('noResults') }}
                   </q-item-section>
                 </q-item>
               </template>
             </q-select>
 
-            <q-input v-model="formData.keterangan" label="Keterangan" outlined dense type="textarea" rows="3"/>
+            <q-input v-model="formData.keterangan" :label="$t('notes')" outlined dense type="textarea" rows="3"/>
 
-            <q-checkbox v-model="formData.active" label="Active"/>
+            <q-checkbox v-model="formData.active" :label="$t('active')"/>
 
             <div class="row justify-end q-mt-md q-gutter-sm">
-              <q-btn v-if="isEditMode" label="Hapus" color="negative" flat @click="confirmDelete(formData)"
+              <q-btn v-if="isEditMode" :label="$t('delete')" color="negative" flat @click="confirmDelete(formData)"
                      :loading="deleting"/>
-              <q-btn label="Simpan" type="submit" color="primary" :loading="saving"
+              <q-btn :label="$t('save')" type="submit" color="primary" :loading="saving"
                      :disable="isEditMode && !isDirty(formData)"/>
             </div>
           </q-form>
@@ -90,7 +90,7 @@
     <q-dialog v-model="showScanDialog" @hide="onScanDialogHide">
       <q-card style="width: 500px; max-width: 80vw;">
         <q-card-section class="row items-center">
-          <div class="text-h6">Scan Barcode</div>
+          <div class="text-h6">{{ $t('pages.barangPage.scanBarcodeTitle') }}</div>
           <q-space/>
           <q-btn icon="close" flat round dense v-close-popup/>
         </q-card-section>
@@ -103,7 +103,7 @@
             <div v-if="error" class="absolute-full flex flex-center bg-negative text-white text-center q-pa-md">
               <div>
                 <div class="q-mb-md">{{ error }}</div>
-                <q-btn v-if="showPermissionButton" label="Request Permission" @click="requestPermission" outline
+                <q-btn v-if="showPermissionButton" :label="$t('pages.barangPage.requestPermission')" @click="requestPermission" outline
                        color="white"/>
               </div>
             </div>
@@ -113,19 +113,20 @@
     </q-dialog>
 
     <!-- Delete Confirmation Dialog -->
-    <GenericDialog v-model="showDeleteDialog" title="Konfirmasi hapus data" min-width="400px" position="standard">
-      Are you sure you want to delete <strong>{{ itemToDelete?.namaBarang }}</strong>?
+    <GenericDialog v-model="showDeleteDialog" :title="$t('confirmDeleteTitle')" min-width="400px" position="standard">
+      {{ $t('pages.barangPage.confirmDeleteMessage', { item: itemToDelete?.namaBarang }) }}
       <template #actions>
-        <q-btn flat label="Batalkan" color="primary" @click="showDeleteDialog = false"/>
-        <q-btn flat label="Hapus saja" color="negative" @click="deleteItem" :loading="deleting"/>
+        <q-btn flat :label="$t('cancel')" color="primary" @click="showDeleteDialog = false"/>
+        <q-btn flat :label="$t('deleteOnlyButton')" color="negative" @click="deleteItem" :loading="deleting"/>
       </template>
     </GenericDialog>
   </q-page>
 </template>
 
 <script setup>
-import {ref, onMounted, watch, nextTick} from 'vue'
+import {ref, computed, onMounted, watch, nextTick} from 'vue'
 import {api} from 'boot/axios'
+import {useI18n} from 'vue-i18n'
 // import { useQuasar } from 'quasar'
 import GenericTable from 'components/GenericTable.vue'
 import GenericDialog from 'components/GenericDialog.vue'
@@ -134,6 +135,7 @@ import {useKeyboardShortcuts} from 'src/composables/useKeyboardShortcuts'
 import {QrcodeStream} from 'vue-qrcode-reader'
 
 //const $q = useQuasar()
+const { t } = useI18n()
 
 // LocalStorage key for filter persistence
 const FILTER_STORAGE_KEY = 'barang_status_filter'
@@ -351,22 +353,22 @@ const onCameraReady = async (capabilities) => {
 const onError = (err) => {
   console.error('QR Code Stream Error:', err)
   if (err.name === 'NotAllowedError') {
-    error.value = 'Camera access denied. Please grant permission.'
+    error.value = t('pages.barangPage.cameraDenied')
     showPermissionButton.value = true
   } else if (err.name === 'NotFoundError') {
-    error.value = 'No camera found on this device.'
+    error.value = t('pages.barangPage.cameraNotFound')
   } else if (err.name === 'NotSupportedError') {
-    error.value = 'Secure context required (HTTPS, localhost).'
+    error.value = t('pages.barangPage.cameraNotSupported')
   } else if (err.name === 'NotReadableError') {
-    error.value = 'Camera is already in use.'
+    error.value = t('pages.barangPage.cameraInUse')
   } else if (err.name === 'OverconstrainedError') {
-    error.value = 'Installed cameras are not suitable.'
+    error.value = t('pages.barangPage.cameraOverconstrained')
   } else if (err.name === 'StreamApiNotSupportedError') {
-    error.value = 'Stream API is not supported in this browser.'
+    error.value = t('pages.barangPage.cameraStreamNotSupported')
   } else if (err.name === 'InsecureContextError') {
-    error.value = 'Camera access is only permitted in secure context. Use HTTPS or localhost.'
+    error.value = t('pages.barangPage.cameraInsecureContext')
   } else {
-    error.value = `Camera error: ${err.name}`
+    error.value = t('pages.barangPage.cameraError', { name: err.name })
   }
 }
 
@@ -394,13 +396,13 @@ const onScanDialogHide = () => {
 }
 
 // Table Columns
-const columns = [
-  {name: 'namaBarang', required: true, label: 'Nama Barang', align: 'left', field: 'namaBarang', sortable: true},
-  {name: 'hargaJual', label: 'Harga Jual', align: 'right', field: 'hargaJual', sortable: true},
-  {name: 'hargaBeli', label: 'Harga Beli', align: 'right', field: 'hargaBeli', sortable: true},
-  {name: 'stok', label: 'Stok', align: 'center', field: 'stok', sortable: true},
-  {name: 'active', label: 'Status', align: 'center', field: 'active', sortable: true}
-]
+const columns = computed(() => [
+  {name: 'namaBarang', required: true, label: t('pages.barangPage.nameColumn'), align: 'left', field: 'namaBarang', sortable: true},
+  {name: 'hargaJual', label: t('pages.barangPage.sellPriceColumn'), align: 'right', field: 'hargaJual', sortable: true},
+  {name: 'hargaBeli', label: t('pages.barangPage.buyPriceColumn'), align: 'right', field: 'hargaBeli', sortable: true},
+  {name: 'stok', label: t('pages.barangPage.stockColumn'), align: 'center', field: 'stok', sortable: true},
+  {name: 'active', label: t('status'), align: 'center', field: 'active', sortable: true}
+])
 
 const formatCurrency = (value) => {
   if (!value) return 'Rp 0'

@@ -52,7 +52,7 @@
               <template v-if="col.name === 'actions'">
                 <q-btn v-if="onDelete" flat dense round icon="delete" color="negative"
                        @click.stop="onDelete(props.row)">
-                  <q-tooltip>Delete</q-tooltip>
+                  <q-tooltip>{{ $t('delete') }}</q-tooltip>
                 </q-btn>
               </template>
               <template v-else>

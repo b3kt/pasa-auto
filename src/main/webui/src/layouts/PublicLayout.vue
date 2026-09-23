@@ -24,11 +24,13 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from 'stores/auth-store'
 import { api } from 'boot/axios'
 
 const router = useRouter()
 const $q = useQuasar()
+const { t } = useI18n()
 const authStore = useAuthStore()
 const appVersion = ref('')
 
@@ -47,7 +49,7 @@ async function handleLogout() {
   await authStore.logout()
   $q.notify({
     type: 'info',
-    message: 'Logged out successfully',
+    message: t('loggedOutSuccessfully'),
   })
   router.push('/login')
 }
