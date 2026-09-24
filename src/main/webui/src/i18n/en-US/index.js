@@ -21,6 +21,7 @@ export default {
   availability: 'Availability',
   logout: 'Logout',
   changePassword: 'Change Password',
+  language: 'Language',
   loggedOutSuccessfully: 'Logged out successfully',
   username: 'Username',
   email: 'Email',

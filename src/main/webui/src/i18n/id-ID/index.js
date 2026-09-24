@@ -21,6 +21,7 @@ export default {
   availability: 'Ketersediaan',
   logout: 'Keluar',
   changePassword: 'Ganti Password',
+  language: 'Bahasa',
   loggedOutSuccessfully: 'Berhasil keluar',
   username: 'Username',
   email: 'Email',

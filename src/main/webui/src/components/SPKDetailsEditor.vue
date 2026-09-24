@@ -336,12 +336,19 @@ const onHargaSave = (row, newValue) => {
   }
 }
 
+// Existing (already-saved) rows come back from the backend as flat DTOs with no `.id` object -
+// only newly-added, not-yet-saved rows carry a tempId. Match on whichever identifier the row
+// actually has, same as removeDetail() below, or an edit to an already-saved line silently no-ops.
+const findDetailIndex = (details, row) => details.findIndex(d =>
+  (d.tempId && row.tempId && d.tempId === row.tempId) ||
+  (d.jasaId && row.jasaId && d.jasaId === row.jasaId) ||
+  (d.sparepartId && row.sparepartId && d.sparepartId === row.sparepartId) ||
+  (d.id && row.id && d.id.namaJasa === row.id.namaJasa && d.id.noSpk === row.id.noSpk)
+)
+
 const updateLocalHarga = (row, newValue) => {
   const newDetails = [...props.details]
-  const index = newDetails.findIndex(d =>
-    (d.tempId && d.tempId === row.tempId) ||
-    (d.id && row.id && d.id.namaJasa === row.id.namaJasa && d.id.noSpk === row.id.noSpk)
-  )
+  const index = findDetailIndex(newDetails, row)
 
   if (index > -1) {
     newDetails[index] = { ...newDetails[index], harga: newValue }
@@ -351,10 +358,7 @@ const updateLocalHarga = (row, newValue) => {
 
 const onJumlahSave = (row, newValue) => {
   const newDetails = [...props.details]
-  const index = newDetails.findIndex(d =>
-    (d.tempId && d.tempId === row.tempId) ||
-    (d.id && row.id && d.id.namaJasa === row.id.namaJasa && d.id.noSpk === row.id.noSpk)
-  )
+  const index = findDetailIndex(newDetails, row)
 
   if (index > -1) {
     newDetails[index] = { ...newDetails[index], jumlah: newValue }
@@ -409,25 +413,7 @@ const addBarang = () => {
 }
 
 const removeDetail = (row) => {
-  const index = props.details.findIndex(d => {
-    // Match by tempId for new items
-    if (d.tempId && row.tempId && d.tempId === row.tempId) {
-      return true
-    }
-    // Match by jasaId for service items
-    if (d.jasaId && row.jasaId && d.jasaId === row.jasaId) {
-      return true
-    }
-    // Match by sparepartId for barang items
-    if (d.sparepartId && row.sparepartId && d.sparepartId === row.sparepartId) {
-      return true
-    }
-    // Match by composite key for existing items as fallback
-    if (d.id && row.id && d.id.noSpk === row.id.noSpk && d.id.namaJasa === row.id.namaJasa) {
-      return true
-    }
-    return false
-  })
+  const index = findDetailIndex(props.details, row)
   if (index > -1) {
     const newDetails = [...props.details]
     newDetails.splice(index, 1)

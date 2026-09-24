@@ -63,6 +63,7 @@
 
         <div class="q-gutter-sm row items-center no-wrap">
           <span v-if="appVersion" class="text-caption q-mr-sm">v{{ appVersion }}</span>
+
           <q-btn flat no-caps v-if="authStore.isLoggedIn">
             <div class="row items-center no-wrap">
               <q-icon name="person" class="q-mr-xs" />
@@ -86,6 +87,21 @@
                   </q-item-section>
                   <q-item-section>{{ $t('changePassword') }}</q-item-section>
                 </q-item>
+                <q-separator />
+                <q-item-label header>{{ $t('language') }}</q-item-label>
+                <q-item
+                  v-for="lang in languages"
+                  :key="lang.code"
+                  clickable
+                  v-close-popup
+                  @click="applyLanguage(lang.code)"
+                >
+                  <q-item-section avatar>
+                    <q-icon name="check" v-if="locale === lang.code" />
+                  </q-item-section>
+                  <q-item-section>{{ lang.label }}</q-item-section>
+                </q-item>
+                <q-separator />
                 <q-item clickable v-close-popup @click="handleLogout">
                   <q-item-section avatar>
                     <q-icon name="logout" />
@@ -112,17 +128,36 @@ import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useAuthStore } from 'stores/auth-store'
 import { useI18n } from 'vue-i18n'
+import langEnUS from 'quasar/lang/en-US'
+import langId from 'quasar/lang/id'
 import { api } from 'boot/axios'
 
 const router = useRouter()
 const $q = useQuasar()
-const { t } = useI18n()
+const { t, locale } = useI18n({ useScope: 'global' })
 const authStore = useAuthStore()
 
 const user = computed(() => authStore.user)
 const appVersion = ref('')
 
+const languages = [
+  { code: 'id-ID', label: 'Bahasa Indonesia' },
+  { code: 'en-US', label: 'English' }
+]
+
+const quasarLangByLocale = {
+  'id-ID': langId,
+  'en-US': langEnUS
+}
+
+function applyLanguage(code) {
+  locale.value = code
+  localStorage.setItem('locale', code)
+  $q.lang.set(quasarLangByLocale[code] || langId)
+}
+
 onMounted(async () => {
+  applyLanguage(locale.value)
   try {
     const response = await api.get('/health')
     if (response.data && response.data.data) {

@@ -1349,6 +1349,7 @@ const handleUpdateMasterJasa = async (payload) => {
         message: t('pages.penjualanPage.jasaMasterUpdatedNotify')
       })
       await fetchJasa()
+      await fetchSpk()
     }
   } catch (error) {
     console.error('Failed to update master jasa', error)
@@ -1369,6 +1370,7 @@ const handleUpdateMasterBarang = async (payload) => {
         message: t('pages.penjualanPage.barangMasterUpdatedNotify')
       })
       await fetchBarang()
+      await fetchSpk()
     }
   } catch (error) {
     console.error('Failed to update master barang', error)
