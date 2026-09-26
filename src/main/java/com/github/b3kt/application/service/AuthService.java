@@ -67,4 +67,14 @@ public interface AuthService {
      * @throws IllegalArgumentException if the new password violates the password policy
      */
     LoginResponse changePassword(String username, String currentPassword, String newPassword);
+
+    /**
+     * Update the profile (currently just the email) of an authenticated user.
+     *
+     * @param username the authenticated user
+     * @param email the new email address
+     * @return the updated user info
+     * @throws com.github.b3kt.domain.exception.AuthenticationException if the user cannot be found
+     */
+    UserInfo updateProfile(String username, String email);
 }

@@ -101,8 +101,8 @@
             </template>
 
             <!-- Right: Attendance history table (hidden on mobile) -->
-            <template v-slot:after>
-                <div class="q-pa-md xs-hide" style="height: 100%">
+            <template v-slot:after >
+                <div class="q-pa-md xs-hide gt-sm" style="height: 100%">
                     <GenericTable :rows="historyRows" :columns="historyColumns" row-key="id"
                         :loading="loadingHistory" :pagination="historyPagination"
                         @update:pagination="historyPagination = $event" @request="onHistoryRequest"

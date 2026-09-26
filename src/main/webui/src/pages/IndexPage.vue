@@ -11,13 +11,18 @@
       {{ $t('pages.indexPage.noRolesBanner') }}
     </q-banner>
 
-    <img alt="Pasa Auto" src="~assets/pasa.svg" style="width: 100%; height: auto; max-height: 640px; ">
+    <div class="q-pa-md">
+      <AttendanceClockCard v-if="isKaryawan" class="lt-sm" />
+    </div>
+    <img alt="Pasa Auto" class="gt-sm" src="~assets/pasa.svg" style="width: 100%; height: auto; max-height: 640px; ">
   </q-page>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import { useAuthStore } from 'stores/auth-store'
+import { Roles } from 'src/constants/roles'
+import AttendanceClockCard from 'components/AttendanceClockCard.vue'
 
 const authStore = useAuthStore()
 
@@ -25,4 +30,6 @@ const awaitingRoles = computed(() => {
   if (!authStore.isLoggedIn) return false
   return (authStore.user?.roles || []).length === 0
 })
+
+const isKaryawan = computed(() => (authStore.user?.roles || []).includes(Roles.KARYAWAN))
 </script>

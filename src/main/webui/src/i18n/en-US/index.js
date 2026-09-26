@@ -388,6 +388,16 @@ export default {
       markAbsenceSuccess: 'Absence marked successfully',
       markAbsenceFailed: 'Failed to mark absence'
     },
+    profile: {
+      title: 'My Profile',
+      rolesLabel: 'Roles',
+      employeeLabel: 'Linked Employee',
+      noEmployeeLinked: 'Not linked to an employee record',
+      emailRequired: 'Email is required',
+      emailInvalid: 'Invalid email',
+      updateSuccess: 'Profile updated successfully',
+      updateFailed: 'Failed to update profile'
+    },
     changePassword: {
       temporaryNotice: 'You are signed in with a temporary password. Choose a new password to continue.',
       temporaryPasswordLabel: 'Temporary password',

@@ -18,6 +18,7 @@ import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.CookieParam;
@@ -204,6 +205,33 @@ public class AuthResource {
         }
     }
     
+    @PUT
+    @Path("/me")
+    @Authenticated
+    @Operation(
+        summary = "Update current user profile",
+        description = "Update the currently authenticated user's own profile (email)"
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @APIResponses({
+        @APIResponse(responseCode = "200", description = "Profile updated",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ApiResponse.class))),
+        @APIResponse(responseCode = "400", description = "Validation error",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ApiResponse.class))),
+        @APIResponse(responseCode = "401", description = "Not authenticated")
+    })
+    public Response updateProfile(@Valid com.github.b3kt.application.dto.UpdateProfileRequest request) {
+        String username = identity.getPrincipal().getName();
+        try {
+            UserInfo userInfo = authService.updateProfile(username, request.getEmail());
+            return Response.ok(ApiResponse.success("Profile updated successfully", userInfo)).build();
+        } catch (AuthenticationException e) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(ApiResponse.<UserInfo>error(e.getMessage()))
+                    .build();
+        }
+    }
+
     @POST
     @Path("/change-password")
     @Authenticated

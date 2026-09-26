@@ -141,6 +141,27 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    // Update the current user's own profile (currently just the email). No new tokens are issued -
+    // email isn't part of the JWT claims - so just merge the response into the local user record.
+    async updateProfile(email) {
+      try {
+        const { api } = await import('boot/axios')
+        const response = await api.put('/api/auth/me', { email })
+        const data = response.data?.data
+        if (data) {
+          this.user = { ...this.user, ...data }
+          localStorage.setItem('auth_user', JSON.stringify(this.user))
+          return { success: true }
+        }
+        return { success: false, error: response.data?.message || 'Failed to update profile' }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.message || error.response?.data?.error || 'Failed to update profile'
+        }
+      }
+    },
+
     // Exchange the refresh token for a new token pair. Resolves true when the session was extended.
     refreshAccessToken() {
       if (refreshPromise) return refreshPromise

@@ -6,7 +6,7 @@
           {{ $t('app.constant.app_name') }}
         </q-toolbar-title>
 
-        <q-separator vertical inset dark class="q-mx-md" />
+        <q-separator vertical inset dark class="q-mx-md gt-sm" />
 
         <div class="q-pa-sm q-pl-md row items-center xs-hide" >
           <template v-for="menu in linksList" :key="menu.title">
@@ -29,7 +29,7 @@
                 flat
                 stretch
                 no-caps
-                :menu-offset="[0, 8]"
+                :menu-offset="[0, 18]"
                 :menu-anchor="'bottom left'"
                 :menu-self="'top left'"
                 :title="menu.title"
@@ -62,7 +62,7 @@
         <q-space />
 
         <div class="q-gutter-sm row items-center no-wrap">
-          <span v-if="appVersion" class="text-caption q-mr-sm">v{{ appVersion }}</span>
+          <span v-if="appVersion" class="text-caption q-mr-sm gt-sm">v{{ appVersion }}</span>
 
           <q-btn flat no-caps v-if="authStore.isLoggedIn">
             <div class="row items-center no-wrap">
@@ -71,13 +71,25 @@
                 {{ user.username }}
               </div>
             </div>
-            <q-menu>
+            <q-menu :offset="[0,20]">
               <q-list dense style="min-width: 150px">
-                <q-item-label header>{{ $t('pages.mainLayout.userInfo') }}</q-item-label>
-                <q-item clickable v-close-popup>
+                <q-item-label header class="q-py-xs">{{ $t('pages.mainLayout.userInfo') }}</q-item-label>
+                <q-item clickable v-close-popup to="/profile">
+                  <q-item-section avatar>
+                    <q-icon name="person" />
+                  </q-item-section>
                   <q-item-section>
                     <q-item-label>{{ user.username }}</q-item-label>
                     <q-item-label caption>{{ user?.roles?.join(', ') }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-separator v-if="hasRole('Admin') || hasRole('Owner') || hasRole('Karyawan')"/>
+                <q-item clickable v-close-popup to="/pazaauto/absensi" v-if="hasRole('Admin') || hasRole('Owner') || hasRole('Karyawan')">
+                  <q-item-section avatar>
+                    <q-icon name="event_available" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>{{ t('app.menu.process.attendance.title') }}</q-item-label>
                   </q-item-section>
                 </q-item>
                 <q-separator />
@@ -88,7 +100,7 @@
                   <q-item-section>{{ $t('changePassword') }}</q-item-section>
                 </q-item>
                 <q-separator />
-                <q-item-label header>{{ $t('language') }}</q-item-label>
+                <q-item-label class="q-py-xs" header>{{ $t('language') }}</q-item-label>
                 <q-item
                   v-for="lang in languages"
                   :key="lang.code"
@@ -332,13 +344,6 @@ const linksList = computed(() => [
         link: '/admin/audit-trail'
       }
     ]
-  },
-  {
-    title: t('app.menu.process.attendance.title'),
-    caption: t('app.menu.process.attendance.caption'),
-    icon: 'event_available',
-    visible: hasRole('Admin') || hasRole('Owner') || hasRole('Karyawan'),
-    link: '/pazaauto/absensi'
   }
 ])
 

@@ -198,6 +198,57 @@ class AuthResourceTest extends IntegrationTestBase {
     }
 
     @Test
+    @DisplayName("Should update the current user's profile")
+    @TestSecurity(user = "testuser", roles = {"user"})
+    void testUpdateProfileSuccess() {
+        UserInfo userInfo = new UserInfo();
+        userInfo.setUsername("testuser");
+        userInfo.setEmail("new-email@example.com");
+        userInfo.setRoles(java.util.Set.of("USER"));
+
+        when(authService.updateProfile(eq("testuser"), eq("new-email@example.com"))).thenReturn(userInfo);
+
+        given()
+            .contentType(ContentType.JSON)
+            .body(java.util.Map.of("email", "new-email@example.com"))
+        .when()
+            .put("/api/auth/me")
+        .then()
+            .statusCode(200)
+            .body("success", equalTo(true))
+            .body("data.email", equalTo("new-email@example.com"));
+
+        verify(authService).updateProfile("testuser", "new-email@example.com");
+    }
+
+    @Test
+    @DisplayName("Should reject an invalid email on profile update")
+    @TestSecurity(user = "testuser", roles = {"user"})
+    void testUpdateProfileInvalidEmail() {
+        given()
+            .contentType(ContentType.JSON)
+            .body(java.util.Map.of("email", "not-an-email"))
+        .when()
+            .put("/api/auth/me")
+        .then()
+            .statusCode(400);
+
+        verify(authService, never()).updateProfile(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("Should return 401 for unauthorized profile update")
+    void testUpdateProfileUnauthorized() {
+        given()
+            .contentType(ContentType.JSON)
+            .body(java.util.Map.of("email", "new-email@example.com"))
+        .when()
+            .put("/api/auth/me")
+        .then()
+            .statusCode(401);
+    }
+
+    @Test
     @DisplayName("Should logout successfully")
     @TestSecurity(user = "testuser", roles = {"user"})
     void testLogoutSuccess() {

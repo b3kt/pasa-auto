@@ -365,6 +365,35 @@ class AuthServiceImplTest {
     }
 
     @Nested
+    @DisplayName("updateProfile")
+    class UpdateProfileTests {
+
+        @Test
+        @DisplayName("Should update the email and return the refreshed user info")
+        void testUpdateProfile_success() {
+            when(userRepository.findByUsername("admin")).thenReturn(Optional.of(testUser));
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            UserInfo result = authService.updateProfile("admin", "new-email@test.com");
+
+            assertEquals("new-email@test.com", testUser.getEmail());
+            verify(userRepository).save(testUser);
+            assertEquals("admin", result.getUsername());
+            assertEquals("new-email@test.com", result.getEmail());
+        }
+
+        @Test
+        @DisplayName("Should reject an unknown user")
+        void testUpdateProfile_unknownUser() {
+            when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+            assertThrows(AuthenticationException.class,
+                    () -> authService.updateProfile("ghost", "new-email@test.com"));
+            verify(userRepository, never()).save(any(User.class));
+        }
+    }
+
+    @Nested
     @DisplayName("logout")
     class LogoutTests {
 

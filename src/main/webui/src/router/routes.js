@@ -41,6 +41,7 @@ const routes = [
       { path: 'pazaauto/summary', meta: { roles: ROLES_OWNER_ONLY }, component: () => import('pages/pazaauto/SummaryPage.vue') },
       { path: 'pazaauto/absensi', meta: { roles: ROLES_ALL_STAFF }, component: () => import('pages/pazaauto/AbsensiPage.vue') },
       { path: 'offline-status', component: () => import('pages/OfflineStatusPage.vue') },
+      { path: 'profile', component: () => import('pages/ProfilePage.vue') },
       { path: 'change-password', component: () => import('pages/ChangePasswordPage.vue') },
       { path: 'admin/clear-cache', meta: { roles: ROLES_ALL_STAFF }, component: () => import('pages/admin/ClearCachePage.vue') },
       { path: 'admin/audit-trail', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/admin/AuditTrailPage.vue') }

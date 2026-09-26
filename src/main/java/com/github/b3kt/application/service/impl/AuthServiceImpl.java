@@ -158,6 +158,23 @@ public class AuthServiceImpl implements AuthService {
         return issueTokens(user, refreshTokenService.issue(user));
     }
 
+    @Override
+    public UserInfo updateProfile(String username, String email) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new AuthenticationException("User not found"));
+
+        user.setEmail(email);
+        User saved = userRepository.save(user);
+
+        tbKaryawanRepository.findByUsername(username)
+                .ifPresent(karyawan -> {
+                    saved.setKaryawanId(karyawan.getId());
+                    saved.setKaryawanNama(karyawan.getNamaKaryawan());
+                });
+
+        return UserMapper.toUserInfo(saved);
+    }
+
     private String dummyHash() {
         if (dummyHash == null) {
             dummyHash = passwordEncoder.encode(java.util.UUID.randomUUID().toString());

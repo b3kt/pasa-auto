@@ -388,6 +388,16 @@ export default {
       markAbsenceSuccess: 'Ketidakhadiran berhasil dicatat',
       markAbsenceFailed: 'Gagal mencatat ketidakhadiran'
     },
+    profile: {
+      title: 'Profil Saya',
+      rolesLabel: 'Role',
+      employeeLabel: 'Karyawan Terkait',
+      noEmployeeLinked: 'Belum terhubung dengan data karyawan',
+      emailRequired: 'Email harus diisi',
+      emailInvalid: 'Email tidak valid',
+      updateSuccess: 'Profil berhasil diperbarui',
+      updateFailed: 'Gagal memperbarui profil'
+    },
     changePassword: {
       temporaryNotice: 'Anda masuk dengan password sementara. Pilih password baru untuk melanjutkan.',
       temporaryPasswordLabel: 'Password sementara',
