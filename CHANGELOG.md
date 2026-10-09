@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- **Fixed**: Upgraded Quarkus 3.36.3 -> 3.40.1, which clears all 29 Trivy findings on `pom.xml`, including the critical Netty `netty-handler` advisory. The platform BOM now manages Netty 4.1.138.Final, Jackson 2.21.7, the PostgreSQL driver 42.7.13 and OpenTelemetry 1.62.0. Quinoa moved 2.9.0 -> 2.9.2
+- **Fixed**: Upgraded Quasar 2.18.6 -> 2.35.0 and `@quasar/app-vite` 2.1.0 -> 2.6.2, clearing the critical and high Quasar advisories. axios 1.15.2 -> 1.20.0, Vue 3.5.22 -> 3.5.43 (server-renderer advisory), and transitive postcss, nanoid and source-map-js now resolve to fixed releases. Trivy reports zero findings and `npm audit --omit=dev` reports zero runtime vulnerabilities. The advisories `npm audit` still lists are all in the build toolchain (vite, rollup, the dev-server express stack, eslint tooling); clearing the `@quasar/app-vite` one needs the 3.x major, which requires Node >= 22.22 and `vue-router` 5, and `@intlify/unplugin-vue-i18n` has no stable fixed release yet
 - **Removed**: `CorsFilter`, which sent `Access-Control-Allow-Origin: *` with credentials on every response and overrode the `quarkus.http.cors.*` origin allowlist
 - **Fixed**: Attendance endpoints let employees edit/delete any record and clock in or read attendance for other employees; employees are now limited to their own records (karyawanId from the JWT)
 - **Fixed**: Clock-in/out IP allowlist trusted the client-supplied `X-Forwarded-For`/`X-Real-IP` headers (and fell back to `127.0.0.1`); it now uses the connection address, with opt-in proxy support (`PROXY_ADDRESS_FORWARDING`, `TRUSTED_PROXIES`)
@@ -18,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Added**: Server-side refresh token store (`refresh_tokens`, migration V17) with rotation on use, reuse detection and revocation on logout / for deactivated users
 - **Changed**: Container images now run on Java 25 (`ubi9/openjdk-25:1.24`); they were built on Java 21 while the project targets 25
 - **Added**: Dependency scanning — Dependabot for Maven, npm (webui and electron) and GitHub Actions, plus a weekly `Dependency Audit` workflow running `npm audit` and a Trivy scan
-- **Fixed**: Build-only packages (`@quasar/vite-plugin`, `sass`, `sass-loader`) were declared as runtime dependencies; moved to devDependencies. The remaining advisories (nanoid, postcss, quasar) need a Quasar 2.18 -> 2.33 upgrade, so the npm audit job is advisory until that is done
+- **Fixed**: Build-only packages (`@quasar/vite-plugin`, `sass`, `sass-loader`) were declared as runtime dependencies; moved to devDependencies
 - **Changed**: The refresh token is now issued as an HttpOnly, SameSite=Strict cookie scoped to `/api/auth` instead of being returned in the response body and stored in `localStorage`, so page scripts (and injected ones) cannot read it. The body token is still accepted on refresh for sessions issued before this change
 - **Fixed**: The `sortBy` query parameter went into ORDER BY unchecked; only plain field references are accepted now
 - **Added**: Security headers on every response (CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, HSTS)

@@ -15,7 +15,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
-        <quarkus.platform.version>3.36.3</quarkus.platform.version>
+        <quarkus.platform.version>3.40.1</quarkus.platform.version>
         <skipITs>true</skipITs>
         <testcontainers.docker.socket.override>/var/run/docker.sock</testcontainers.docker.socket.override>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
@@ -44,7 +44,7 @@
             <dependency>
                 <groupId>io.quarkiverse.quinoa</groupId>
                 <artifactId>quarkus-quinoa</artifactId>
-                <version>2.9.0</version>
+                <version>2.9.2</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
