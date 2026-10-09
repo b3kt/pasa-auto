@@ -27,6 +27,27 @@ public class TbPelangganRepository implements PanacheRepositoryBase<TbPelangganE
         // Cache invalidation triggered on write operations
     }
 
+    /**
+     * Matches a customer's self-reported phone/email against the contact fields on record, for the
+     * customer portal's "link my account" search. Not cached: a customer-supplied value used as a
+     * query parameter shouldn't populate the shared lookup cache.
+     */
+    public List<TbPelangganEntity> findByContact(String phone, String email) {
+        String normalizedPhone = phone == null || phone.isBlank() ? null : phone.trim();
+        String normalizedEmail = email == null || email.isBlank() ? null : email.trim();
+        if (normalizedPhone == null && normalizedEmail == null) {
+            return List.of();
+        }
+        if (normalizedPhone != null && normalizedEmail != null) {
+            return find("(telepon = ?1 or noHp = ?1 or noTelepon = ?1) or lower(email) = ?2",
+                    normalizedPhone, normalizedEmail.toLowerCase()).list();
+        }
+        if (normalizedPhone != null) {
+            return find("telepon = ?1 or noHp = ?1 or noTelepon = ?1", normalizedPhone).list();
+        }
+        return find("lower(email) = ?1", normalizedEmail.toLowerCase()).list();
+    }
+
     @CacheResult(cacheName = "pelanggan-cache")
     public List<TbPelangganEntity> findAllCached() {
         return listAll();

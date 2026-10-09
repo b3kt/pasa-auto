@@ -55,7 +55,7 @@ src/main/resources/
 ├── application.properties
 └── db/migration/        # Flyway migrations (V1-V13)
 
-src/main/webui/          # Quasar/Vue.js frontend
+src/main/webui/          # Quasar/Vue.js staff frontend (served at /)
 └── src/
     ├── pages/           # Vue page components
     ├── components/      # Reusable components
@@ -64,7 +64,18 @@ src/main/webui/          # Quasar/Vue.js frontend
     ├── composables/     # Vue composables (useCrud, etc.)
     ├── boot/            # Boot files (axios, auth, i18n)
     └── router/          # Vue Router configuration
+
+src/main/appui/          # Quasar/Vue.js customer portal (served at /app/)
+└── src/
+    ├── pages/           # Dashboard, Login, Register, Profile, LinkAccount, Vehicles, Bookings, SpkTracking
+    ├── stores/          # Pinia state management (auth-store, the customer session)
+    ├── layouts/         # MainLayout
+    ├── boot/            # axios, stores, i18n
+    └── router/          # routes.js, index.js
 ```
+
+Both frontends are built by the staff app: `npm run build:all` in `src/main/webui` also builds
+`src/main/appui` and copies its bundle to `dist/spa/app`, which is what `./mvnw package` ships.
 
 ---
 

@@ -13,6 +13,9 @@ public class AuthCookies {
 
     public static final String REFRESH_COOKIE = "refresh_token";
 
+    /** Distinct name and path from {@link #REFRESH_COOKIE} so a staff and a customer session can coexist in one browser. */
+    public static final String CUSTOMER_REFRESH_COOKIE = "customer_refresh_token";
+
     /**
      * The refresh cookie: only ever sent to the auth endpoints, unreadable by page scripts, and
      * {@code SameSite=STRICT}.
@@ -25,6 +28,21 @@ public class AuthCookies {
         return new NewCookie.Builder(REFRESH_COOKIE)
                 .value(value == null ? "" : value)
                 .path("/api/auth")
+                .httpOnly(true)
+                .secure(isSecure(request))
+                .sameSite(NewCookie.SameSite.STRICT)
+                .maxAge((int) maxAgeSeconds)
+                .build();
+    }
+
+    /**
+     * The customer portal's refresh cookie - same shape as {@link #refresh}, scoped to the
+     * customer auth path so it is never sent to (or confused with) the staff auth endpoints.
+     */
+    public NewCookie customerRefresh(HttpServerRequest request, String value, long maxAgeSeconds) {
+        return new NewCookie.Builder(CUSTOMER_REFRESH_COOKIE)
+                .value(value == null ? "" : value)
+                .path("/api/customer/auth")
                 .httpOnly(true)
                 .secure(isSecure(request))
                 .sameSite(NewCookie.SameSite.STRICT)

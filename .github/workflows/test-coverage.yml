@@ -43,6 +43,15 @@ jobs:
         key: ${{ runner.os }}-webui-${{ hashFiles('src/main/webui/package-lock.json') }}
         restore-keys: ${{ runner.os }}-webui-
 
+    # The customer portal (src/main/appui) is installed and built by the same step, but
+    # "npm ci" always wipes node_modules there, so caching the npm download cache is what helps.
+    - name: Cache npm downloads
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-npm-${{ hashFiles('src/main/appui/package-lock.json') }}
+        restore-keys: ${{ runner.os }}-npm-
+
     # `verify` already runs jacoco's report (test phase) and check (verify phase), so one
     # invocation covers what used to take two.
     - name: Run tests with coverage

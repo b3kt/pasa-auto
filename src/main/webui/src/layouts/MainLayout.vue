@@ -342,6 +342,27 @@ const linksList = computed(() => [
         icon: 'history',
         visible: hasRole('Admin') || hasRole('Owner'),
         link: '/admin/audit-trail'
+      },
+      {
+        title: 'Permintaan Tautan Pelanggan',
+        caption: 'Persetujuan tautan akun customer portal',
+        icon: 'link',
+        visible: hasRole('Admin') || hasRole('Owner'),
+        link: '/admin/customer-link-requests'
+      },
+      {
+        title: 'Booking Pelanggan',
+        caption: 'Antrian booking servis dari customer portal',
+        icon: 'event_note',
+        visible: hasRole('Admin') || hasRole('Owner'),
+        link: '/admin/customer-bookings'
+      },
+      {
+        title: 'Akses Customer Portal',
+        caption: 'Aktif/nonaktifkan customer portal',
+        icon: 'toggle_on',
+        visible: hasRole('Owner'),
+        link: '/admin/customer-access'
       }
     ]
   }

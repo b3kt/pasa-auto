@@ -55,6 +55,8 @@ Automotive workshop management system with Quarkus backend and Quasar/Vue.js fro
    - API: http://localhost:8080
    - Swagger: http://localhost:8080/swagger-ui
    - Frontend: http://localhost:5173 (dev mode)
+   - Customer portal: run `npm run dev` in `src/main/appui` and open
+     http://localhost:5174/app/ (Quinoa's dev server only proxies the staff app)
 
 ## Configuration
 
@@ -78,7 +80,8 @@ src/main/java/com/github/b3kt/
 ├── infrastructure/      # Repositories and security
 └── presentation/        # REST resources and exception handlers
 
-src/main/webui/          # Quasar/Vue.js frontend
+src/main/webui/          # Quasar/Vue.js staff/admin frontend (served at /)
+src/main/appui/          # Quasar/Vue.js customer portal frontend (served at /app/)
 ```
 
 See [docs/architecture.md](docs/architecture.md) for detailed architecture.

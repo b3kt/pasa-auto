@@ -81,6 +81,13 @@ pasa-auto/
 │   │   │       ├── boot/        # axios, auth, stores, i18n, offline
 │   │   │       ├── router/      # routes.js, index.js
 │   │   │       └── i18n/        # en-US, id-ID locales
+│   │   ├── appui/           # Quasar/Vue customer portal frontend (served at /app/)
+│   │   │   └── src/
+│   │   │       ├── pages/   # Dashboard, Login, Register, Profile, LinkAccount, Vehicles, Bookings, SpkTracking
+│   │   │       ├── stores/  # Pinia state management (auth-store)
+│   │   │       ├── layouts/ # MainLayout
+│   │   │       ├── boot/    # axios, stores, i18n
+│   │   │       └── router/  # routes.js, index.js
 │   │   └── docker/
 │   └── test/
 │       ├── java/            # JUnit 5, Mockito, REST Assured, Testcontainers
@@ -237,8 +244,8 @@ RBAC_ENABLED=false
 
 | Tool | Scope | Commands |
 |------|-------|----------|
-| ESLint v9 (flat config) | Vue/JS | `cd src/main/webui && npm run lint` |
-| Prettier v3 | Frontend | `cd src/main/webui && npm run format` |
+| ESLint v9 (flat config) | Vue/JS | `cd src/main/webui && npm run lint` (same in `src/main/appui`) |
+| Prettier v3 | Frontend | `cd src/main/webui && npm run format` (same in `src/main/appui`) |
 
 No Java linting configured.
 

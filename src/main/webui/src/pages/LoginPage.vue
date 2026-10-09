@@ -38,6 +38,12 @@
           <q-btn outline color="primary" class="full-width" icon="login" :label="$t('pages.login.googleButton')"
                  :loading="googleRedirecting" @click="signInWithGoogle" />
         </template>
+
+        <div class="text-center text-caption q-mt-md">
+          <!-- The customer portal is a separate app (src/main/appui) served at /app/, so this is a
+               plain link: the staff router knows nothing about those routes -->
+          <a href="/app/">Are you a customer? Sign in here</a>
+        </div>
       </q-card-section>
     </q-card>
   </q-page>

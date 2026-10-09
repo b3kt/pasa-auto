@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [src/main/webui, electron]
+        project: [src/main/webui, src/main/appui, electron]
     steps:
       - uses: actions/checkout@v4
 
@@ -61,5 +61,5 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           # The JS projects are covered by the npm-audit job above
-          skip-dirs: 'src/main/webui,electron'
+          skip-dirs: 'src/main/webui,src/main/appui,electron'
           exit-code: '1'

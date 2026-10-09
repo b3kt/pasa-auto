@@ -1,6 +1,7 @@
 import { Roles } from 'src/constants/roles'
 
 // Pages each role may open; mirrors the backend @RolesAllowed rules (the backend stays the source of truth)
+// The customer portal is a separate app (src/main/appui) served at /app/, not a route of this one
 const ROLES_OWNER_ONLY = [Roles.OWNER]
 const ROLES_ADMIN_OWNER = [Roles.ADMIN, Roles.OWNER]
 const ROLES_ALL_STAFF = [Roles.ADMIN, Roles.OWNER, Roles.KARYAWAN]
@@ -44,8 +45,10 @@ const routes = [
       { path: 'profile', component: () => import('pages/ProfilePage.vue') },
       { path: 'change-password', component: () => import('pages/ChangePasswordPage.vue') },
       { path: 'admin/clear-cache', meta: { roles: ROLES_ALL_STAFF }, component: () => import('pages/admin/ClearCachePage.vue') },
-      { path: 'admin/audit-trail', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/admin/AuditTrailPage.vue') }
-
+      { path: 'admin/audit-trail', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/admin/AuditTrailPage.vue') },
+      { path: 'admin/customer-link-requests', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/admin/CustomerLinkRequestsPage.vue') },
+      { path: 'admin/customer-bookings', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/admin/CustomerBookingsPage.vue') },
+      { path: 'admin/customer-access', meta: { roles: ROLES_OWNER_ONLY }, component: () => import('pages/admin/CustomerAccessTogglePage.vue') }
     ]
   },
 

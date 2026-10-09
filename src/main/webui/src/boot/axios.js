@@ -278,7 +278,7 @@ api.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config
-    
+
     // Handle network errors (offline)
     if (!error.response && error.code === 'NETWORK_ERROR') {
       // Try browser cache first

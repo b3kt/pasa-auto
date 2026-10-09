@@ -44,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Renamed**: Changed `spkNoformatter` to `SPK_DATE_FORMATTER` with proper static constant naming
 
 ### Refactoring
+- **Changed**: The customer portal is now a separate frontend project, `src/main/appui`, served at `/app/` instead of `/portal/*` routes of the staff app. The staff login page links to `/app/`; the old `/portal/*` routes are gone. The customer bundle is built by the staff app's `build:all` script and copied into its `dist/spa/app`, since Quinoa supports a single `ui-dir`
+- **Renamed**: Portal pages dropped the redundant `Portal` prefix (`PortalLoginPage.vue` → `LoginPage.vue`, etc.) and the customer store is now `stores/auth-store.js`; its `customer_auth_*` localStorage keys are unchanged so existing customer sessions survive
 - **Added**: New `QueryFilterBuilder` helper class to reduce duplicate query filter logic
 - **Refactored**: `TbSpkService.findPaginated()` now uses `QueryFilterBuilder` (reduced from ~90 to ~30 lines)
 - **Refactored**: `TbSpkService.findPaginatedWithPenjualan()` now uses `QueryFilterBuilder` (reduced from ~110 to ~50 lines)
