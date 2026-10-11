@@ -13,6 +13,8 @@ This directory contains Architecture Decision Records for the pasa-auto project.
 | [0005](0005-quasar-frontend.md) | Use Quasar/Vue.js for Frontend | Accepted | 2024-02-06 |
 | [0006](0006-flyway-migrations.md) | Use Flyway for Database Migrations | Accepted | 2024-02-06 |
 | [0007](0007-rbac-implementation.md) | Role-Based Access Control (RBAC) | Accepted | 2024-02-06 |
+| [0008](0008-domain-model-extraction.md) | Domain Model Extraction with Per-Aggregate Repositories | Accepted | 2026-05-22 |
+| [0009](0009-customer-self-service-portal.md) | Customer Self-Service Portal | Accepted | 2026-10-11 |
 
 ## Template
 
