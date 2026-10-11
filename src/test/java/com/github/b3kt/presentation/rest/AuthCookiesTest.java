@@ -47,6 +47,23 @@ class AuthCookiesTest {
     }
 
     @Test
+    @DisplayName("The customer refresh cookie is separated by name and path from the staff one")
+    void customerRefreshCookieIsScopedToCustomerAuth() {
+        NewCookie cookie = authCookies.customerRefresh(over("https"), "customer-value", 604800L);
+
+        assertEquals(AuthCookies.CUSTOMER_REFRESH_COOKIE, cookie.getName(),
+                "a distinct name lets a staff and a customer session coexist in one browser");
+        assertEquals("customer-value", cookie.getValue());
+        assertEquals("/api/customer/auth", cookie.getPath(),
+                "it must never be sent to the staff auth endpoints");
+        assertTrue(cookie.isHttpOnly());
+        assertTrue(cookie.isSecure());
+        assertEquals(NewCookie.SameSite.STRICT, cookie.getSameSite());
+        assertEquals(604800, cookie.getMaxAge());
+        assertEquals("", authCookies.customerRefresh(over("https"), null, 0).getValue());
+    }
+
+    @Test
     @DisplayName("The state cookie is Lax and confined to /api/auth/google")
     void oauthStateCookieIsLaxAndNarrow() {
         NewCookie cookie = authCookies.oauthState(over("https"), "state:verifier", 300L);

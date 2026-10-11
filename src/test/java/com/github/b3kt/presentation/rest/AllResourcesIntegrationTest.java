@@ -112,13 +112,23 @@ class AllResourcesIntegrationTest extends IntegrationTestBase {
     // ═══════════════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("GET /health returns 200")
+    @DisplayName("GET /health returns 200 without leaking build info to anonymous callers")
     void health() {
         given()
             .when().get("/health")
             .then().statusCode(200)
             .body("success", equalTo(true))
             .body("data.status", equalTo("UP"))
+            .body("data.application", nullValue());
+    }
+
+    @Test
+    @DisplayName("GET /health reveals the application name to authenticated callers")
+    @TestSecurity(user = "admin", roles = {"Admin"})
+    void healthAuthenticated() {
+        given()
+            .when().get("/health")
+            .then().statusCode(200)
             .body("data.application", equalTo("pasa-auto"));
     }
 
