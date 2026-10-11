@@ -18,7 +18,10 @@ const decodeToken = (token) => {
 
 export const useAuthStore = defineStore('auth', {
   state: () => {
-    const token = localStorage.getItem('auth_token')
+    // The access token is intentionally NOT persisted: page scripts (and any injected code) must not be
+    // able to read it back out of storage. A logged-in session is restored on startup by
+    // initializeAuth(), which exchanges the HttpOnly refresh cookie for a fresh access token.
+    localStorage.removeItem('auth_token') // drop any copy left behind by older builds
     const userJson = localStorage.getItem('auth_user')
     let user = null
 
@@ -31,11 +34,12 @@ export const useAuthStore = defineStore('auth', {
     }
 
     return {
-      token: token || null,
+      token: null,
       // The refresh token lives in an HttpOnly cookie the browser sends to /api/auth; scripts cannot read it
       refreshToken: null,
       user: user,
-      isAuthenticated: !!token // Set to true if token exists
+      isAuthenticated: false,
+      initialized: false
     }
   },
 
@@ -59,7 +63,7 @@ export const useAuthStore = defineStore('auth', {
       }
       this.isAuthenticated = true
 
-      localStorage.setItem('auth_token', this.token)
+      // Only non-sensitive profile data is persisted; the access token stays in memory
       localStorage.setItem('auth_user', JSON.stringify(this.user))
     },
 
@@ -211,10 +215,17 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async initializeAuth() {
-      // Renew an expired token restored from localStorage right away; drop the session if that fails
-      if (this.token && !(await this.ensureValidToken())) {
-        console.warn('Stored session expired and could not be refreshed')
-        this.clearSession()
+      if (this.initialized) return
+      this.initialized = true
+
+      // A fresh access token is minted from the HttpOnly refresh cookie. Offline there is no way to
+      // reach /api/auth/refresh, so the session starts signed out until the app is online again.
+      if (this.token || !navigator.onLine) return
+
+      const hadStoredSession = localStorage.getItem('auth_user') !== null
+      if (!(await this.refreshAccessToken()) && hadStoredSession) {
+        // The previous session's refresh cookie is gone or rejected: drop it and its cached data
+        await this.clearSession()
       }
     }
   }

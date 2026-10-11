@@ -207,7 +207,6 @@ All business entities follow pattern: `AbstractCrudService<T>` base class.
 DB_URL=jdbc:postgresql://localhost:5432/pasa_auto
 DB_USERNAME=
 DB_PASSWORD=
-APP_SECURITY_SALT=
 JWT_PRIVATE_KEY=
 JWT_PUBLIC_KEY=
 JWT_ISSUER=

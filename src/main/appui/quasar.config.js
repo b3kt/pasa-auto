@@ -13,7 +13,8 @@ export default defineConfig((ctx) => {
     boot: [
       'stores',
       'i18n',
-      'axios'
+      'axios',
+      'auth'
     ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css

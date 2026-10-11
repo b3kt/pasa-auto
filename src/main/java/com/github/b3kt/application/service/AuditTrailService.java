@@ -2,6 +2,7 @@ package com.github.b3kt.application.service;
 
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
+import com.github.b3kt.application.helper.SortFieldValidator;
 import com.github.b3kt.infrastructure.persistence.entity.AuditTrailEntity;
 import com.github.b3kt.infrastructure.persistence.repository.AuditTrailRepository;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
@@ -56,12 +57,9 @@ public class AuditTrailService {
                 ? "%" + pageRequest.getSearch().toLowerCase() + "%"
                 : null;
 
-        Sort sort;
-        if (pageRequest.getSortBy() != null && !pageRequest.getSortBy().isEmpty()) {
-            sort = pageRequest.isDescending()
-                    ? Sort.by(pageRequest.getSortBy()).descending()
-                    : Sort.by(pageRequest.getSortBy()).ascending();
-        } else {
+        // The sort field is validated to prevent JPQL injection; fall back to newest first.
+        Sort sort = SortFieldValidator.sort(pageRequest.getSortBy(), pageRequest.isDescending());
+        if (sort == null) {
             sort = Sort.by("timestamp").descending();
         }
 

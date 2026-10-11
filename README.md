@@ -67,7 +67,6 @@ All sensitive config goes through environment variables. See `.env.example` for 
 | `DB_URL` | PostgreSQL JDBC URL | Yes |
 | `DB_USERNAME` | Database user | Yes |
 | `DB_PASSWORD` | Database password | Yes |
-| `APP_SECURITY_SALT` | Password hashing salt | Yes |
 | `JWT_PRIVATE_KEY` | Path to JWT private key | Yes |
 | `JWT_PUBLIC_KEY` | Path to JWT public key | Yes |
 

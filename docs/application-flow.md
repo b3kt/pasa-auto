@@ -100,9 +100,9 @@ sequenceDiagram
     Backend->>DB: Validate user + password hash
     DB-->>Backend: User record
     Backend->>Backend: Generate JWT + Refresh Token
-    Backend-->>API: LoginResponse {token, refreshToken, expiresIn}
+    Backend-->>API: LoginResponse {token, refreshToken, expiresIn} + Set-Cookie refresh_token (HttpOnly)
     API-->>AuthStore: {success, data: LoginResponse}
-    AuthStore->>AuthStore: Store token in localStorage
+    AuthStore->>AuthStore: Keep access token in memory; persist only auth_user profile
     AuthStore->>AuthStore: Extract roles from JWT (groups claim)
     AuthStore-->>Frontend: Authenticated
     Frontend->>Frontend: Redirect to intended route or /
@@ -118,12 +118,12 @@ sequenceDiagram
     participant Backend as Quarkus Backend
 
     Note over AuthStore: Token expires in 30s
-    AuthStore->>API: POST /api/auth/refresh {refreshToken}
+    AuthStore->>API: POST /api/auth/refresh (browser sends HttpOnly cookie)
     API->>Backend: Validate refresh token
     Backend->>Backend: Generate new JWT + Refresh Token
-    Backend-->>API: LoginResponse {token, refreshToken, expiresIn}
-    API-->>AuthStore: {success, data: LoginResponse}
-    AuthStore->>AuthStore: Update localStorage with new tokens
+    Backend-->>API: {token, expiresIn} + Set-Cookie refresh_token (rotated)
+    API-->>AuthStore: {success, data}
+    AuthStore->>AuthStore: Store access token in memory
 ```
 
 ### Route Guard Flow
@@ -137,9 +137,9 @@ sequenceDiagram
 
     User->>Router: Navigate to /pazaauto/spk
     Router->>Guard: beforeEach(to, from, next)
-    alt has auth_token in localStorage
+    alt has access token in memory (boot/auth.js restored it from the HttpOnly refresh cookie)
         Guard->>Frontend: next() (allow navigation)
-    else no auth_token
+    else no access token
         Guard->>Router: next({ path: '/login', query: { redirect: '/pazaauto/spk' }})
         Router->>Frontend: Redirect to LoginPage
     end
@@ -258,8 +258,8 @@ sequenceDiagram
     User->>LoginPage: Enter username + password
     LoginPage->>AuthStore: login(credentials)
     AuthStore->>API: POST /api/auth/login
-    API-->>AuthStore: {token, refreshToken, expiresIn}
-    AuthStore->>AuthStore: Store in localStorage
+    API-->>AuthStore: {token, refreshToken, expiresIn} + Set-Cookie refresh_token (HttpOnly)
+    AuthStore->>AuthStore: Keep access token in memory; persist only auth_user profile
     AuthStore->>AuthStore: Extract roles from JWT
     AuthStore-->>LoginPage: Success
     LoginPage->>Router: Redirect (from query or /)

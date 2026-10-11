@@ -1,6 +1,7 @@
 package com.github.b3kt.presentation.rest;
 
 import com.github.b3kt.application.dto.ApiResponse;
+import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -31,6 +32,9 @@ import java.util.Map;
 @RequestScoped
 public class HealthResource {
 
+    @Inject
+    SecurityIdentity identity;
+
     @GET
     @Operation(
         summary = "Health check",
@@ -45,15 +49,18 @@ public class HealthResource {
         )
     )
     public Response health() {
-        Config config = ConfigProvider.getConfig();
-        String version = config.getValue("app.version", String.class);
-
         Map<String, Object> healthData = new HashMap<>();
         healthData.put("status", "UP");
         healthData.put("timestamp", LocalDateTime.now());
-        healthData.put("application", "pasa-auto");
-        healthData.put("version", version);
-        
+
+        // The application name and version are only revealed to authenticated callers; the public
+        // probe stays minimal so it does not hand out a fingerprint of the running build.
+        if (identity != null && !identity.isAnonymous()) {
+            Config config = ConfigProvider.getConfig();
+            healthData.put("application", "pasa-auto");
+            healthData.put("version", config.getValue("app.version", String.class));
+        }
+
         return Response.ok(ApiResponse.success("Application is healthy", healthData)).build();
     }
 }

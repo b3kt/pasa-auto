@@ -2,6 +2,7 @@ package com.github.b3kt.application.service.pazaauto;
 
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
+import com.github.b3kt.application.helper.SortFieldValidator;
 import com.github.b3kt.infrastructure.persistence.entity.BaseEntity;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
@@ -36,11 +37,10 @@ public abstract class AbstractCrudService<T, ID> {
     public PageResponse<T> findPaginated(PageRequest pageRequest) {
         PanacheQuery<T> query = getRepository().findAll();
 
-        // Apply sorting if specified
-        if (pageRequest.getSortBy() != null && !pageRequest.getSortBy().isEmpty()) {
-            Sort sort = pageRequest.isDescending()
-                    ? Sort.descending(pageRequest.getSortBy())
-                    : Sort.ascending(pageRequest.getSortBy());
+        // Apply sorting if specified. The field is validated first: Panache interpolates it into the
+        // ORDER BY clause, so an unchecked value would be a JPQL injection.
+        Sort sort = SortFieldValidator.sort(pageRequest.getSortBy(), pageRequest.isDescending());
+        if (sort != null) {
             query = getRepository().findAll(sort);
         }
 

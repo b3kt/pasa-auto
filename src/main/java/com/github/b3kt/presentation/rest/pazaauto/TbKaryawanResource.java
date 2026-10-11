@@ -31,11 +31,12 @@ public class TbKaryawanResource {
     @Inject
     KaryawanMapper karyawanMapper;
 
-    // Employee list is also needed by staff on the attendance (absensi) page
+    // Employee list is also needed by staff on the attendance (absensi) page: return only id + name so
+    // a KARYAWAN can't read colleagues' PII (address, phone, email, ...) from this endpoint.
     @GET
     @RolesAllowed({Roles.ADMIN, Roles.OWNER, Roles.KARYAWAN})
     public Response findAll() {
-        return Response.ok(ApiResponse.success(karyawanMapper.toDtoList(service.findAll()))).build();
+        return Response.ok(ApiResponse.success(karyawanMapper.toSummaryList(service.findAll()))).build();
     }
 
     @GET

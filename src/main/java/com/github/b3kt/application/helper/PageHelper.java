@@ -36,8 +36,8 @@ public class PageHelper {
     @SuppressWarnings("unchecked")
     public static <T> PageResponse<T> applyPagination(PanacheQuery<T> query, PanacheRepositoryBase<T, ?> repo,
                                                        PageRequest pr, String queryString, Object params) {
-        if (pr.getSortBy() != null && !pr.getSortBy().isEmpty()) {
-            Sort sort = pr.isDescending() ? Sort.descending(pr.getSortBy()) : Sort.ascending(pr.getSortBy());
+        Sort sort = SortFieldValidator.sort(pr.getSortBy(), pr.isDescending());
+        if (sort != null) {
             if (params instanceof Parameters p) {
                 query = repo.find(queryString, sort, p);
             } else if (params instanceof Map) {
@@ -55,8 +55,8 @@ public class PageHelper {
 
     public static <T> PageResponse<T> findAll(PanacheRepositoryBase<T, ?> repo, PageRequest pr) {
         PanacheQuery<T> query = repo.findAll();
-        if (pr.getSortBy() != null && !pr.getSortBy().isEmpty()) {
-            Sort sort = pr.isDescending() ? Sort.descending(pr.getSortBy()) : Sort.ascending(pr.getSortBy());
+        Sort sort = SortFieldValidator.sort(pr.getSortBy(), pr.isDescending());
+        if (sort != null) {
             query = repo.findAll(sort);
         }
         long totalCount = query.count();

@@ -22,7 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Added**: Dependency scanning — Dependabot for Maven, npm (webui and electron) and GitHub Actions, plus a weekly `Dependency Audit` workflow running `npm audit` and a Trivy scan
 - **Fixed**: Build-only packages (`@quasar/vite-plugin`, `sass`, `sass-loader`) were declared as runtime dependencies; moved to devDependencies
 - **Changed**: The refresh token is now issued as an HttpOnly, SameSite=Strict cookie scoped to `/api/auth` instead of being returned in the response body and stored in `localStorage`, so page scripts (and injected ones) cannot read it. The body token is still accepted on refresh for sessions issued before this change
-- **Fixed**: The `sortBy` query parameter went into ORDER BY unchecked; only plain field references are accepted now
+- **Changed**: The access token is now held in memory only and is no longer written to `localStorage`; a reload restores the session by exchanging the HttpOnly refresh cookie, and any legacy `auth_token` value is scrubbed on load
+- **Changed**: The public `/health` endpoint no longer reports the application name/version to anonymous callers; the build identity is only returned to authenticated requests
+- **Fixed**: The `sortBy` query parameter went into ORDER BY unchecked; only plain field references are accepted now, enforced both when binding the request DTO and again at the query sink (`SortFieldValidator`, plus a column allowlist for the rekap-penjualan report so an unknown field returns HTTP 400 instead of reaching the DB)
 - **Added**: Security headers on every response (CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, HSTS)
 - **Changed**: Flyway now validates applied migrations by default (`FLYWAY_VALIDATE_ON_MIGRATE`) and `flyway clean` is disabled
 - **Fixed**: Error responses leaked internals (Hibernate/SQL text, entity names and ids, parse failures); unexpected failures now return a generic message with a reference id that is logged with the stack trace, missing records return "Data not found", and optimistic-lock conflicts return a retry message
@@ -34,7 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fixed**: New employee logins were created with the plaintext password `password`; they now get a random one-time password shown once to the Admin/Owner and must change it at first login
 - **Fixed**: `/api/users` returned password hashes and stored the Owner-entered password in plaintext; hashes are never serialized, passwords are write-only and hashed, and an Owner-set password is temporary (the user's sessions end)
 - **Added**: `POST /api/auth/change-password` and a Change Password page; users with a temporary password can do nothing else until they change it (enforced server-side via the `pwd_change` token claim)
-- **Fixed**: `SecurityProperties` interface properly configured as SmallRye ConfigMapping (removed stub method)
+- **Fixed**: The employee list endpoint (`GET /api/pazaauto/karyawan`) returned full PII (address, phone, email, gender, joining date) to every staff member including `KARYAWAN`; it now returns only id + name, and the full record stays on the ADMIN/OWNER endpoints
+- **Removed**: Dead `app.security.salt` config and its `SecurityProperties` interface, which were declared but never referenced (bcrypt salts internally); `APP_SECURITY_SALT` is no longer required to start
 
 ### Code Quality
 - **Improved**: Standardized dependency injection in `TbSpkService` (removed inconsistent `@Inject` alongside `@RequiredArgsConstructor`)
@@ -45,7 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Refactoring
 - **Changed**: The customer portal is now a separate frontend project, `src/main/appui`, served at `/app/` instead of `/portal/*` routes of the staff app. The staff login page links to `/app/`; the old `/portal/*` routes are gone. The customer bundle is built by the staff app's `build:all` script and copied into its `dist/spa/app`, since Quinoa supports a single `ui-dir`
-- **Renamed**: Portal pages dropped the redundant `Portal` prefix (`PortalLoginPage.vue` → `LoginPage.vue`, etc.) and the customer store is now `stores/auth-store.js`; its `customer_auth_*` localStorage keys are unchanged so existing customer sessions survive
+- **Renamed**: Portal pages dropped the redundant `Portal` prefix (`PortalLoginPage.vue` → `LoginPage.vue`, etc.) and the customer store is now `stores/auth-store.js`; the `customer_auth_user` localStorage key is unchanged so existing customer sessions survive
+- **Changed**: The customer portal store (`src/main/appui`) also keeps its access token in memory only and restores the session from the HttpOnly `customer_refresh_token` cookie via a new `boot/auth.js`, matching the staff app; the legacy `customer_auth_token` value is scrubbed on load
 - **Added**: New `QueryFilterBuilder` helper class to reduce duplicate query filter logic
 - **Refactored**: `TbSpkService.findPaginated()` now uses `QueryFilterBuilder` (reduced from ~90 to ~30 lines)
 - **Refactored**: `TbSpkService.findPaginatedWithPenjualan()` now uses `QueryFilterBuilder` (reduced from ~110 to ~50 lines)

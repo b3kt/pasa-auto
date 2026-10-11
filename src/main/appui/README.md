@@ -78,10 +78,12 @@ need a customer session.
 
 ## Session
 
-`src/stores/auth-store.js` keeps the access token in `localStorage` under `customer_auth_token` /
-`customer_auth_user`. Those keys are deliberately **not** renamed to `auth_*`: the refresh token is
-an HttpOnly cookie scoped to `/api/customer/auth`, so renaming would strand every customer who
-signed in before the portal was split out of the staff app.
+`src/stores/auth-store.js` keeps the access token in memory only; it is never written to
+`localStorage`, so page scripts cannot read it back. A logged-in session is restored on start-up by
+`src/boot/auth.js`, which exchanges the HttpOnly refresh cookie scoped to `/api/customer/auth` for a
+fresh access token. Only the non-sensitive `customer_auth_user` profile is persisted, and its key is
+deliberately **not** renamed to `auth_user`: the refresh cookie is what keeps the session alive, so
+renaming would strand every customer who signed in before the portal was split out of the staff app.
 
 The Owner can switch the portal off without a redeploy (staff app: `admin/customer-access`). The
 router guard checks that flag on every navigation and the 503 interceptor in `src/boot/axios.js`

@@ -15,12 +15,15 @@ const decodeToken = (token) => {
   }
 }
 
-// The localStorage keys are kept as customer_auth_* even though the app lives in its own bundle:
-// the refresh token is an HttpOnly cookie scoped to /api/customer/auth, so renaming the keys would
-// strand every customer who signed in before the portal was split out of the staff app.
+// The remaining localStorage key is kept as customer_auth_user even though the app lives in its own
+// bundle: the refresh token is an HttpOnly cookie scoped to /api/customer/auth, so renaming the key
+// would strand every customer who signed in before the portal was split out of the staff app.
 export const useAuthStore = defineStore('auth', {
   state: () => {
-    const token = localStorage.getItem('customer_auth_token')
+    // The access token is intentionally NOT persisted: page scripts (and any injected code) must not
+    // be able to read it back out of storage. A logged-in session is restored on startup by
+    // initializeAuth(), which exchanges the HttpOnly refresh cookie for a fresh access token.
+    localStorage.removeItem('customer_auth_token') // drop any copy left behind by older builds
     const userJson = localStorage.getItem('customer_auth_user')
     let user = null
 
@@ -33,10 +36,11 @@ export const useAuthStore = defineStore('auth', {
     }
 
     return {
-      token: token || null,
+      token: null,
       // The refresh token lives in an HttpOnly cookie the browser sends to /api/customer/auth
       user,
-      isAuthenticated: !!token
+      isAuthenticated: false,
+      initialized: false
     }
   },
 
@@ -56,7 +60,7 @@ export const useAuthStore = defineStore('auth', {
       }
       this.isAuthenticated = true
 
-      localStorage.setItem('customer_auth_token', this.token)
+      // Only non-sensitive profile data is persisted; the access token stays in memory
       localStorage.setItem('customer_auth_user', JSON.stringify(this.user))
     },
 
@@ -161,9 +165,16 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async initializeAuth() {
-      // Renew an expired token restored from localStorage right away; drop the session if that fails
-      if (this.token && !(await this.ensureValidToken())) {
-        console.warn('Stored customer session expired and could not be refreshed')
+      if (this.initialized) return
+      this.initialized = true
+
+      // A fresh access token is minted from the HttpOnly refresh cookie. Offline there is no way to
+      // reach /api/customer/auth/refresh, so the session starts signed out until back online.
+      if (this.token || !navigator.onLine) return
+
+      const hadStoredSession = localStorage.getItem('customer_auth_user') !== null
+      if (!(await this.refreshAccessToken()) && hadStoredSession) {
+        // The previous session's refresh cookie is gone or rejected: drop it
         this.clearSession()
       }
     }

@@ -1,6 +1,7 @@
 package com.github.b3kt.application.mapper.pazaauto;
 
 import com.github.b3kt.application.dto.pazaauto.KaryawanDto;
+import com.github.b3kt.application.dto.pazaauto.KaryawanSummaryDto;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKaryawanEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
@@ -17,4 +18,8 @@ public interface KaryawanMapper {
     TbKaryawanEntity toEntity(KaryawanDto dto);
 
     List<KaryawanDto> toDtoList(List<TbKaryawanEntity> entities);
+
+    KaryawanSummaryDto toSummary(TbKaryawanEntity entity);
+
+    List<KaryawanSummaryDto> toSummaryList(List<TbKaryawanEntity> entities);
 }

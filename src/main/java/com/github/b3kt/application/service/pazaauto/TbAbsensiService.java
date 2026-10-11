@@ -2,6 +2,7 @@ package com.github.b3kt.application.service.pazaauto;
 
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
+import com.github.b3kt.application.helper.SortFieldValidator;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbAbsensiEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKaryawanEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbAbsensiRepository;
@@ -168,10 +169,10 @@ public class TbAbsensiService extends AbstractCrudService<TbAbsensiEntity, Long>
             params.put("status", status);
         }
 
-        // Apply sorting
-        Sort sort = pageRequest.isDescending()
-                ? Sort.descending(pageRequest.getSortBy() != null ? pageRequest.getSortBy() : "tanggal")
-                : Sort.ascending(pageRequest.getSortBy() != null ? pageRequest.getSortBy() : "tanggal");
+        // Apply sorting (the field is validated to prevent JPQL injection); default to tanggal
+        Sort sort = SortFieldValidator.sort(
+                pageRequest.getSortBy() != null ? pageRequest.getSortBy() : "tanggal",
+                pageRequest.isDescending());
 
         long totalCount = repository.count(query.toString(), params);
         List<TbAbsensiEntity> rows = repository.find(query.toString(), sort, params)

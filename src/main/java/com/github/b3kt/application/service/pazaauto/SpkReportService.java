@@ -5,6 +5,7 @@ import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.application.dto.pazaauto.RekapPenjualanDto;
 import com.github.b3kt.application.dto.pazaauto.RekapPenjualanSummaryDto;
 import com.github.b3kt.application.helper.QueryFilterBuilder;
+import com.github.b3kt.application.helper.SortFieldValidator;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkDetailRepository;
@@ -54,10 +55,8 @@ public class SpkReportService {
             query = repository.find(queryString);
         }
 
-        if (pageRequest.getSortBy() != null && !pageRequest.getSortBy().isEmpty()) {
-            Sort sort = pageRequest.isDescending()
-                    ? Sort.descending(pageRequest.getSortBy())
-                    : Sort.ascending(pageRequest.getSortBy());
+        Sort sort = SortFieldValidator.sort(pageRequest.getSortBy(), pageRequest.isDescending());
+        if (sort != null) {
             query = repository.find(queryString, sort, params);
         }
 
@@ -72,6 +71,33 @@ public class SpkReportService {
     private static final java.util.Set<String> PENJUALAN_SORT_FIELDS = java.util.Set.of(
             "noPenjualan", "tanggalJamPenjualan", "grandTotal", "discount",
             "uangDibayar", "kembalian", "metodePembayaran", "statusPembayaran");
+
+    /**
+     * Sortable columns that live on the joined SPK row. The value is appended to the JPQL string, so
+     * only fields on this allowlist (or {@link #PENJUALAN_SORT_FIELDS}) may be used as a sort field;
+     * anything else is refused rather than interpolated.
+     */
+    private static final java.util.Set<String> SPK_SORT_FIELDS = java.util.Set.of(
+            "id", "noSpk", "noAntrian", "tanggalJamSpk", "nopol", "pelangganId", "namaKaryawan",
+            "km", "statusSpk", "startedAt", "finishedAt", "keterangan", "kmSaatIni", "status",
+            "mekanikId", "namaPelanggan", "createdAt", "createdBy", "updatedAt", "updatedBy", "version");
+
+    /**
+     * Maps a client-supplied sort field to the query alias that owns it, refusing any value that is not
+     * on a known allowlist. The sort field is concatenated into the JPQL query, so an unchecked value
+     * would be a JPQL injection.
+     *
+     * @throws IllegalArgumentException when the field is not sortable
+     */
+    private static String sortAlias(String sortField) {
+        if (PENJUALAN_SORT_FIELDS.contains(sortField)) {
+            return "p.";
+        }
+        if (SPK_SORT_FIELDS.contains(sortField)) {
+            return "s.";
+        }
+        throw new IllegalArgumentException("Unsupported sort field");
+    }
 
     /**
      * Filters of the rekap penjualan report. The query joins two entities and noSpk / namaPelanggan
@@ -145,8 +171,8 @@ public class SpkReportService {
         if (pageRequest.getSortBy() != null && !pageRequest.getSortBy().isEmpty()) {
             String sortDirection = pageRequest.isDescending() ? "desc" : "asc";
             String sortField = pageRequest.getSortBy();
-            
-            String alias = PENJUALAN_SORT_FIELDS.contains(sortField) ? "p." : "s.";
+
+            String alias = sortAlias(sortField);
             baseQuery += " order by " + alias + sortField + " " + sortDirection;
             
             query = entityManager.createQuery(baseQuery, RekapPenjualanDto.class);

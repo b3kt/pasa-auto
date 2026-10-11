@@ -91,9 +91,6 @@ DB_URL=jdbc:postgresql://localhost:5432/pasa_auto
 DB_USERNAME=dev
 DB_PASSWORD=dev
 
-# Security
-APP_SECURITY_SALT=your_random_salt_at_least_16_chars
-
 # JWT (generate keys first)
 JWT_PRIVATE_KEY=src/main/resources/privateKey-pkcs8.pem
 JWT_PUBLIC_KEY=src/main/resources/publicKey.pem

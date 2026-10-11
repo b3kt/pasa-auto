@@ -2,6 +2,7 @@ package com.github.b3kt.application.service;
 
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
+import com.github.b3kt.application.helper.SortFieldValidator;
 import com.github.b3kt.application.service.pazaauto.AbstractCrudService;
 import com.github.b3kt.infrastructure.persistence.entity.PermissionEntity;
 import com.github.b3kt.infrastructure.persistence.repository.PermissionEntityRepository;
@@ -43,10 +44,8 @@ public class PermissionService extends AbstractCrudService<PermissionEntity, Lon
             query = repository.findAll();
         }
 
-        if (pageRequest.getSortBy() != null && !pageRequest.getSortBy().isEmpty()) {
-            Sort sort = pageRequest.isDescending()
-                    ? Sort.descending(pageRequest.getSortBy())
-                    : Sort.ascending(pageRequest.getSortBy());
+        Sort sort = SortFieldValidator.sort(pageRequest.getSortBy(), pageRequest.isDescending());
+        if (sort != null) {
             query = query.page(Page.of(0, Integer.MAX_VALUE));
 
             if (pageRequest.getSearch() != null && !pageRequest.getSearch().isEmpty()) {

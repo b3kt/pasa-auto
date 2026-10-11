@@ -37,7 +37,6 @@ cp .env.example .env
 | `DB_URL` | PostgreSQL JDBC URL | `jdbc:postgresql://db:5432/pasa_auto` |
 | `DB_USERNAME` | Database user | `pasa_user` |
 | `DB_PASSWORD` | Database password | `(secure)` |
-| `APP_SECURITY_SALT` | Password hashing salt | `(random 16+ chars)` |
 | `JWT_PRIVATE_KEY` | Path to RSA private key | `/app/keys/private.pem` |
 | `JWT_PUBLIC_KEY` | Path to RSA public key | `/app/keys/public.pem` |
 | `JWT_ISSUER` | Token issuer URL | `https://your-domain.com` |
@@ -133,7 +132,6 @@ openssl rsa -pubout -in keys/private.pem -out keys/public.pem
 # Set environment
 export DB_USERNAME=pasa_user
 export DB_PASSWORD=your_secure_password
-export APP_SECURITY_SALT=$(openssl rand -hex 16)
 
 # Deploy
 docker compose up -d
