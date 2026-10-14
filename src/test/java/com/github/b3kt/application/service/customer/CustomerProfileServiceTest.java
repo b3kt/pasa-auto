@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -128,12 +129,7 @@ class CustomerProfileServiceTest {
     @DisplayName("updateProfile")
     class UpdateProfileTests {
 
-        @Test
-        @DisplayName("copies every editable field and invalidates the cache")
-        void success() {
-            TbPelangganEntity p = pelanggan();
-            when(pelangganRepository.findByIdOptional(7L)).thenReturn(Optional.of(p));
-
+        private UpdateProfileRequest request() {
             UpdateProfileRequest request = new UpdateProfileRequest();
             request.setNamaPelanggan("  Budi Santoso  ");
             request.setAlamat("Jl. Baru 2");
@@ -144,8 +140,17 @@ class CustomerProfileServiceTest {
             request.setKota("Jakarta");
             request.setKodePos("12345");
             request.setContactPerson("Ani");
+            return request;
+        }
 
-            service.updateProfile(7L, request);
+        @Test
+        @DisplayName("copies every editable field onto the linked record and invalidates the cache")
+        void success() {
+            TbPelangganEntity p = pelanggan();
+            when(accountRepository.findByIdOptional(5L)).thenReturn(Optional.of(account(true)));
+            when(pelangganRepository.findByIdOptional(7L)).thenReturn(Optional.of(p));
+
+            service.updateProfile(5L, request());
 
             assertEquals("Budi Santoso", p.getNamaPelanggan());
             assertEquals("Jl. Baru 2", p.getAlamat());
@@ -160,16 +165,58 @@ class CustomerProfileServiceTest {
         }
 
         @Test
-        @DisplayName("rejects an unknown pelanggan record")
-        void unknown() {
+        @DisplayName("creates and links a placeholder record when the account is not linked")
+        void createsWhenUnlinked() {
+            CustomerAccountEntity account = account(false);
+            when(accountRepository.findByIdOptional(5L)).thenReturn(Optional.of(account));
+            doAnswer(invocation -> {
+                TbPelangganEntity entity = invocation.getArgument(0);
+                entity.setId(99L);
+                return null;
+            }).when(pelangganRepository).persist(any(TbPelangganEntity.class));
+
+            service.updateProfile(5L, request());
+
+            ArgumentCaptor<TbPelangganEntity> captor = ArgumentCaptor.forClass(TbPelangganEntity.class);
+            verify(pelangganRepository).persist(captor.capture());
+            TbPelangganEntity created = captor.getValue();
+            assertEquals("-", created.getNopol());
+            assertEquals("-", created.getMerk());
+            assertEquals("Budi Santoso", created.getNamaPelanggan());
+            assertEquals(99L, account.getPelangganId());
+            assertNotNull(account.getLinkedAt());
+            verify(pelangganRepository).invalidatePelangganCache();
+        }
+
+        @Test
+        @DisplayName("creates and relinks when the linked record no longer exists")
+        void recreatesWhenLinkedRecordMissing() {
+            CustomerAccountEntity account = account(true);
+            when(accountRepository.findByIdOptional(5L)).thenReturn(Optional.of(account));
             when(pelangganRepository.findByIdOptional(7L)).thenReturn(Optional.empty());
+            doAnswer(invocation -> {
+                TbPelangganEntity entity = invocation.getArgument(0);
+                entity.setId(99L);
+                return null;
+            }).when(pelangganRepository).persist(any(TbPelangganEntity.class));
+
+            service.updateProfile(5L, request());
+
+            assertEquals(99L, account.getPelangganId());
+            verify(pelangganRepository).persist(any(TbPelangganEntity.class));
+        }
+
+        @Test
+        @DisplayName("rejects an unknown account")
+        void unknown() {
+            when(accountRepository.findByIdOptional(5L)).thenReturn(Optional.empty());
 
             UpdateProfileRequest request = new UpdateProfileRequest();
             request.setNamaPelanggan("Budi");
 
             IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                    () -> service.updateProfile(7L, request));
-            assertEquals("Customer record not found", ex.getMessage());
+                    () -> service.updateProfile(5L, request));
+            assertEquals("Account not found", ex.getMessage());
             verify(pelangganRepository, never()).invalidatePelangganCache();
         }
     }

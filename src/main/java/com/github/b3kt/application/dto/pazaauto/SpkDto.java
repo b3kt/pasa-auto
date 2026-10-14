@@ -52,7 +52,7 @@ public class SpkDto {
     private Integer km;
 
     @Size(max = 20, message = "Status SPK must not exceed 20 characters")
-    @Schema(example = "MENUNGGU", description = "SPK status: MENUNGGU, PROSES, SELESAI, BATAL")
+    @Schema(example = "OPEN", description = "SPK status: OPEN, PROSES, SELESAI, BATAL")
     private String statusSpk;
 
     @Schema(example = "2024-08-16T08:30:00", description = "Work start timestamp")

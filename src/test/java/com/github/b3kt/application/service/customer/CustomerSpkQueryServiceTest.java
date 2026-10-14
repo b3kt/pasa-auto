@@ -1,6 +1,9 @@
 package com.github.b3kt.application.service.customer;
 
 import com.github.b3kt.application.dto.customer.CustomerSpkDto;
+import com.github.b3kt.application.dto.pazaauto.PenjualanPrintDto;
+import com.github.b3kt.application.service.pazaauto.TbPenjualanService;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPenjualanEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkRepository;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
@@ -28,6 +31,9 @@ class CustomerSpkQueryServiceTest {
 
     @Mock
     TbSpkRepository spkRepository;
+
+    @Mock
+    TbPenjualanService penjualanService;
 
     @Mock
     PanacheQuery<TbSpkEntity> query;
@@ -108,6 +114,78 @@ class CustomerSpkQueryServiceTest {
             when(spkRepository.findByIdOptional(1L)).thenReturn(Optional.empty());
 
             assertNull(service.getForPelanggan(1L, 7L));
+        }
+    }
+
+    @Nested
+    @DisplayName("getInvoiceForPelanggan")
+    class GetInvoiceForPelangganTests {
+
+        private TbPenjualanEntity penjualan(Long pelangganId) {
+            TbPenjualanEntity penjualan = new TbPenjualanEntity();
+            penjualan.setNoPenjualan("PJ0001");
+            penjualan.setNoSpk("SPK0001");
+            penjualan.setPelangganId(pelangganId);
+            return penjualan;
+        }
+
+        @Test
+        @DisplayName("returns the faktur when the work order and penjualan belong to the caller")
+        void owned() {
+            PenjualanPrintDto expected = new PenjualanPrintDto();
+            when(spkRepository.findByIdOptional(1L)).thenReturn(Optional.of(spk(1L, 7L)));
+            when(penjualanService.findByNoSpk("SPK0001")).thenReturn(penjualan(7L));
+            when(penjualanService.buildPrintDto("PJ0001")).thenReturn(expected);
+
+            assertSame(expected, service.getInvoiceForPelanggan(1L, 7L));
+        }
+
+        @Test
+        @DisplayName("returns the faktur when the penjualan has no pelanggan id (falls back to the SPK)")
+        void penjualanWithoutPelanggan() {
+            PenjualanPrintDto expected = new PenjualanPrintDto();
+            when(spkRepository.findByIdOptional(1L)).thenReturn(Optional.of(spk(1L, 7L)));
+            when(penjualanService.findByNoSpk("SPK0001")).thenReturn(penjualan(null));
+            when(penjualanService.buildPrintDto("PJ0001")).thenReturn(expected);
+
+            assertSame(expected, service.getInvoiceForPelanggan(1L, 7L));
+        }
+
+        @Test
+        @DisplayName("returns null and never looks up a penjualan for another pelanggan's work order")
+        void otherPelangganSpk() {
+            when(spkRepository.findByIdOptional(1L)).thenReturn(Optional.of(spk(1L, 8L)));
+
+            assertNull(service.getInvoiceForPelanggan(1L, 7L));
+            verifyNoInteractions(penjualanService);
+        }
+
+        @Test
+        @DisplayName("returns null when the work order does not exist")
+        void missingSpk() {
+            when(spkRepository.findByIdOptional(1L)).thenReturn(Optional.empty());
+
+            assertNull(service.getInvoiceForPelanggan(1L, 7L));
+            verifyNoInteractions(penjualanService);
+        }
+
+        @Test
+        @DisplayName("returns null when no penjualan has been raised yet")
+        void noPenjualan() {
+            when(spkRepository.findByIdOptional(1L)).thenReturn(Optional.of(spk(1L, 7L)));
+            when(penjualanService.findByNoSpk("SPK0001")).thenReturn(null);
+
+            assertNull(service.getInvoiceForPelanggan(1L, 7L));
+        }
+
+        @Test
+        @DisplayName("returns null when the penjualan belongs to a different pelanggan (stale/relinked data)")
+        void penjualanOtherPelanggan() {
+            when(spkRepository.findByIdOptional(1L)).thenReturn(Optional.of(spk(1L, 7L)));
+            when(penjualanService.findByNoSpk("SPK0001")).thenReturn(penjualan(9L));
+
+            assertNull(service.getInvoiceForPelanggan(1L, 7L));
+            verify(penjualanService, never()).buildPrintDto(anyString());
         }
     }
 }

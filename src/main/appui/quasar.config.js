@@ -6,6 +6,22 @@
 
 import { defineConfig } from '#q-app/wrappers'
 import { fileURLToPath } from 'node:url'
+import { readFileSync } from 'node:fs'
+
+// Print templates are template literals with embedded JS (`${data.x}`, IIFEs). Importing one with
+// `?compiled` turns it into a render function at build time (same approach as the staff app). This
+// keeps the faktur markup in one data-bound string without `new Function`, which the production CSP
+// (script-src 'self', no 'unsafe-eval') blocks.
+const compiledTemplatePlugin = () => ({
+  name: 'compiled-template',
+  enforce: 'pre',
+  load(id) {
+    if (!id.endsWith('.template?compiled')) return null
+    const file = id.slice(0, id.indexOf('?'))
+    this.addWatchFile(file)
+    return `export default (data, formatCurrency, formatNumber) => \`${readFileSync(file, 'utf8')}\``
+  }
+})
 
 export default defineConfig((ctx) => {
   return {
@@ -46,6 +62,10 @@ export default defineConfig((ctx) => {
       publicPath: '/app/',
 
       gzip: true,
+
+      extendViteConf(viteConf) {
+        viteConf.plugins = [...(viteConf.plugins || []), compiledTemplatePlugin()]
+      },
 
       vitePlugins: [
         ['@intlify/unplugin-vue-i18n/vite', {
@@ -109,6 +129,25 @@ export default defineConfig((ctx) => {
       ],
 
       pwa: false
+    },
+
+    // https://v2.quasar.dev/quasar-cli-vite/developing-pwa/configuring-pwa
+    pwa: {
+      // InjectManifest compiles src-pwa/custom-service-worker.js so the cache policy stays explicit
+      // (shell-only precache, no /api cache - see that file).
+      workboxMode: 'InjectManifest', // 'GenerateSW' or 'InjectManifest'
+      injectPwaMetaTags: true,
+      swFilename: 'sw.js',
+      manifestFilename: 'manifest.json',
+      useCredentialsForManifestTag: false,
+
+      extendPWACustomSWConf(cfg) {
+        // The service worker is a separate esbuild pass that inherits build.target.browser, whose
+        // oldest member (safari14) makes esbuild refuse to emit Workbox v7's async destructuring
+        // ("Transforming destructuring ... is not supported yet"). The worker only runs where
+        // service workers exist, so pin it to es2020 (Safari 14 supports this) instead.
+        cfg.target = 'es2020'
+      }
     }
   }
 })

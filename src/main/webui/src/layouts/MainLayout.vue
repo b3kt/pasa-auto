@@ -243,6 +243,13 @@ const linksList = computed(() => [
     visible: hasRole('Admin') || hasRole('Owner'),
     children: [
       {
+        title: 'Booking Pelanggan',
+        caption: 'Antrian booking servis dari customer portal',
+        icon: 'event_note',
+        visible: hasRole('Admin') || hasRole('Owner'),
+        link: '/admin/customer-bookings'
+      },
+      {
         title: t('app.menu.process.order.title'),
         caption: t('app.menu.process.order.caption'),
         icon: 'warehouse',
@@ -349,13 +356,6 @@ const linksList = computed(() => [
         icon: 'link',
         visible: hasRole('Admin') || hasRole('Owner'),
         link: '/admin/customer-link-requests'
-      },
-      {
-        title: 'Booking Pelanggan',
-        caption: 'Antrian booking servis dari customer portal',
-        icon: 'event_note',
-        visible: hasRole('Admin') || hasRole('Owner'),
-        link: '/admin/customer-bookings'
       },
       {
         title: 'Akses Customer Portal',

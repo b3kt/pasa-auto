@@ -44,6 +44,11 @@ public class CustomerLinkService {
         if (owner == null || owner.getIdPelanggan() == null) {
             return null;
         }
+        // Only allow linking to existing pelanggan records that are not yet claimed by another customer account
+        boolean alreadyClaimed = accountRepository.findByPelangganId(owner.getIdPelanggan()).isPresent();
+        if (alreadyClaimed) {
+            return null;
+        }
         LinkSearchResultDto dto = new LinkSearchResultDto();
         dto.setPelangganId(owner.getIdPelanggan());
         dto.setNopol(owner.getNopol());
@@ -54,6 +59,7 @@ public class CustomerLinkService {
 
     public List<LinkSearchResultDto> searchByContact(String phone, String email) {
         return pelangganRepository.findByContact(phone, email).stream()
+                .filter(p -> accountRepository.findByPelangganId(p.getId()).isEmpty())
                 .map(p -> {
                     LinkSearchResultDto dto = new LinkSearchResultDto();
                     dto.setPelangganId(p.getId());
@@ -169,6 +175,28 @@ public class CustomerLinkService {
             return trimmed.charAt(0) + "*";
         }
         return trimmed.charAt(0) + "*".repeat(trimmed.length() - 2) + trimmed.charAt(trimmed.length() - 1);
+    }
+
+    @Transactional
+    public void skipLinking(Long customerAccountId) {
+        CustomerAccountEntity account = accountRepository.findByIdOptional(customerAccountId)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        if (account.isLinked()) {
+            throw new IllegalArgumentException("Account is already linked to a customer record");
+        }
+        if (account.getPelangganId() != null) {
+            return;
+        }
+        // Create a placeholder pelanggan record based on customer account profile
+        TbPelangganEntity pelanggan = PelangganPlaceholder.create();
+        pelanggan.setNamaPelanggan(account.getFullName());
+        if (account.getPhone() != null) {
+            pelanggan.setNoHp(account.getPhone());
+            pelanggan.setTelepon(account.getPhone());
+        }
+        pelangganRepository.persist(pelanggan);
+        account.setPelangganId(pelanggan.getId());
+        account.setLinkedAt(LocalDateTime.now());
     }
 
     private static String maskContact(String value) {

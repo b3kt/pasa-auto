@@ -12,6 +12,9 @@ public class CreateBookingRequest {
 
     private String nopol;
 
+    @NotNull(message = "KM / Odometer harus diisi")
+    private Integer km;
+
     @NotNull(message = "Tanggal booking harus diisi")
     private LocalDateTime requestedDateTime;
 

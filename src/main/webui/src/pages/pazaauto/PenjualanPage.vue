@@ -60,9 +60,9 @@
                            :disable="(formData.statusSpk === 'SELESAI' || formData.statusSpk === 'BATAL')"/>
 
 <q-select v-model="formData.nopol" :label="$t('pages.penjualanPage.nopolLabel')" outlined dense
-                             :options="filteredPelangganOptions"
+                             :options="filteredVehicleOptions"
                              :option-label="constructNopolOptions" option-value="nopol" emit-value map-options use-input
-                             input-debounce="300" @filter="filterPelanggan" @update:model-value="onNopolChange"
+                             input-debounce="300" @filter="filterVehicleOptions" @update:model-value="onNopolChange"
                              :loading="loadingPelanggan" :disable="isEditMode && formData.statusSpk !== 'OPEN'"
                              new-value-mode="add-unique"
                              :rules="[val => !!val || $t('pages.penjualanPage.nopolRequired')]"
@@ -333,8 +333,8 @@ const filterStatus = ref(loadFilterFromStorage())
 const filterToday = ref(false)
 const { dateRange, dateRangeText, clearDateRange } = useDateFilter('penjualan')
 const rows = ref([])
-const pelangganOptions = ref([])
-const filteredPelangganOptions = ref([])
+const vehicleOptions = ref([])
+const filteredVehicleOptions = ref([])
 const karyawanOptions = ref([])
 const selectedMekaniks = ref([])  // Array of { id, namaKaryawan, tugas }
 const showDialog = ref(false)
@@ -601,13 +601,13 @@ const fetchNextSpkNumber = async () => {
   }
 }
 
-const fetchPelanggan = async () => {
+const fetchVehicleOptions = async () => {
   loadingPelanggan.value = true
   try {
-    const response = await api.get('/api/pazaauto/pelanggan')
+    const response = await api.get('/api/pazaauto/vehicles/options')
     if (response.data.success) {
-      pelangganOptions.value = response.data.data || []
-      filteredPelangganOptions.value = pelangganOptions.value
+      vehicleOptions.value = response.data.data || []
+      filteredVehicleOptions.value = vehicleOptions.value
     }
   } catch (error) {
     $q.notify({
@@ -620,15 +620,17 @@ const fetchPelanggan = async () => {
   }
 }
 
-const filterPelanggan = (val, update) => {
+const filterVehicleOptions = (val, update) => {
   update(() => {
     if (val === '') {
-      filteredPelangganOptions.value = pelangganOptions.value
+      filteredVehicleOptions.value = vehicleOptions.value
     } else {
       const needle = val.toLowerCase()
-      filteredPelangganOptions.value = pelangganOptions.value.filter(
-        v => v.nopol.toLowerCase().indexOf(needle) > -1 ||
-             (v.namaPelanggan && v.namaPelanggan.toLowerCase().indexOf(needle) > -1)
+      filteredVehicleOptions.value = vehicleOptions.value.filter(
+        v => (v.nopol && v.nopol.toLowerCase().indexOf(needle) > -1) ||
+             (v.namaPelanggan && v.namaPelanggan.toLowerCase().indexOf(needle) > -1) ||
+             (v.merk && v.merk.toLowerCase().indexOf(needle) > -1) ||
+             (v.jenis && v.jenis.toLowerCase().indexOf(needle) > -1)
       )
     }
   })
@@ -645,41 +647,51 @@ const onNopolChange = async (nopol) => {
     return
   }
 
-  // Check if nopol exists in pelangganOptions
-  const existingPelanggan = pelangganOptions.value.find(p => p.nopol === nopol)
+  // Vehicle list comes from tb_pelanggan_kendaraan (current ownership)
+  const existingVehicle = vehicleOptions.value.find(v => v.nopol === nopol)
 
-  if (existingPelanggan) {
-    // Existing customer - fetch details and make fields readonly
+  if (existingVehicle) {
+    // Existing vehicle - fill from the ownership row and make fields readonly
     isNewCustomer.value = false
-    try {
-      const response = await api.get(`/api/pazaauto/pelanggan/by-nopol/${nopol}`)
-      if (response.data.success && response.data.data) {
-        const pelanggan = response.data.data
-        formData.value.namaPelanggan = pelanggan.namaPelanggan || ''
-        formData.value.alamat = pelanggan.alamat || ''
-        formData.value.merk = pelanggan.merk || ''
-        formData.value.jenis = pelanggan.jenis || ''
-      }
-    } catch (error) {
-      $q.notify({
-        type: 'negative',
-        message: t('pages.penjualanPage.fetchPelangganDetailsFailed'),
-        caption: error.response?.data?.message || error.message
-      })
+    formData.value.namaPelanggan = existingVehicle.namaPelanggan || ''
+    formData.value.alamat = existingVehicle.alamat || ''
+    formData.value.merk = existingVehicle.merk || ''
+    formData.value.jenis = existingVehicle.jenis || ''
+    return
+  }
+
+  // Not in the vehicle list (options not loaded yet, or nopol missing from the
+  // ownership table) - ask the backend before treating it as a new customer.
+  try {
+    const response = await api.get(`/api/pazaauto/pelanggan/by-nopol/${nopol}`)
+    if (response.data.success && response.data.data) {
+      const pelanggan = response.data.data
+      isNewCustomer.value = false
+      formData.value.namaPelanggan = pelanggan.namaPelanggan || ''
+      formData.value.alamat = pelanggan.alamat || ''
+      formData.value.merk = pelanggan.merk || ''
+      formData.value.jenis = pelanggan.jenis || ''
+      return
     }
-  } else {
-    // New customer - clear fields and make them editable
-    isNewCustomer.value = true
-    formData.value.namaPelanggan = ''
-    formData.value.alamat = ''
-    formData.value.merk = ''
-    formData.value.jenis = ''
+  } catch (error) {
     $q.notify({
-      type: 'info',
-      message: t('pages.penjualanPage.newCustomerNotify'),
-      timeout: 2000
+      type: 'negative',
+      message: t('pages.penjualanPage.fetchPelangganDetailsFailed'),
+      caption: error.response?.data?.message || error.message
     })
   }
+
+  // New customer - clear fields and make them editable
+  isNewCustomer.value = true
+  formData.value.namaPelanggan = ''
+  formData.value.alamat = ''
+  formData.value.merk = ''
+  formData.value.jenis = ''
+  $q.notify({
+    type: 'info',
+    message: t('pages.penjualanPage.newCustomerNotify'),
+    timeout: 2000
+  })
 }
 
 const fetchKaryawan = async () => {
@@ -763,14 +775,14 @@ const openCreateDialog = async () => {
   initialData.value = null
   showDialog.value = true
   // Fetch options for inline add and vehicle dropdowns
-  await Promise.all([fetchPelanggan(), fetchJasa(), fetchBarang(), fetchMerkOptions(), fetchJenisOptions()])
+  await Promise.all([fetchVehicleOptions(), fetchJasa(), fetchBarang(), fetchMerkOptions(), fetchJenisOptions()])
 }
 
 const openEditDialog = async (row) => {
   isEditMode.value = true
 
   // Fetch options first so we can map prices and populate vehicle dropdowns
-  await Promise.all([fetchPelanggan(), fetchJasa(), fetchBarang(), fetchMerkOptions(), fetchJenisOptions()])
+  await Promise.all([fetchVehicleOptions(), fetchJasa(), fetchBarang(), fetchMerkOptions(), fetchJenisOptions()])
 
     // Fetch full details including details list
     try {
@@ -801,7 +813,7 @@ const openEditDialog = async (row) => {
       formData.value = {...row, details: []}
     }
 
-  onNopolChange(formData.value.nopol)
+  await onNopolChange(formData.value.nopol)
 
   // Parse mekanikList (now it's an array from backend)
   if (formData.value.mekanikList && Array.isArray(formData.value.mekanikList)) {
@@ -997,7 +1009,7 @@ const saveSpk = async () => {
           message: t('pages.penjualanPage.customerCreatedNotify')
         })
         // Refresh pelanggan list
-        await fetchPelanggan()
+        await fetchVehicleOptions()
         isNewCustomer.value = false
       } catch (error) {
         $q.notify({
@@ -1385,16 +1397,16 @@ const handleUpdateMasterBarang = async (payload) => {
 // Handle pelanggan data update from inline editing
 const handlePelangganUpdated = async (payload) => {
   try {
-    // Refresh pelanggan list to update dropdown options
-    await fetchPelanggan()
+    // Refresh vehicle options to update dropdown options
+    await fetchVehicleOptions()
 
     // Refresh SPK table to show updated pelanggan data
     await fetchSpk()
 
     // Update the current SPK form data with the new values
-    const updatedPelanggan = pelangganOptions.value.find(p => p.nopol === payload.nopol)
-    if (updatedPelanggan) {
-      // Update the form data with the latest values from pelanggan options
+    const updatedVehicle = vehicleOptions.value.find(v => v.nopol === payload.nopol)
+    if (updatedVehicle) {
+      // Update the form data with the latest values from vehicle options
       if (payload.field === 'namaPelanggan') {
         formData.value.namaPelanggan = payload.value
       } else if (payload.field === 'alamat') {
@@ -1405,10 +1417,10 @@ const handlePelangganUpdated = async (payload) => {
         formData.value.jenis = payload.value
       }
 
-      // Also update the filtered pelanggan options to reflect changes
-      const filteredIndex = filteredPelangganOptions.value.findIndex(p => p.nopol === payload.nopol)
+      // Also update the filtered vehicle options to reflect changes
+      const filteredIndex = filteredVehicleOptions.value.findIndex(v => v.nopol === payload.nopol)
       if (filteredIndex !== -1) {
-        filteredPelangganOptions.value[filteredIndex] = {...updatedPelanggan}
+        filteredVehicleOptions.value[filteredIndex] = {...updatedVehicle}
       }
     }
 
@@ -1625,7 +1637,7 @@ watch(filterToday, (newVal) => {
 // Lifecycle
 onMounted(() => {
   fetchSpk()
-  fetchPelanggan()
+  fetchVehicleOptions()
   fetchKaryawan()
   openCreateDialog()
 })

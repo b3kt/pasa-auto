@@ -2,7 +2,8 @@
 
 Quasar/Vue.js app for the customer self-service portal. It is a **standalone frontend project**: it
 shares no source with the staff app in `../webui` and talks to the same backend through the
-`/api/customer/*` endpoints.
+`/api/customer/*` endpoints. It is built as a **PWA** (installable, offline app shell): see
+`src-pwa/` and the `pwa` block in `quasar.config.js`.
 
 | | Staff app | Customer portal |
 |---|---|---|
@@ -18,22 +19,38 @@ npm install
 
 ## Start in development mode
 
+`./mvnw quarkus:dev` starts **both** frontends: the staff dev server (5173) and this customer
+portal dev server (5174). The staff dev server proxies `/app` here, so the portal is reachable
+through the backend at http://localhost:8080/app/ - the same `/app` path it uses in production, on
+one origin with the API. This is launched by `quarkus.quinoa.package-manager-command.dev` (see
+`src/main/webui/scripts/dev-all.mjs`).
+
+To run the portal on its own instead (with the backend already running):
+
 ```bash
 npm run dev
 ```
 
-The app is served from `/app/` (the same `publicPath` it uses in production), so open
-http://localhost:5174/app/. API calls go to http://localhost:8080 - keep the Quarkus backend
-running (`./mvnw quarkus:dev`) alongside it. Quinoa's dev server only proxies the staff app, so
-this app is not reachable through http://localhost:5173.
+It is then served from `/app/` (the same `publicPath` it uses in production) at
+http://localhost:5174/app/, with API calls still going to http://localhost:8080.
+
+Both dev commands run Quasar in PWA mode (`quasar dev -m pwa`), so the service worker and manifest
+are served during development too.
 
 ## Lint / format / build
 
 ```bash
 npm run lint
 npm run format
-npm run build          # -> dist/spa
+npm run build          # -> dist/pwa
 ```
+
+## PWA
+
+`quasar build -m pwa` emits the installable bundle to `dist/pwa` (manifest, `sw.js`, precached app
+shell). The service worker is customised in `src-pwa/custom-service-worker.js`: it precaches only the
+app shell and deliberately does **not** cache `/api` responses, so a customer's personal data is
+never left in the browser's Cache Storage.
 
 ## How it is deployed
 
@@ -42,7 +59,7 @@ app's `build:all` script builds it and copies the result into the staff bundle a
 subdirectory, which Quinoa then registers as static resources:
 
 ```
-src/main/appui/dist/spa/*   ->   src/main/webui/dist/spa/app/*
+src/main/appui/dist/pwa/*   ->   src/main/webui/dist/spa/app/*
 ```
 
 That build runs as part of `./mvnw package` (see `quarkus.quinoa.package-manager-command.build` in
@@ -55,8 +72,8 @@ npm run build:all
 
 `scripts/deploy-appui.mjs` in the staff app performs the copy.
 
-**Note:** request `/app/` with the trailing slash. The bundle's `index.html` is registered as a
-static resource, and Quarkus does not redirect a directory request without one.
+**Note:** the portal lives under `/app/`. A request to `/app` (no trailing slash) is redirected to
+`/app/` by `CustomerPortalRedirect`, so both work.
 
 ## Routes
 

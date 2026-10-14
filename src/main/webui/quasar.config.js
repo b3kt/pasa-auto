@@ -141,7 +141,19 @@ export default defineConfig((ctx) => {
     devServer: {
       port: 5173,
       // https: true,
-      open: false // opens browser window automatically
+      open: false, // opens browser window automatically
+
+      // The customer portal (src/main/appui) runs on its own dev server (5174); proxy /app so the
+      // whole dev flow is reachable through the single Quarkus origin (http://localhost:8080/app/),
+      // matching how the built bundle is served from dist/spa/app in production. Both dev servers
+      // are started together by scripts/dev-all.mjs (see quarkus.quinoa.package-manager-command.dev).
+      proxy: {
+        '/app': {
+          target: 'http://localhost:5174',
+          ws: true,
+          changeOrigin: true
+        }
+      }
     },
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework

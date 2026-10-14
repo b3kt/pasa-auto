@@ -69,6 +69,9 @@ public class AuthResource {
     @Inject
     com.github.b3kt.application.properties.GoogleAuthProperties googleAuthProperties;
 
+    @Inject
+    com.github.b3kt.application.properties.CustomerPortalProperties customerPortalProperties;
+
     @Context
     HttpServerRequest request;
 
@@ -131,7 +134,8 @@ public class AuthResource {
     @PermitAll
     public Response config() {
         return Response.ok(ApiResponse.success(java.util.Map.of(
-                "googleLoginEnabled", googleAuthProperties.enabled()))).build();
+                "googleLoginEnabled", googleAuthProperties.enabled(),
+                "customerPortalEnabled", customerPortalProperties.enabled()))).build();
     }
 
     @POST

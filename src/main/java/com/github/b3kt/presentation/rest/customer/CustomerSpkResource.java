@@ -2,6 +2,7 @@ package com.github.b3kt.presentation.rest.customer;
 
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.customer.CustomerSpkDto;
+import com.github.b3kt.application.dto.pazaauto.PenjualanPrintDto;
 import com.github.b3kt.application.service.customer.CustomerSpkQueryService;
 import com.github.b3kt.infrastructure.security.CustomerPrincipal;
 import com.github.b3kt.infrastructure.security.Roles;
@@ -42,6 +43,17 @@ public class CustomerSpkResource {
         CustomerSpkDto dto = spkQueryService.getForPelanggan(id, principal.pelangganIdOrThrow());
         if (dto == null) {
             // Deliberately the same response whether the id doesn't exist or belongs to someone else.
+            return Response.status(Response.Status.NOT_FOUND).entity(ApiResponse.error("Not found")).build();
+        }
+        return Response.ok(ApiResponse.success(dto)).build();
+    }
+
+    @GET
+    @Path("/{id}/invoice")
+    public Response invoice(@PathParam("id") Long id) {
+        PenjualanPrintDto dto = spkQueryService.getInvoiceForPelanggan(id, principal.pelangganIdOrThrow());
+        if (dto == null) {
+            // No penjualan raised yet, or the work order isn't the caller's - both look identical.
             return Response.status(Response.Status.NOT_FOUND).entity(ApiResponse.error("Not found")).build();
         }
         return Response.ok(ApiResponse.success(dto)).build();

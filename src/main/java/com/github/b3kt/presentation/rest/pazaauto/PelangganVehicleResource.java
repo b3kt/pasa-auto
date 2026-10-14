@@ -24,6 +24,12 @@ public class PelangganVehicleResource {
     KendaraanOwnershipService ownershipService;
 
     @GET
+    @Path("/options")
+    public Response listOptions() {
+        return Response.ok(ApiResponse.success(ownershipService.listVehicleOptions())).build();
+    }
+
+    @GET
     @Path("/by-nopol/{nopol}")
     public Response getByNopol(@PathParam("nopol") String nopol) {
         VehicleHistoryDto dto = ownershipService.getVehicleHistory(nopol);

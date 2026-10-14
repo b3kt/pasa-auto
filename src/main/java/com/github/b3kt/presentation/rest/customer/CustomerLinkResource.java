@@ -37,7 +37,7 @@ public class CustomerLinkResource {
         LinkSearchResultDto result = linkService.searchByNopol(nopol);
         if (result == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("No vehicle found with that plate number"))
+                    .entity(ApiResponse.error("No unlinked vehicle record found with that plate number"))
                     .build();
         }
         return Response.ok(ApiResponse.success(result)).build();
@@ -51,10 +51,11 @@ public class CustomerLinkResource {
     }
 
     @POST
-    public Response requestLink(@Valid LinkAccountRequest request) {
+    @Path("/skip")
+    public Response skip() {
         try {
-            LinkRequestResultDto result = linkService.requestLink(principal.customerAccountId(), request);
-            return Response.ok(ApiResponse.success(result.getMessage(), result)).build();
+            linkService.skipLinking(principal.customerAccountId());
+            return Response.ok(ApiResponse.success("Account left unlinked; placeholder customer record created if needed", null)).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error(e.getMessage()))

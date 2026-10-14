@@ -14,12 +14,12 @@ public class TbPelangganRepository implements PanacheRepositoryBase<TbPelangganE
 
     @CacheResult(cacheName = "pelanggan-cache")
     public Optional<TbPelangganEntity> findByIdCached(Long id) {
-        return findByIdOptional(id);
+        return find("id = ?1 and deletedAt is null", id).firstResultOptional();
     }
 
     @CacheResult(cacheName = "pelanggan-cache")
     public TbPelangganEntity findByNopolCached(String nopol) {
-        return find("nopol", nopol).firstResult();
+        return find("nopol = ?1 and deletedAt is null", nopol).firstResult();
     }
 
     @CacheInvalidate(cacheName = "pelanggan-cache")
@@ -39,18 +39,18 @@ public class TbPelangganRepository implements PanacheRepositoryBase<TbPelangganE
             return List.of();
         }
         if (normalizedPhone != null && normalizedEmail != null) {
-            return find("(telepon = ?1 or noHp = ?1 or noTelepon = ?1) or lower(email) = ?2",
+            return find("deletedAt is null and ((telepon = ?1 or noHp = ?1 or noTelepon = ?1) or lower(email) = ?2)",
                     normalizedPhone, normalizedEmail.toLowerCase()).list();
         }
         if (normalizedPhone != null) {
-            return find("telepon = ?1 or noHp = ?1 or noTelepon = ?1", normalizedPhone).list();
+            return find("deletedAt is null and (telepon = ?1 or noHp = ?1 or noTelepon = ?1)", normalizedPhone).list();
         }
-        return find("lower(email) = ?1", normalizedEmail.toLowerCase()).list();
+        return find("deletedAt is null and lower(email) = ?1", normalizedEmail.toLowerCase()).list();
     }
 
     @CacheResult(cacheName = "pelanggan-cache")
     public List<TbPelangganEntity> findAllCached() {
-        return listAll();
+        return find("deletedAt is null").list();
     }
 }
 

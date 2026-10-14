@@ -15,6 +15,7 @@ public class CustomerBookingAdminDto {
     private Long pelangganId;
     private String namaPelanggan;
     private String nopol;
+    private Integer km;
     private LocalDateTime requestedDateTime;
     private String serviceType;
     private String description;

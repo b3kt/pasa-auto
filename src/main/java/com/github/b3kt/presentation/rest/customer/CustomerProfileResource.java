@@ -2,19 +2,27 @@ package com.github.b3kt.presentation.rest.customer;
 
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.customer.UpdateProfileRequest;
+import com.github.b3kt.application.dto.pazaauto.KendaraanAttachRequest;
 import com.github.b3kt.application.service.customer.CustomerProfileService;
 import com.github.b3kt.application.service.pazaauto.KendaraanOwnershipService;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKendaraanRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbMerkKendaraanRepository;
 import com.github.b3kt.infrastructure.security.CustomerPrincipal;
 import com.github.b3kt.infrastructure.security.Roles;
+import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
@@ -33,6 +41,12 @@ public class CustomerProfileResource {
     KendaraanOwnershipService kendaraanOwnershipService;
 
     @Inject
+    TbMerkKendaraanRepository merkRepository;
+
+    @Inject
+    TbKendaraanRepository kendaraanRepository;
+
+    @Inject
     CustomerPrincipal principal;
 
     @GET
@@ -45,7 +59,7 @@ public class CustomerProfileResource {
     @Path("/profile")
     public Response updateProfile(@Valid UpdateProfileRequest request) {
         try {
-            profileService.updateProfile(principal.pelangganIdOrThrow(), request);
+            profileService.updateProfile(principal.customerAccountId(), request);
             return Response.ok(ApiResponse.success("Profile updated",
                     profileService.getProfile(principal.customerAccountId()))).build();
         } catch (IllegalArgumentException e) {
@@ -58,5 +72,73 @@ public class CustomerProfileResource {
     public Response vehicles() {
         return Response.ok(ApiResponse.success(
                 kendaraanOwnershipService.listCurrentVehiclesByPelanggan(principal.pelangganIdOrThrow()))).build();
+    }
+
+    @POST
+    @Path("/vehicles")
+    public Response registerVehicle(@Valid KendaraanAttachRequest request) {
+        try {
+            kendaraanOwnershipService.attach(
+                    principal.pelangganIdOrThrow(),
+                    request.getNopol(),
+                    request.getMerk(),
+                    request.getJenis(),
+                    request.getTanggalMulai(),
+                    request.getKeterangan()
+            );
+            return Response.ok(ApiResponse.success("Vehicle registered successfully",
+                    kendaraanOwnershipService.listCurrentVehiclesByPelanggan(principal.pelangganIdOrThrow()))).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
+        }
+    }
+
+    @PUT
+    @Path("/vehicles/{nopol}")
+    public Response updateVehicle(@PathParam("nopol") String nopol, @Valid KendaraanAttachRequest request) {
+        try {
+            kendaraanOwnershipService.updateVehicle(
+                    principal.pelangganIdOrThrow(),
+                    nopol,
+                    request.getMerk(),
+                    request.getJenis()
+            );
+            return Response.ok(ApiResponse.success("Vehicle updated successfully",
+                    kendaraanOwnershipService.listCurrentVehiclesByPelanggan(principal.pelangganIdOrThrow()))).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
+        }
+    }
+
+    @DELETE
+    @Path("/vehicles/{nopol}")
+    public Response deleteVehicle(@PathParam("nopol") String nopol) {
+        try {
+            kendaraanOwnershipService.deleteVehicle(
+                    principal.pelangganIdOrThrow(),
+                    nopol
+            );
+            return Response.ok(ApiResponse.success("Vehicle deleted successfully",
+                    kendaraanOwnershipService.listCurrentVehiclesByPelanggan(principal.pelangganIdOrThrow()))).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
+        }
+    }
+
+    @GET
+    @Path("/vehicles/merk")
+    @PermitAll
+    public Response listMerk() {
+        return Response.ok(ApiResponse.success(merkRepository.findAllNama())).build();
+    }
+
+    @GET
+    @Path("/vehicles/jenis")
+    @PermitAll
+    public Response listJenis(@QueryParam("merk") String merk) {
+        if (merk != null && !merk.isBlank()) {
+            return Response.ok(ApiResponse.success(kendaraanRepository.findDistinctJenisByMerk(merk))).build();
+        }
+        return Response.ok(ApiResponse.success(kendaraanRepository.findDistinctJenis())).build();
     }
 }

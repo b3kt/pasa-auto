@@ -9,6 +9,7 @@ import com.github.b3kt.infrastructure.persistence.entity.customer.CustomerAccoun
 import com.github.b3kt.infrastructure.persistence.entity.customer.CustomerBookingEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbSpkEntity;
+import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
 import com.github.b3kt.infrastructure.persistence.repository.customer.CustomerAccountRepository;
 import com.github.b3kt.infrastructure.persistence.repository.customer.CustomerBookingRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganRepository;
@@ -67,6 +68,7 @@ class CustomerBookingServiceTest {
     private CreateBookingRequest createRequest() {
         CreateBookingRequest request = new CreateBookingRequest();
         request.setNopol("B1234XYZ");
+        request.setKm(54000);
         request.setRequestedDateTime(LocalDateTime.of(2026, 1, 2, 10, 0));
         request.setServiceType("Servis Ringan");
         request.setDescription("ganti oli");
@@ -83,11 +85,13 @@ class CustomerBookingServiceTest {
             CustomerBookingDto dto = service.create(5L, 7L, createRequest());
 
             assertEquals("B1234XYZ", dto.getNopol());
+            assertEquals(54000, dto.getKm());
             assertEquals("REQUESTED", dto.getStatus());
             ArgumentCaptor<CustomerBookingEntity> captor = ArgumentCaptor.forClass(CustomerBookingEntity.class);
             verify(bookingRepository).persist(captor.capture());
             assertEquals(5L, captor.getValue().getCustomerAccountId());
             assertEquals(7L, captor.getValue().getPelangganId());
+            assertEquals(54000, captor.getValue().getKm());
             assertEquals(CustomerBookingEntity.STATUS_REQUESTED, captor.getValue().getStatus());
         }
     }
@@ -292,7 +296,48 @@ class CustomerBookingServiceTest {
             assertEquals("B1234XYZ", spk.getNopol());
             assertEquals(120000, spk.getKm());
             assertEquals(3L, spk.getMekanikId());
-            assertEquals("MENUNGGU", spk.getStatusSpk());
+            assertEquals("OPEN", spk.getStatusSpk());
+
+            // The work order number is prefixed with the booking's requested service date (2026-01-02)
+            ArgumentCaptor<String> prefixCaptor = ArgumentCaptor.forClass(String.class);
+            verify(spkService).generateNextSpkNumber(prefixCaptor.capture());
+            assertEquals("20260102", prefixCaptor.getValue());
+        }
+
+        @Test
+        @DisplayName("stores the multiselect mechanic assignments with their tugas")
+        void mechanicList() {
+            CustomerBookingEntity booking = booking(1L, 7L, "CONFIRMED");
+            when(bookingRepository.findByIdOptional(1L)).thenReturn(Optional.of(booking));
+            TbPelangganEntity p = new TbPelangganEntity();
+            p.setNamaPelanggan("Budi Santoso");
+            when(pelangganRepository.findByIdCached(7L)).thenReturn(Optional.of(p));
+            when(spkService.generateNextSpkNumber(anyString())).thenReturn("SPK2026010201");
+            when(spkService.create(any(TbSpkEntity.class))).thenAnswer(invocation -> {
+                TbSpkEntity spk = invocation.getArgument(0);
+                spk.setId(99L);
+                return spk;
+            });
+
+            ConvertToSpkRequest request = convertRequest();
+            SpkMekanik utama = new SpkMekanik();
+            utama.setId(3L);
+            utama.setTugas("Utama");
+            SpkMekanik pembantu = new SpkMekanik();
+            pembantu.setId(4L);
+            pembantu.setTugas("Pembantu");
+            request.setMekanikList(List.of(utama, pembantu));
+
+            service.convertToSpk(1L, request);
+
+            ArgumentCaptor<TbSpkEntity> captor = ArgumentCaptor.forClass(TbSpkEntity.class);
+            verify(spkService).create(captor.capture());
+            List<SpkMekanik> assigned = captor.getValue().getMekanikList();
+            assertEquals(2, assigned.size());
+            assertEquals(3L, assigned.get(0).getId());
+            assertEquals("Utama", assigned.get(0).getTugas());
+            assertEquals(4L, assigned.get(1).getId());
+            assertEquals("Pembantu", assigned.get(1).getTugas());
         }
 
         @Test

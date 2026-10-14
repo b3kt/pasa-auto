@@ -21,7 +21,9 @@ import java.util.List;
 /**
  * A customer's service-booking request, and the staff-side review/conversion into a real
  * {@code tb_spk} work order. Booking is deliberately not a work order itself - it carries none of
- * the staff-only fields (mechanic, km) a work order needs.
+ * the staff-only fields (mechanic assignment, intake odometer reading) until conversion. The
+ * odometer the customer reports at booking time is stored on the booking but staff re-read it at
+ * intake when building the work order.
  */
 @ApplicationScoped
 public class CustomerBookingService {
@@ -46,6 +48,7 @@ public class CustomerBookingService {
         booking.setCustomerAccountId(customerAccountId);
         booking.setPelangganId(pelangganId);
         booking.setNopol(request.getNopol());
+        booking.setKm(request.getKm());
         booking.setRequestedDateTime(request.getRequestedDateTime());
         booking.setServiceType(request.getServiceType());
         booking.setDescription(request.getDescription());
@@ -106,8 +109,14 @@ public class CustomerBookingService {
         String namaPelanggan = pelangganRepository.findByIdCached(booking.getPelangganId())
                 .map(p -> p.getNamaPelanggan()).orElse(null);
 
+        // Number the work order by the booking's requested service date, so it lands in that day's
+        // SPK series rather than the day staff happen to convert it.
+        LocalDateTime bookingDate = booking.getRequestedDateTime() != null
+                ? booking.getRequestedDateTime()
+                : LocalDateTime.now();
+
         TbSpkEntity spk = new TbSpkEntity();
-        spk.setNoSpk(spkService.generateNextSpkNumber(SPK_DATE_PREFIX.format(LocalDateTime.now())));
+        spk.setNoSpk(spkService.generateNextSpkNumber(SPK_DATE_PREFIX.format(bookingDate)));
         spk.setTanggalJamSpk(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         spk.setPelangganId(booking.getPelangganId());
         spk.setNamaPelanggan(namaPelanggan);
@@ -116,8 +125,8 @@ public class CustomerBookingService {
         spk.setKmSaatIni(request.getKm());
         spk.setMekanikId(request.getMekanikId());
         spk.setNamaKaryawan(request.getNamaKaryawan());
-        spk.setMekanikList(List.of());
-        spk.setStatusSpk("MENUNGGU");
+        spk.setMekanikList(request.getMekanikList() != null ? request.getMekanikList() : List.of());
+        spk.setStatusSpk("OPEN");
         spk.setStatus("AKTIF");
         spk.setKeterangan(booking.getDescription());
 
@@ -150,6 +159,7 @@ public class CustomerBookingService {
         CustomerBookingDto dto = new CustomerBookingDto();
         dto.setId(b.getId());
         dto.setNopol(b.getNopol());
+        dto.setKm(b.getKm());
         dto.setRequestedDateTime(b.getRequestedDateTime());
         dto.setServiceType(b.getServiceType());
         dto.setDescription(b.getDescription());
@@ -166,6 +176,7 @@ public class CustomerBookingService {
         dto.setCustomerAccountId(b.getCustomerAccountId());
         dto.setPelangganId(b.getPelangganId());
         dto.setNopol(b.getNopol());
+        dto.setKm(b.getKm());
         dto.setRequestedDateTime(b.getRequestedDateTime());
         dto.setServiceType(b.getServiceType());
         dto.setDescription(b.getDescription());

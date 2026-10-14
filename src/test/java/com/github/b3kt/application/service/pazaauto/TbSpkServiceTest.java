@@ -75,7 +75,7 @@ class TbSpkServiceTest {
         testSpkEntity.setId(1L);
         testSpkEntity.setNoSpk("SPK202401001");
         testSpkEntity.setNopol("B1234XYZ");
-        testSpkEntity.setStatusSpk("MENUNGGU");
+        testSpkEntity.setStatusSpk("OPEN");
     }
 
     @Nested
@@ -165,7 +165,7 @@ class TbSpkServiceTest {
 
             TbSpkEntity result = spkService.update(1L, testSpkEntity);
 
-            assertEquals("MENUNGGU", result.getStatusSpk());
+            assertEquals("OPEN", result.getStatusSpk());
         }
     }
 
@@ -386,7 +386,7 @@ class TbSpkServiceTest {
 
             assertNotNull(result);
             assertEquals("BATAL", result.getStatusSpk());
-            assertTrue(result.getKeterangan().contains("lastStatus: MENUNGGU"));
+            assertTrue(result.getKeterangan().contains("lastStatus: OPEN"));
         }
 
         @Test

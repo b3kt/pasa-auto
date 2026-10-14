@@ -87,9 +87,9 @@ export const useAuthStore = defineStore('auth', {
           this.applySession(data)
           return { success: true }
         }
-        return { success: false, error: response.data?.message || 'Registration failed' }
+        return { success: false, error: response.data?.message || null }
       } catch (error) {
-        return { success: false, error: error.response?.data?.error || 'Registration failed' }
+        return { success: false, error: error.response?.data?.error || null }
       }
     },
 
@@ -102,9 +102,9 @@ export const useAuthStore = defineStore('auth', {
           this.applySession(data)
           return { success: true }
         }
-        return { success: false, error: response.data?.message || 'Login failed' }
+        return { success: false, error: response.data?.message || null }
       } catch (error) {
-        return { success: false, error: error.response?.data?.error || 'Login failed' }
+        return { success: false, error: error.response?.data?.error || null }
       }
     },
 

@@ -12,8 +12,9 @@ import path from 'node:path'
 const webuiDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const appuiDir = path.resolve(webuiDir, '../appui')
 
-// Must match build -> distDir in both quasar.config.js files
-const sourceDir = path.join(appuiDir, 'dist/spa')
+// The customer portal is built in PWA mode (quasar build -m pwa), so its bundle lands in dist/pwa.
+// The staff app is still an SPA build, so it lands in dist/spa.
+const sourceDir = path.join(appuiDir, 'dist/pwa')
 const targetDir = path.join(webuiDir, 'dist/spa/app')
 
 try {

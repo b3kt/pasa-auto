@@ -1153,7 +1153,7 @@ class TbPenjualanServiceTest {
 
             TbSpkEntity spkEntity = new TbSpkEntity();
             spkEntity.setNoSpk("SPK001");
-            spkEntity.setStatusSpk("MENUNGGU");
+            spkEntity.setStatusSpk("OPEN");
             spkEntity.setFinishedAt(java.time.LocalDateTime.now());
 
             PanacheQuery<TbSpkEntity> spkFindQuery = mock(PanacheQuery.class);

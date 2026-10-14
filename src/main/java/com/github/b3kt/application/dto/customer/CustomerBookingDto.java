@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public class CustomerBookingDto {
     private Long id;
     private String nopol;
+    private Integer km;
     private LocalDateTime requestedDateTime;
     private String serviceType;
     private String description;

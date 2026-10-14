@@ -39,7 +39,7 @@
                  :loading="googleRedirecting" @click="signInWithGoogle" />
         </template>
 
-        <div class="text-center text-caption q-mt-md">
+        <div v-if="customerPortalEnabled" class="text-center text-caption q-mt-md">
           <!-- The customer portal is a separate app (src/main/appui) served at /app/, so this is a
                plain link: the staff router knows nothing about those routes -->
           <a href="/app/">Are you a customer? Sign in here</a>
@@ -69,6 +69,7 @@ const loading = ref(false)
 const error = ref('')
 const googleEnabled = ref(false)
 const googleRedirecting = ref(false)
+const customerPortalEnabled = ref(false)
 
 // Outcomes the Google callback redirects back with
 const GOOGLE_MESSAGES = {
@@ -130,6 +131,7 @@ const loadGoogleConfig = async () => {
   try {
     const response = await api.get('/api/auth/config')
     googleEnabled.value = response.data?.data?.googleLoginEnabled === true
+    customerPortalEnabled.value = response.data?.data?.customerPortalEnabled === true
   } catch (err) {
     // The button simply stays hidden if the backend can't be asked
     console.warn('Failed to read auth config:', err)

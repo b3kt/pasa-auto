@@ -2,17 +2,17 @@
   <q-page class="flex flex-center">
     <q-card class="login-card" style="min-width: 350px">
       <q-card-section>
-        <div class="text-h6 text-center q-mb-lg">Sign in</div>
+        <div class="text-h6 text-center q-mb-lg">{{ $t('pages.login.title') }}</div>
         <q-form @submit="onSubmit" class="q-gutter-md">
-          <q-input v-model="email" label="Email" type="email" :rules="[val => !!val || 'Email is required']"
-            outlined dense hide-bottom-space>
+          <q-input v-model="email" :label="$t('pages.login.email')" type="email"
+            :rules="[val => !!val || $t('pages.login.emailRequired')]" outlined dense hide-bottom-space>
             <template v-slot:prepend>
               <q-icon name="mail" />
             </template>
           </q-input>
 
-          <q-input v-model="password" label="Password" type="password" :rules="[val => !!val || 'Password is required']"
-            outlined dense hide-bottom-space>
+          <q-input v-model="password" :label="$t('pages.login.password')" type="password"
+            :rules="[val => !!val || $t('pages.login.passwordRequired')]" outlined dense hide-bottom-space>
             <template v-slot:prepend>
               <q-icon name="lock" />
             </template>
@@ -21,10 +21,11 @@
           <q-banner v-if="error" class="bg-negative text-white" dense>{{ error }}</q-banner>
 
           <div>
-            <q-btn label="Sign in" type="submit" color="primary" class="full-width" :loading="loading" />
+            <q-btn :label="$t('pages.login.submit')" type="submit" color="primary" class="full-width"
+              :loading="loading" />
           </div>
           <div class="text-center">
-            <router-link to="/register">Don't have an account? Register</router-link>
+            <router-link to="/register">{{ $t('pages.login.noAccount') }}</router-link>
           </div>
         </q-form>
       </q-card-section>
@@ -36,11 +37,13 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from 'stores/auth-store'
 
 const router = useRouter()
 const route = useRoute()
 const $q = useQuasar()
+const { t } = useI18n()
 const authStore = useAuthStore()
 
 const email = ref('')
@@ -50,7 +53,7 @@ const error = ref('')
 
 onMounted(() => {
   if (route.query.expired === 'true') {
-    error.value = 'Your session has expired. Please sign in again.'
+    error.value = t('pages.login.sessionExpired')
   }
 })
 
@@ -60,10 +63,10 @@ const onSubmit = async () => {
   try {
     const result = await authStore.login(email.value, password.value)
     if (result.success) {
-      $q.notify({ type: 'positive', message: 'Signed in successfully' })
+      $q.notify({ type: 'positive', message: t('pages.login.success') })
       router.push('/')
     } else {
-      error.value = result.error || 'Login failed'
+      error.value = result.error || t('pages.login.failed')
     }
   } finally {
     loading.value = false

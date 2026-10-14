@@ -77,6 +77,17 @@ src/main/appui/          # Quasar/Vue.js customer portal (served at /app/)
 Both frontends are built by the staff app: `npm run build:all` in `src/main/webui` also builds
 `src/main/appui` and copies its bundle to `dist/spa/app`, which is what `./mvnw package` ships.
 
+In dev, `./mvnw quarkus:dev` runs `npm run dev:all` (`src/main/webui/scripts/dev-all.mjs`), which
+starts the staff dev server (5173) and the customer portal dev server (5174) together. The staff
+dev server proxies `/app` to the portal, so both apps are reachable through the single backend
+origin - staff at `/`, portal at `/app/`.
+
+Quinoa's dev proxy only forwards an HTML response for `/` and `*.html` paths, which would 404 the
+nested portal at `/app/`, so `application.properties` sets `quarkus.quinoa.dev-server.direct-forwarding=true`
+to forward everything. Since that also forwards Quarkus-owned paths, they are excluded with
+`quarkus.quinoa.ignored-path-prefixes=/api,/q,/swagger-ui,/openapi` - otherwise the SPA's
+`index.html` would shadow the API and the dev UI.
+
 ---
 
 ## Configuration

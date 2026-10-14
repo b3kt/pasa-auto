@@ -10,6 +10,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import java.time.LocalDateTime;
+
 @ApplicationScoped
 public class CustomerProfileService {
 
@@ -37,14 +39,18 @@ public class CustomerProfileService {
     }
 
     /**
-     * Updates the caller's own tb_pelanggan record. {@code pelangganId} must come from the
-     * verified JWT claim ({@link com.github.b3kt.infrastructure.security.CustomerPrincipal}),
-     * never a client-supplied value, so a customer can only ever edit their own linked record.
+     * Updates the caller's own tb_pelanggan record, resolving it from the verified account id
+     * ({@link com.github.b3kt.infrastructure.security.CustomerPrincipal}) rather than a
+     * client-supplied value, so a customer can only ever edit their own record. When the account
+     * has no linked record yet - or its record was removed - a new one is created and linked, so a
+     * freshly registered customer can complete their profile without a separate linking step.
      */
     @Transactional
-    public void updateProfile(Long pelangganId, UpdateProfileRequest request) {
-        TbPelangganEntity p = pelangganRepository.findByIdOptional(pelangganId)
-                .orElseThrow(() -> new IllegalArgumentException("Customer record not found"));
+    public void updateProfile(Long customerAccountId, UpdateProfileRequest request) {
+        CustomerAccountEntity account = accountRepository.findByIdOptional(customerAccountId)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+
+        TbPelangganEntity p = resolveOrCreatePelanggan(account);
 
         p.setNamaPelanggan(request.getNamaPelanggan().trim());
         p.setAlamat(request.getAlamat());
@@ -59,6 +65,25 @@ public class CustomerProfileService {
         // findByIdCached is used throughout (vehicle lookups, link search, bookings) - without this,
         // those would keep serving the pre-update row for as long as the cache entry lives.
         pelangganRepository.invalidatePelangganCache();
+    }
+
+    private TbPelangganEntity resolveOrCreatePelanggan(CustomerAccountEntity account) {
+        if (account.getPelangganId() != null) {
+            var existing = pelangganRepository.findByIdOptional(account.getPelangganId());
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+        }
+        TbPelangganEntity pelanggan = PelangganPlaceholder.create();
+        pelanggan.setNamaPelanggan(account.getFullName());
+        if (account.getPhone() != null) {
+            pelanggan.setNoHp(account.getPhone());
+            pelanggan.setTelepon(account.getPhone());
+        }
+        pelangganRepository.persist(pelanggan);
+        account.setPelangganId(pelanggan.getId());
+        account.setLinkedAt(LocalDateTime.now());
+        return pelanggan;
     }
 
     private void fillPelanggan(CustomerProfileDto dto, TbPelangganEntity p) {

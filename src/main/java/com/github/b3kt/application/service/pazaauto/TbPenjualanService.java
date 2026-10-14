@@ -71,6 +71,14 @@ public class TbPenjualanService extends AbstractCrudService<TbPenjualanEntity, S
         return entity;
     }
 
+    /** The penjualan raised against an SPK, or {@code null} when the work order has none yet. */
+    public TbPenjualanEntity findByNoSpk(String noSpk) {
+        if (noSpk == null) {
+            return null;
+        }
+        return repository.find("noSpk", noSpk).firstResult();
+    }
+
     public PenjualanPrintDto buildPrintDto(String noPenjualan) {
         TbPenjualanEntity penjualan = repository.find("noPenjualan", noPenjualan).firstResult();
         if (penjualan == null) return null;

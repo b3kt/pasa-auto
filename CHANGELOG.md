@@ -71,6 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Added**: Project-level CHANGELOG.md for tracking all changes
 
 ### Changed
+- **Changed**: The "Convert to SPK" dialog on the staff booking queue now assigns mechanics with the same multi-select picker used on the SPK page (chips, one Utama/Pembantu task per mechanic) instead of a free-text mechanic name, and the resulting work order stores that `mekanik_list`
+- **Added**: Customers must now enter the vehicle odometer reading (KM) when requesting a service booking. The value is stored on the booking, shown in the staff review queue, and used to pre-fill the intake KM when converting to a work order
 - **Fixed**: Replaced hardcoded security salt `1234567890` with environment variable `APP_SECURITY_SALT`
 - **Fixed**: Removed hardcoded SSL certificate paths `/etc/letsencrypt/live/pasa-auto.web.id/` 
 - **Fixed**: Updated JWT configuration to require explicit environment variables instead of classpath defaults
@@ -80,6 +82,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced environment variable handling for better deployment flexibility
 - Established comprehensive documentation structure following ACTION_RULES.md requirements
 - Implemented automated testing infrastructure with coverage enforcement
+
+### Fixed
+- **Fixed**: Opening an SPK that was converted from a booking on the Penjualan (sales) page cleared the customer panel and flagged it as a new customer, because the nopol lookup only searched the deprecated `tb_pelanggan.nopol` and the booking's plate lives in `tb_pelanggan_kendaraan`. The page now resolves the customer, address and vehicle from the current-ownership vehicle list (same source as the SPK page), falling back to `by-nopol` before treating the plate as unknown
+- **Fixed**: A booking converted to an SPK was created with status `MENUNGGU`, which the staff SPK list never queries, so the converted work order never appeared on the SPK page. Conversions now create an `OPEN` SPK (the documented `OPEN -> PROSES -> SELESAI` lifecycle), the customer portal labels `OPEN` as "Waiting"/"Menunggu", and migration `V28` normalizes existing `MENUNGGU` rows
+- **Changed**: Converting a booking to an SPK now numbers the work order from the booking's requested service date (`requested_date_time`) instead of the conversion date, so it joins that day's SPK series
 
 ### Notes
 - Database migration files contain legitimate `admin` user references (created_by/updated_by fields)

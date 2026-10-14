@@ -12,6 +12,7 @@
     "test": "echo \"No test specified\" && exit 0",
     "start": "quasar dev -p 5173",
     "dev": "quasar dev ",
+    "dev:all": "node scripts/dev-all.mjs",
     "build": "quasar build",
     "build:appui": "npm ci --prefix ../appui --include=dev && npm run build --prefix ../appui && node scripts/deploy-appui.mjs",
     "build:all": "npm run build && npm run build:appui",

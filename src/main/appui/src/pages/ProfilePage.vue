@@ -1,31 +1,31 @@
 <template>
   <q-page padding>
-    <div class="text-h6 q-mb-md">My profile</div>
+    <div class="text-h6 q-mb-md">{{ $t('pages.profile.title') }}</div>
 
     <q-banner v-if="notLinked" class="bg-warning text-white q-mb-md">
-      Link your account first to manage your customer profile.
+      {{ $t('pages.profile.linkFirst') }}
       <template v-slot:action>
-        <q-btn flat color="white" label="Link now" to="/link-account" />
+        <q-btn flat color="white" :label="$t('common.linkNow')" to="/link-account" />
       </template>
     </q-banner>
 
     <q-card v-else style="max-width: 500px">
       <q-card-section>
         <q-form @submit="save" class="q-gutter-sm">
-          <q-input v-model="form.namaPelanggan" label="Full name" outlined dense
-            :rules="[val => !!val || 'Name is required']" />
-          <q-input v-model="form.alamat" label="Address" type="textarea" outlined dense />
-          <q-input v-model="form.kota" label="City" outlined dense />
-          <q-input v-model="form.kodePos" label="Postal code" outlined dense />
-          <q-input v-model="form.telepon" label="Phone" outlined dense />
-          <q-input v-model="form.noHp" label="Mobile" outlined dense />
-          <q-input v-model="form.noTelepon" label="Other phone" outlined dense />
-          <q-input v-model="form.email" label="Email" type="email" outlined dense />
-          <q-input v-model="form.contactPerson" label="Contact person" outlined dense />
+          <q-input v-model="form.namaPelanggan" :label="$t('pages.profile.fullName')" outlined dense
+            :rules="[val => !!val || $t('pages.profile.nameRequired')]" />
+          <q-input v-model="form.alamat" :label="$t('pages.profile.address')" type="textarea" outlined dense />
+          <q-input v-model="form.kota" :label="$t('pages.profile.city')" outlined dense />
+          <q-input v-model="form.kodePos" :label="$t('pages.profile.postalCode')" outlined dense />
+          <q-input v-model="form.telepon" :label="$t('pages.profile.phone')" outlined dense />
+          <q-input v-model="form.noHp" :label="$t('pages.profile.mobile')" outlined dense />
+          <q-input v-model="form.noTelepon" :label="$t('pages.profile.otherPhone')" outlined dense />
+          <q-input v-model="form.email" :label="$t('pages.profile.email')" type="email" outlined dense />
+          <q-input v-model="form.contactPerson" :label="$t('pages.profile.contactPerson')" outlined dense />
 
           <q-banner v-if="error" class="bg-negative text-white" dense>{{ error }}</q-banner>
 
-          <q-btn label="Save changes" type="submit" color="primary" :loading="saving" />
+          <q-btn :label="$t('common.save')" type="submit" color="primary" :loading="saving" />
         </q-form>
       </q-card-section>
     </q-card>
@@ -35,9 +35,13 @@
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import { api } from 'boot/axios'
+import { useAuthStore } from 'stores/auth-store'
 
 const $q = useQuasar()
+const { t } = useI18n()
+const authStore = useAuthStore()
 const notLinked = ref(false)
 const saving = ref(false)
 const error = ref('')
@@ -79,10 +83,17 @@ async function save() {
   saving.value = true
   try {
     const response = await api.put('/api/customer/profile', { ...form })
-    applyToForm(response.data?.data || {})
-    $q.notify({ type: 'positive', message: 'Profile updated' })
+    const data = response.data?.data || {}
+    applyToForm(data)
+    if (data.linked) {
+      // Saving may have created and linked a pelanggan record server-side; re-mint the access
+      // token so it carries the pelangganId claim the rest of the portal scopes its queries by.
+      authStore.markLinked()
+      await authStore.refreshAccessToken()
+    }
+    $q.notify({ type: 'positive', message: t('pages.profile.updated') })
   } catch (e) {
-    error.value = e.response?.data?.error || 'Could not update profile'
+    error.value = e.response?.data?.error || t('pages.profile.updateFailed')
   } finally {
     saving.value = false
   }

@@ -3,8 +3,9 @@ import axios from 'axios'
 import { useAuthStore } from 'stores/auth-store'
 
 // The customer portal talks exclusively to /api/customer/* (see boot/axios.js in ../../webui for the
-// staff app's interceptor set). There is no lookup cache, no offline queue and no service worker
-// here: a customer only ever reads their own record, so every request goes to the network.
+// staff app's interceptor set). There is no lookup cache and no offline queue here: a customer only
+// ever reads their own record, so every request goes to the network. The PWA service worker
+// precaches only the app shell and never /api responses (see src-pwa/custom-service-worker.js).
 
 const getBaseURL = () => {
   if (process.env.DEV) {

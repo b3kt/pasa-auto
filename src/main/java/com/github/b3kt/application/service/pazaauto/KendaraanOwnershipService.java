@@ -3,6 +3,7 @@ package com.github.b3kt.application.service.pazaauto;
 import com.github.b3kt.application.dto.pazaauto.KendaraanOwnershipDto;
 import com.github.b3kt.application.dto.pazaauto.PelangganHistoryDto;
 import com.github.b3kt.application.dto.pazaauto.VehicleHistoryDto;
+import com.github.b3kt.application.dto.pazaauto.VehicleOptionDto;
 import com.github.b3kt.application.dto.pazaauto.VehicleTransactionDto;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKendaraanEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbMerkKendaraanEntity;
@@ -46,6 +47,9 @@ public class KendaraanOwnershipService {
 
     @Inject
     TbSpkRepository spkRepository;
+
+    @Inject
+    TbPelangganKendaraanRepository tbPelangganKendaraanRepository;
 
     @Inject
     TbPenjualanRepository penjualanRepository;
@@ -101,7 +105,82 @@ public class KendaraanOwnershipService {
         TbPelangganKendaraanEntity opened = ownershipRepository.openOwnership(
                 pelangganId, master.getId(), nopol,
                 tanggalMulai != null ? tanggalMulai : LocalDate.now(), keterangan);
+        kendaraanRepository.invalidateKendaraanCache();
         return toDto(opened);
+    }
+
+    @Transactional
+    public void updateVehicle(Long pelangganId, String nopol, String merk, String jenis) {
+        if (nopol == null || nopol.isBlank()) {
+            throw new IllegalArgumentException("nopol is required");
+        }
+        TbPelangganKendaraanEntity ownership = ownershipRepository.findCurrentByNopol(nopol)
+                .orElseThrow(() -> new IllegalArgumentException("Vehicle not found: " + nopol));
+
+        if (!Objects.equals(ownership.getPelangganId(), pelangganId)) {
+            throw new IllegalArgumentException("Vehicle does not belong to this customer");
+        }
+
+        if ((merk != null && !merk.isBlank()) || (jenis != null && !jenis.isBlank())) {
+            TbKendaraanEntity master = findOrCreateMaster(merk, jenis);
+            ownership.setKendaraanId(master.getId());
+            ownershipRepository.getEntityManager().merge(ownership);
+            kendaraanRepository.invalidateKendaraanCache();
+        }
+    }
+
+    @Transactional
+    public void deleteVehicle(Long pelangganId, String nopol) {
+        if (nopol == null || nopol.isBlank()) {
+            throw new IllegalArgumentException("nopol is required");
+        }
+        TbPelangganKendaraanEntity ownership = ownershipRepository.findCurrentByNopol(nopol)
+                .orElseThrow(() -> new IllegalArgumentException("Vehicle not found: " + nopol));
+
+        if (!Objects.equals(ownership.getPelangganId(), pelangganId)) {
+            throw new IllegalArgumentException("Vehicle does not belong to this customer");
+        }
+
+        ownership.setDeletedAt(java.time.LocalDateTime.now());
+        ownershipRepository.getEntityManager().merge(ownership);
+
+        TbPelangganEntity pelanggan = pelangganRepository.findByIdCached(pelangganId)
+                .orElseThrow(() -> new IllegalArgumentException("Pelanggan not found: " + pelangganId));
+
+        List<TbPelangganKendaraanEntity> remainingVehicles = ownershipRepository.findByPelangganId(pelangganId)
+                .stream()
+                .filter(v -> v.getDeletedAt() == null)
+                .toList();
+
+        if (remainingVehicles.isEmpty()) {
+            pelanggan.setDeletedAt(java.time.LocalDateTime.now());
+            pelangganRepository.getEntityManager().merge(pelanggan);
+            pelangganRepository.invalidatePelangganCache();
+        }
+    }
+
+    /**
+     * Vehicles for the SPK nopol dropdown: every nopol with its current owner,
+     * plus legacy pelanggan that have no ownership row yet.
+     */
+    public List<VehicleOptionDto> listVehicleOptions() {
+        List<VehicleOptionDto> options = new ArrayList<>();
+        for (Object[] row : ownershipRepository.findVehicleOptions()) {
+            options.add(VehicleOptionDto.builder()
+                    .nopol((String) row[0])
+                    .namaPelanggan((String) row[1])
+                    .alamat((String) row[2])
+                    .merk((String) row[3])
+                    .jenis((String) row[4])
+                    .pelangganId(toLong(row[5]))
+                    .kendaraanId(toLong(row[6]))
+                    .build());
+        }
+        return options;
+    }
+
+    private Long toLong(Object value) {
+        return value == null ? null : ((Number) value).longValue();
     }
 
     public VehicleHistoryDto getVehicleHistory(String nopol) {

@@ -107,7 +107,7 @@ class EntityPojoTest {
         e.setId(1L);
         e.setNoSpk("SPK001");
         e.setNopol("B1234XYZ");
-        e.setStatusSpk("MENUNGGU");
+        e.setStatusSpk("OPEN");
         assertEquals("SPK001", e.getNoSpk());
     }
 

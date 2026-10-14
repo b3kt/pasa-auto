@@ -60,9 +60,9 @@
                            :disable="(formData.statusSpk === 'SELESAI' || formData.statusSpk === 'BATAL')"/>
 
                   <q-select v-model="formData.nopol" :label="$t('pages.spkPage.nopolLabel')" outlined dense
-                            :options="filteredPelangganOptions"
+                            :options="filteredVehicleOptions"
                             :option-label="constructNopolOptions" option-value="nopol" emit-value map-options use-input
-                            input-debounce="300" @filter="filterPelanggan" @update:model-value="onNopolChange"
+                            input-debounce="300" @filter="filterVehicleOptions" @update:model-value="onNopolChange"
                             :loading="loadingPelanggan" :disable="(formData.statusSpk !== 'OPEN')"
                             new-value-mode="add-unique"
                             :rules="[val => !!val || $t('pages.spkPage.nopolRequired')]"
@@ -330,8 +330,8 @@ const filterStatus = ref(loadFilterFromStorage())
 const filterToday = ref(false)
 const { dateRange, dateRangeText, clearDateRange } = useDateFilter('spk')
 const rows = ref([])
-const pelangganOptions = ref([])
-const filteredPelangganOptions = ref([])
+const vehicleOptions = ref([])
+const filteredVehicleOptions = ref([])
 const karyawanOptions = ref([])
 const selectedMekaniks = ref([])  // Array of { id, namaKaryawan, tugas }
 const showDialog = ref(false)
@@ -442,6 +442,7 @@ const formData = ref({
   mekanikId: null,
   mekanikList: null,
   // Customer info fields
+  pelangganId: null,
   namaPelanggan: '',
   alamat: '',
   merk: '',
@@ -598,13 +599,13 @@ const fetchNextSpkNumber = async () => {
   }
 }
 
-const fetchPelanggan = async () => {
+const fetchVehicleOptions = async () => {
   loadingPelanggan.value = true
   try {
-    const response = await api.get('/api/pazaauto/pelanggan')
+    const response = await api.get('/api/pazaauto/vehicles/options')
     if (response.data.success) {
-      pelangganOptions.value = response.data.data || []
-      filteredPelangganOptions.value = pelangganOptions.value
+      vehicleOptions.value = response.data.data || []
+      filteredVehicleOptions.value = vehicleOptions.value
     }
   } catch (error) {
     $q.notify({
@@ -617,66 +618,92 @@ const fetchPelanggan = async () => {
   }
 }
 
-const filterPelanggan = (val, update) => {
+const filterVehicleOptions = (val, update) => {
   update(() => {
     if (val === '') {
-      filteredPelangganOptions.value = pelangganOptions.value
+      filteredVehicleOptions.value = vehicleOptions.value
     } else {
       const needle = val.toLowerCase()
-      filteredPelangganOptions.value = pelangganOptions.value.filter(
-        v => v.nopol.toLowerCase().indexOf(needle) > -1 ||
-             (v.namaPelanggan && v.namaPelanggan.toLowerCase().indexOf(needle) > -1)
+      filteredVehicleOptions.value = vehicleOptions.value.filter(
+        v => (v.nopol && v.nopol.toLowerCase().indexOf(needle) > -1) ||
+             (v.namaPelanggan && v.namaPelanggan.toLowerCase().indexOf(needle) > -1) ||
+             (v.merk && v.merk.toLowerCase().indexOf(needle) > -1) ||
+             (v.jenis && v.jenis.toLowerCase().indexOf(needle) > -1)
       )
     }
   })
 }
 
-const onNopolChange = async (nopol) => {
+// The customer fields below belong to whichever nopol is currently selected, so they must be
+// dropped the moment the plate changes - otherwise the old customer's id/name would be saved
+// against the new vehicle's SPK.
+const resetPelangganData = () => {
+  formData.value.pelangganId = null
+  formData.value.namaPelanggan = ''
+  formData.value.alamat = ''
+  formData.value.merk = ''
+  formData.value.jenis = ''
+}
+
+const onNopolChange = async (nopol, { reset = true } = {}) => {
+  // Only a user-initiated plate change should drop the current customer link; loading an
+  // existing SPK keeps whatever pelangganId was persisted with it.
+  if (reset) {
+    resetPelangganData()
+  }
+
   if (!nopol) {
-    // Clear customer info fields
-    formData.value.namaPelanggan = ''
-    formData.value.alamat = ''
-    formData.value.merk = ''
-    formData.value.jenis = ''
     isNewCustomer.value = false
     return
   }
 
-  // Check if nopol exists in pelangganOptions
-  const existingPelanggan = pelangganOptions.value.find(p => p.nopol === nopol)
+  // Vehicle list comes from tb_pelanggan_kendaraan (current ownership)
+  const existingVehicle = vehicleOptions.value.find(v => v.nopol === nopol)
 
-  if (existingPelanggan) {
-    // Existing customer - fetch details and make fields readonly
+  if (existingVehicle) {
+    // Existing vehicle - fill from the ownership row and make fields readonly
     isNewCustomer.value = false
-    try {
-      const response = await api.get(`/api/pazaauto/pelanggan/by-nopol/${nopol}`)
-      if (response.data.success && response.data.data) {
-        const pelanggan = response.data.data
-        formData.value.namaPelanggan = pelanggan.namaPelanggan || ''
-        formData.value.alamat = pelanggan.alamat || ''
-        formData.value.merk = pelanggan.merk || ''
-        formData.value.jenis = pelanggan.jenis || ''
-      }
-    } catch (error) {
-      $q.notify({
-        type: 'negative',
-        message: t('pages.spkPage.fetchPelangganDetailsFailed'),
-        caption: error.response?.data?.message || error.message
-      })
+    if (reset) {
+      formData.value.pelangganId = existingVehicle.pelangganId ?? null
     }
-  } else {
-    // New customer - clear fields and make them editable
-    isNewCustomer.value = true
-    formData.value.namaPelanggan = ''
-    formData.value.alamat = ''
-    formData.value.merk = ''
-    formData.value.jenis = ''
+    formData.value.namaPelanggan = existingVehicle.namaPelanggan || ''
+    formData.value.alamat = existingVehicle.alamat || ''
+    formData.value.merk = existingVehicle.merk || ''
+    formData.value.jenis = existingVehicle.jenis || ''
+    return
+  }
+
+  // Not in the vehicle list (options not loaded yet, or nopol missing from the
+  // ownership table) - ask the backend before treating it as a new customer.
+  try {
+    const response = await api.get(`/api/pazaauto/pelanggan/by-nopol/${nopol}`)
+    if (response.data.success && response.data.data) {
+      const pelanggan = response.data.data
+      isNewCustomer.value = false
+      if (reset) {
+        formData.value.pelangganId = pelanggan.id ?? null
+      }
+      formData.value.namaPelanggan = pelanggan.namaPelanggan || ''
+      formData.value.alamat = pelanggan.alamat || ''
+      formData.value.merk = pelanggan.merk || ''
+      formData.value.jenis = pelanggan.jenis || ''
+      return
+    }
+  } catch (error) {
     $q.notify({
-      type: 'info',
-      message: t('pages.spkPage.newCustomerInfo'),
-      timeout: 2000
+      type: 'negative',
+      message: t('pages.spkPage.fetchPelangganDetailsFailed'),
+      caption: error.response?.data?.message || error.message
     })
   }
+
+  // New customer - fields stay cleared (reset above) and become editable
+  isNewCustomer.value = true
+  $q.notify({
+    type: 'info',
+    message: t('pages.spkPage.newCustomerInfo'),
+    timeout: 2000
+  })
 }
 
 const fetchKaryawan = async () => {
@@ -805,7 +832,7 @@ const openEditDialog = async (row) => {
     formData.value = {...row, details: []}
   }
 
-  onNopolChange(formData.value.nopol)
+  onNopolChange(formData.value.nopol, { reset: false })
 
   // Parse mekanikList (now it's an array from backend)
   if (formData.value.mekanikList && Array.isArray(formData.value.mekanikList)) {
@@ -852,6 +879,7 @@ const resetForm = () => {
     csId: null,
     mekanikId: null,
     // Customer info fields
+    pelangganId: null,
     namaPelanggan: '',
     alamat: '',
     merk: '',
@@ -995,12 +1023,14 @@ const saveSpk = async () => {
         if (!pelangganResponse.data.success) {
           throw new Error('Failed to create pelanggan')
         }
+        // Link the SPK to the customer that was just created for this vehicle
+        formData.value.pelangganId = pelangganResponse.data.data?.id ?? null
         $q.notify({
           type: 'positive',
           message: t('pages.spkPage.customerCreatedSuccess')
         })
-        // Refresh pelanggan list
-        await fetchPelanggan()
+        // Refresh vehicle options
+        await fetchVehicleOptions()
         isNewCustomer.value = false
       } catch (error) {
         $q.notify({
@@ -1507,16 +1537,16 @@ const handleUpdateMasterBarang = async (payload) => {
 // Handle pelanggan data update from inline editing
 const handlePelangganUpdated = async (payload) => {
   try {
-    // Refresh pelanggan list to update dropdown options
-    await fetchPelanggan()
+    // Refresh vehicle options to update dropdown options
+    await fetchVehicleOptions()
 
     // Refresh SPK table to show updated pelanggan data
     await fetchSpk()
 
     // Update the current SPK form data with the new values
-    const updatedPelanggan = pelangganOptions.value.find(p => p.nopol === payload.nopol)
-    if (updatedPelanggan) {
-      // Update the form data with the latest values from pelanggan options
+    const updatedVehicle = vehicleOptions.value.find(v => v.nopol === payload.nopol)
+    if (updatedVehicle) {
+      // Update the form data with the latest values from vehicle options
       if (payload.field === 'namaPelanggan') {
         formData.value.namaPelanggan = payload.value
       } else if (payload.field === 'alamat') {
@@ -1527,10 +1557,10 @@ const handlePelangganUpdated = async (payload) => {
         formData.value.jenis = payload.value
       }
 
-      // Also update the filtered pelanggan options to reflect changes
-      const filteredIndex = filteredPelangganOptions.value.findIndex(p => p.nopol === payload.nopol)
+      // Also update the filtered vehicle options to reflect changes
+      const filteredIndex = filteredVehicleOptions.value.findIndex(v => v.nopol === payload.nopol)
       if (filteredIndex !== -1) {
-        filteredPelangganOptions.value[filteredIndex] = {...updatedPelanggan}
+        filteredVehicleOptions.value[filteredIndex] = {...updatedVehicle}
       }
     }
 
@@ -1590,7 +1620,7 @@ watch(filterToday, (newVal) => {
 // Lifecycle
 onMounted(() => {
   fetchSpk()
-  fetchPelanggan()
+  fetchVehicleOptions()
   fetchKaryawan()
   openCreateDialog()
 })

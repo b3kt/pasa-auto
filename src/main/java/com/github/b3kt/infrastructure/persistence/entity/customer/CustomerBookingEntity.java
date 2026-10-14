@@ -35,6 +35,10 @@ public class CustomerBookingEntity extends BaseEntity {
     @Column(name = "nopol", length = 10)
     private String nopol;
 
+    /** Odometer reading the customer reported when booking; the actual intake reading is taken at conversion. */
+    @Column(name = "km")
+    private Integer km;
+
     @Column(name = "requested_date_time", nullable = false)
     private LocalDateTime requestedDateTime;
 
