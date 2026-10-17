@@ -1,5 +1,6 @@
 package com.github.b3kt.application.dto.customer;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -8,6 +9,7 @@ import java.time.LocalDateTime;
 /** Admin-facing view of a {@code CustomerBookingEntity}, enriched with the customer's name for the review queue. */
 @Getter
 @Setter
+@RegisterForReflection
 public class CustomerBookingAdminDto {
     private Long id;
     private Long customerAccountId;

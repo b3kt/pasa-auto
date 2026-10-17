@@ -1,11 +1,13 @@
 package com.github.b3kt.application.dto;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
  * DTO for creating a role.
  */
+@RegisterForReflection
 public class CreateRoleRequest {
     
     @NotBlank(message = "Role name harus diisi")

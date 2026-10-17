@@ -1,5 +1,6 @@
 package com.github.b3kt.application.dto.customer;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import com.github.b3kt.infrastructure.persistence.entity.subentity.SpkMekanik;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,6 +14,7 @@ import java.util.List;
  */
 @Getter
 @Setter
+@RegisterForReflection
 public class ConvertToSpkRequest {
     private Long mekanikId;
     private String namaKaryawan;

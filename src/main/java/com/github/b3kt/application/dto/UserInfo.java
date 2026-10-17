@@ -1,5 +1,6 @@
 package com.github.b3kt.application.dto;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 import lombok.AllArgsConstructor;
@@ -15,6 +16,7 @@ import java.util.Set;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@RegisterForReflection
 public class UserInfo {
     @Schema(description = "Username", example = "admin")
     private String username;

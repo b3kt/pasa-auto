@@ -1,10 +1,12 @@
 package com.github.b3kt.application.dto.customer;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
+@RegisterForReflection
 public class CustomerProfileDto {
     private Long accountId;
     private String email;

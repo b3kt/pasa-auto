@@ -1,11 +1,13 @@
 package com.github.b3kt.application.dto.customer;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
+@RegisterForReflection
 public class LinkAccountRequest {
 
     @NotNull(message = "pelangganId harus diisi")

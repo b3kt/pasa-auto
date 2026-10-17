@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Fixed**: Native image: customer portal login/register/refresh (and other endpoints that return a raw `Response`) failed with `No serializer found for class ... CustomerLoginResponse`; the auth and customer DTOs, and `SpkMekanik`, are now registered for reflection
 - **Added**: Configurable request/response payload logging: `LOG_PAYLOAD_ENABLED` (off by default) logs JSON bodies at INFO independent of the log level, `LOG_PAYLOAD_MAX_LENGTH` sets the truncation length (`0` = whole body) and `LOG_PAYLOAD_EXCLUDED_PATHS` adds path prefixes whose bodies are never logged. Response bodies are now logged as the JSON the client receives instead of the entity's `toString()`. `APP_LOG_LEVEL=DEBUG` no longer logs bodies, and with payload logging off, request bodies are no longer buffered
 
 ### Security

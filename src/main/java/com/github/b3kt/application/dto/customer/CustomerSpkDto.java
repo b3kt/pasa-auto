@@ -1,5 +1,6 @@
 package com.github.b3kt.application.dto.customer;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,6 +11,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
+@RegisterForReflection
 public class CustomerSpkDto {
     private Long id;
     private String noSpk;

@@ -1,5 +1,6 @@
 package com.github.b3kt.application.dto.customer;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
@@ -10,6 +11,7 @@ import lombok.Setter;
 /** Registration with an email, a phone number, or both; each one becomes a login identifier. */
 @Getter
 @Setter
+@RegisterForReflection
 public class CustomerRegisterRequest {
 
     @Email(message = "Email tidak valid")

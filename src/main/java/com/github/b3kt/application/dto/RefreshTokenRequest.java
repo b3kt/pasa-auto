@@ -1,5 +1,6 @@
 package com.github.b3kt.application.dto;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.validation.constraints.NotBlank;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
@@ -7,6 +8,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
  * DTO for refresh token request.
  */
 @Schema(description = "Request to refresh access token using refresh token")
+@RegisterForReflection
 public class RefreshTokenRequest {
     
     @NotBlank(message = "Refresh token harus diisi")

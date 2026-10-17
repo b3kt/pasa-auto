@@ -1,11 +1,13 @@
 package com.github.b3kt.application.dto;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
  * DTO for creating a permission.
  */
+@RegisterForReflection
 public class CreatePermissionRequest {
     
     @NotBlank(message = "Permission name harus diisi")

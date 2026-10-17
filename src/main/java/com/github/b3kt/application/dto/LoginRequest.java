@@ -1,5 +1,6 @@
 package com.github.b3kt.application.dto;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.validation.constraints.NotBlank;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
@@ -7,6 +8,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
  * DTO for login request.
  */
 @Schema(description = "Login request with username and password")
+@RegisterForReflection
 public class LoginRequest {
     
     @NotBlank(message = "Username harus diisi")

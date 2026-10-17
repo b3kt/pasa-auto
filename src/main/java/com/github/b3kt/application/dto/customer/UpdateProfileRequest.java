@@ -1,5 +1,6 @@
 package com.github.b3kt.application.dto.customer;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
@@ -7,6 +8,7 @@ import lombok.Setter;
 /** Editable subset of tb_pelanggan fields a linked customer may update themselves. */
 @Getter
 @Setter
+@RegisterForReflection
 public class UpdateProfileRequest {
 
     @NotBlank(message = "Name is required")

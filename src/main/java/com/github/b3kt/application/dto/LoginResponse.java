@@ -1,11 +1,13 @@
 package com.github.b3kt.application.dto;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 /**
  * DTO for login response containing JWT token and user info.
  */
 @Schema(description = "Login response containing JWT token and user information")
+@RegisterForReflection
 public class LoginResponse {
     @Schema(description = "JWT authentication token", example = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...")
     private String token;

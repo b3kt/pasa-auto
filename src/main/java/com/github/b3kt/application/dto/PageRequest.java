@@ -1,11 +1,13 @@
 package com.github.b3kt.application.dto;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 
 /**
  * DTO for pagination request parameters.
  */
+@RegisterForReflection
 public class PageRequest {
     @Min(value = 1, message = "Page must be at least 1")
     private int page = 1;

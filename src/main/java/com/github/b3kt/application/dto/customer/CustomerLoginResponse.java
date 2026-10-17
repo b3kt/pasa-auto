@@ -1,11 +1,13 @@
 package com.github.b3kt.application.dto.customer;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.Getter;
 import lombok.Setter;
 
 /** Mirrors {@code LoginResponse}'s shape for the staff auth flow. */
 @Getter
 @Setter
+@RegisterForReflection
 public class CustomerLoginResponse {
 
     private String token;
