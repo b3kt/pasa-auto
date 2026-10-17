@@ -1,5 +1,7 @@
 package com.github.b3kt.infrastructure.interceptor;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.b3kt.application.properties.PayloadLoggingProperties;
 import com.github.b3kt.infrastructure.logging.TracingLogger;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -26,6 +29,10 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -51,6 +58,12 @@ class LoggingInterceptorTest {
     @Mock
     ContainerResponseContext responseContext;
 
+    @Mock
+    PayloadLoggingProperties payloadLogging;
+
+    @Spy
+    ObjectMapper objectMapper = new ObjectMapper();
+
     @InjectMocks
     LoggingInterceptor interceptor;
 
@@ -75,6 +88,78 @@ class LoggingInterceptorTest {
         lenient().when(uriInfo.getRequestUri()).thenReturn(URI.create("http://localhost/api/test"));
         lenient().when(requestContext.getMethod()).thenReturn("GET");
         lenient().when(tracingLogger.getTraceContext()).thenReturn("trace-123");
+        lenient().when(payloadLogging.enabled()).thenReturn(true);
+        lenient().when(payloadLogging.maxLength()).thenReturn(1000);
+        lenient().when(payloadLogging.excludedPaths()).thenReturn(Optional.empty());
+    }
+
+    @Test
+    @DisplayName("with payload logging off, bodies are neither read nor logged")
+    void testPayloadLoggingDisabled() throws IOException {
+        when(payloadLogging.enabled()).thenReturn(false);
+        when(requestContext.getMethod()).thenReturn("POST");
+        when(requestContext.getHeaderString("Content-Type")).thenReturn("application/json");
+        when(responseContext.getStatus()).thenReturn(200);
+
+        interceptor.filter(requestContext);
+        interceptor.filter(requestContext, responseContext);
+
+        verify(requestContext, never()).getEntityStream();
+        verify(responseContext, never()).getEntity();
+        verify(tracingLogger, never()).logRequest(anyString(), anyString(), any());
+        verify(tracingLogger, never()).logResponse(anyString(), anyString(), anyInt(), any());
+        verify(span, times(2)).end();
+    }
+
+    @Test
+    @DisplayName("configured excluded paths are omitted like auth paths")
+    void testExcludedPathsOmitted() throws IOException {
+        when(payloadLogging.excludedPaths()).thenReturn(Optional.of(List.of("/api/upload")));
+        when(uriInfo.getPath()).thenReturn("api/upload/foto");
+        when(requestContext.getMethod()).thenReturn("POST");
+        when(requestContext.getHeaderString("Content-Type")).thenReturn("application/json");
+        when(responseContext.getStatus()).thenReturn(200);
+
+        interceptor.filter(requestContext);
+        interceptor.filter(requestContext, responseContext);
+
+        verify(requestContext, never()).getEntityStream();
+        verify(responseContext, never()).getEntity();
+        verify(tracingLogger).logRequest(eq("POST"), eq("api/upload/foto"), eq("[omitted]"));
+        verify(tracingLogger).logResponse(eq("POST"), eq("api/upload/foto"), eq(200), eq("[omitted]"));
+    }
+
+    @Test
+    @DisplayName("max length is configurable, and zero logs the whole body")
+    void testConfigurableMaxLength() throws IOException {
+        String largeResponse = "x".repeat(1500);
+        when(responseContext.getEntity()).thenReturn(largeResponse);
+        when(responseContext.getMediaType()).thenReturn(MediaType.valueOf("application/json"));
+        when(responseContext.getStatus()).thenReturn(200);
+
+        when(payloadLogging.maxLength()).thenReturn(10);
+        interceptor.filter(requestContext, responseContext);
+        verify(tracingLogger).logResponse(eq("GET"), eq("/api/test"), eq(200), eq("xxxxxxxxxx... [truncated]"));
+
+        when(payloadLogging.maxLength()).thenReturn(0);
+        interceptor.filter(requestContext, responseContext);
+        verify(tracingLogger).logResponse(eq("GET"), eq("/api/test"), eq(200), eq(largeResponse));
+    }
+
+    @Test
+    @DisplayName("a response object is logged as its JSON, with credentials masked")
+    void testResponseFilter_serializesEntityAsJson() throws IOException {
+        Map<String, Object> entity = new LinkedHashMap<>();
+        entity.put("username", "budi");
+        entity.put("accessToken", "abc.def.ghi");
+        when(responseContext.getEntity()).thenReturn(entity);
+        when(responseContext.getMediaType()).thenReturn(MediaType.valueOf("application/json"));
+        when(responseContext.getStatus()).thenReturn(200);
+
+        interceptor.filter(requestContext, responseContext);
+
+        verify(tracingLogger).logResponse(eq("GET"), eq("/api/test"), eq(200),
+                eq("{\"username\":\"budi\",\"accessToken\":\"***\"}"));
     }
 
     @Test

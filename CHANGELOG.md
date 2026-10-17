@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Added**: Configurable request/response payload logging: `LOG_PAYLOAD_ENABLED` (off by default) logs JSON bodies at INFO independent of the log level, `LOG_PAYLOAD_MAX_LENGTH` sets the truncation length (`0` = whole body) and `LOG_PAYLOAD_EXCLUDED_PATHS` adds path prefixes whose bodies are never logged. Response bodies are now logged as the JSON the client receives instead of the entity's `toString()`. `APP_LOG_LEVEL=DEBUG` no longer logs bodies, and with payload logging off, request bodies are no longer buffered
+
 ### Security
 - **Fixed**: Upgraded Quarkus 3.36.3 -> 3.40.1, which clears all 29 Trivy findings on `pom.xml`, including the critical Netty `netty-handler` advisory. The platform BOM now manages Netty 4.1.138.Final, Jackson 2.21.7, the PostgreSQL driver 42.7.13 and OpenTelemetry 1.62.0. Quinoa moved 2.9.0 -> 2.9.2
 - **Fixed**: Upgraded Quasar 2.18.6 -> 2.35.0 and `@quasar/app-vite` 2.1.0 -> 2.6.2, clearing the critical and high Quasar advisories. axios 1.15.2 -> 1.20.0, Vue 3.5.22 -> 3.5.43 (server-renderer advisory), and transitive postcss, nanoid and source-map-js now resolve to fixed releases. Trivy reports zero findings and `npm audit --omit=dev` reports zero runtime vulnerabilities. The advisories `npm audit` still lists are all in the build toolchain (vite, rollup, the dev-server express stack, eslint tooling); clearing the `@quasar/app-vite` one needs the 3.x major, which requires Node >= 22.22 and `vue-router` 5, and `@intlify/unplugin-vue-i18n` has no stable fixed release yet

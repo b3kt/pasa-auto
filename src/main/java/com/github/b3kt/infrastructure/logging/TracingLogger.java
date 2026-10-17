@@ -8,13 +8,14 @@ import lombok.extern.slf4j.Slf4j;
 @ApplicationScoped
 public class TracingLogger {
 
+    /** INFO: only called when payload logging is switched on (app.logging.payload.enabled). */
     public void logRequest(String method, String path, Object requestBody) {
-        log.debug("[{}] REQUEST: {} {} - Body: {}",
+        log.info("[{}] REQUEST: {} {} - Body: {}",
                 getTraceContext(), method, path, requestBody);
     }
 
     public void logResponse(String method, String path, int statusCode, Object responseBody) {
-        log.debug("[{}] RESPONSE: {} {} - Status: {} - Body: {}",
+        log.info("[{}] RESPONSE: {} {} - Status: {} - Body: {}",
                 getTraceContext(), method, path, statusCode, responseBody);
     }
 

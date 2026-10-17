@@ -59,7 +59,10 @@ cp .env.example .env
 | `NOPOL_LOOKUP_MAX_PLATES_PER_ACCOUNT` | 20 | Distinct plates one customer account may look up in the portal per window |
 | `NOPOL_LOOKUP_MAX_PLATES_PER_IP` | 60 | Distinct plates one client IP may look up per window, across accounts |
 | `NOPOL_LOOKUP_WINDOW_MINUTES` | 15 | Plate-lookup window; counters reset when it ends |
-| `APP_LOG_LEVEL` | INFO | App log level; `DEBUG` logs request/response bodies (credentials masked, `/api/auth/*` omitted) |
+| `APP_LOG_LEVEL` | INFO | App log level |
+| `LOG_PAYLOAD_ENABLED` | false | Log JSON request/response bodies at INFO; see [Payload Logging](#payload-logging) |
+| `LOG_PAYLOAD_MAX_LENGTH` | 1000 | Characters kept per logged body; `0` logs the whole body |
+| `LOG_PAYLOAD_EXCLUDED_PATHS` | none | Extra comma-separated path prefixes whose bodies are never logged |
 | `DB_MAX_SIZE` | 10 | Max DB connections |
 | `DB_MIN_SIZE` | 2 | Min DB connections |
 | `SWAGGER_ENABLED` | false | Include Swagger UI (build-time; rebuild required) |
@@ -341,6 +344,32 @@ Failed logins are included, so expect one WARN per wrong password. To keep only 
 ```properties
 quarkus.log.category."com.github.b3kt.rest.errors".level=ERROR
 ```
+
+### Payload Logging
+
+Request and response bodies are not logged by default. To log them, for example while
+troubleshooting, set this in `.env` (or the systemd `EnvironmentFile`) and restart:
+
+```bash
+LOG_PAYLOAD_ENABLED=true
+LOG_PAYLOAD_MAX_LENGTH=4000          # 0 = whole body
+LOG_PAYLOAD_EXCLUDED_PATHS=/api/upload,/api/pazaauto/laporan
+```
+
+Each request then logs two extra INFO lines (logger `com.github.b3kt.infrastructure.logging.TracingLogger`) carrying
+the trace and span IDs:
+
+```
+INFO  [<traceId>,<spanId>] REQUEST: PUT /api/pazaauto/pelanggan/12 - Body: {"nama":"Budi",...}
+INFO  [<traceId>,<spanId>] RESPONSE: PUT /api/pazaauto/pelanggan/12 - Status: 200 - Body: {...}
+```
+
+- Only JSON bodies are logged. Request bodies are logged for `POST`, `PUT` and `PATCH`.
+- Fields whose name contains `password`, `token`, `secret`, `authorization`, `credential` or `salt` are
+  masked as `***`. `/api/auth/*` bodies are never logged (`[omitted]`), whatever the settings say.
+- Bodies still contain customer data (names, phone numbers, plates), and with `OTEL_SDK_DISABLED=false`
+  they are exported to Grafana Loki too. Turn payload logging off again when you are done.
+- This setting is independent of `APP_LOG_LEVEL`. Setting `APP_LOG_LEVEL=DEBUG` no longer logs bodies.
 
 ### OpenTelemetry (Grafana Cloud)
 
