@@ -8,6 +8,7 @@ import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
+import io.smallrye.config.SmallRyeConfig;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -19,6 +20,7 @@ import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.ConfigProvider;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -43,8 +45,12 @@ public class LoggingInterceptor implements ContainerRequestFilter, ContainerResp
     @Any
     Instance<Tracer> tracer;
 
-    @Inject
-    PayloadLoggingProperties payloadLogging;
+    /**
+     * Looked up on first use, not injected: RESTEasy creates providers during static init, before
+     * runtime config mappings exist (and in a native image static init runs at build time, which
+     * would freeze LOG_PAYLOAD_ENABLED into the binary).
+     */
+    volatile PayloadLoggingProperties payloadLogging;
 
     @Inject
     ObjectMapper objectMapper;
@@ -54,6 +60,16 @@ public class LoggingInterceptor implements ContainerRequestFilter, ContainerResp
 
     private Tracer getTracer() {
         return tracer.isResolvable() ? tracer.get() : NOOP_TRACER;
+    }
+
+    private PayloadLoggingProperties payloadLogging() {
+        PayloadLoggingProperties properties = payloadLogging;
+        if (properties == null) {
+            properties = ConfigProvider.getConfig().unwrap(SmallRyeConfig.class)
+                    .getConfigMapping(PayloadLoggingProperties.class);
+            payloadLogging = properties;
+        }
+        return properties;
     }
 
     private static final String REQUEST_BODY_PROPERTY = "request.body";
@@ -72,7 +88,7 @@ public class LoggingInterceptor implements ContainerRequestFilter, ContainerResp
         if (path.startsWith(stripLeadingSlash(AUTH_PATH))) {
             return true;
         }
-        List<String> excluded = payloadLogging.excludedPaths().orElse(List.of());
+        List<String> excluded = payloadLogging().excludedPaths().orElse(List.of());
         return excluded.stream()
                 .map(prefix -> stripLeadingSlash(prefix.trim()))
                 .anyMatch(prefix -> !prefix.isEmpty() && path.startsWith(prefix));
@@ -85,7 +101,7 @@ public class LoggingInterceptor implements ContainerRequestFilter, ContainerResp
     /** Mask credentials first, then truncate, so a cut-off value can't slip past the mask. */
     private String sanitize(String body) {
         String masked = LogSanitizer.mask(body);
-        int maxLength = payloadLogging.maxLength();
+        int maxLength = payloadLogging().maxLength();
         if (maxLength > 0 && masked.length() > maxLength) {
             return masked.substring(0, maxLength) + "... [truncated]";
         }
@@ -98,7 +114,7 @@ public class LoggingInterceptor implements ContainerRequestFilter, ContainerResp
         requestContext.setProperty(START_TIME_PROPERTY, System.currentTimeMillis());
         
         // Get request body for logging (only when enabled, for certain content types and methods)
-        boolean logPayload = payloadLogging.enabled();
+        boolean logPayload = payloadLogging().enabled();
         String requestBody = null;
         if (logPayload) {
             requestBody = getRequestBody(requestContext);
@@ -144,7 +160,7 @@ public class LoggingInterceptor implements ContainerRequestFilter, ContainerResp
         long duration = startTime != null ? System.currentTimeMillis() - startTime : 0;
         
         // Get response body for logging (only when enabled, for certain content types)
-        boolean logPayload = payloadLogging.enabled();
+        boolean logPayload = payloadLogging().enabled();
         String responseBody = null;
         if (logPayload) {
             responseBody = isOmittedPath(requestContext) ? OMITTED_BODY : getResponseBody(responseContext);

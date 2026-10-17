@@ -1,5 +1,6 @@
 package com.github.b3kt.application.properties;
 
+import io.quarkus.arc.Unremovable;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 
@@ -11,7 +12,11 @@ import java.util.Optional;
  *
  * <p>Off by default: payloads can hold customer data. Credentials are always masked and
  * {@code /api/auth/*} bodies are never logged, whatever these settings say.
+ *
+ * <p>{@link Unremovable}: {@code LoggingInterceptor} looks this up programmatically instead of injecting
+ * it, and Quarkus only registers mappings that are injected somewhere or marked unremovable.
  */
+@Unremovable
 @ConfigMapping(prefix = "app.logging.payload")
 public interface PayloadLoggingProperties {
 
