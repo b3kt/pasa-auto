@@ -121,7 +121,7 @@ class CustomerLinkServiceTest {
         void found() {
             TbPelangganEntity p = pelanggan();
             p.setNoHp(null);
-            p.setTelepon("0812345");
+            p.setNoTelepon("0812345");
             when(pelangganRepository.findByContact("0812345", "budi@test.com")).thenReturn(List.of(p));
 
             List<LinkSearchResultDto> results = service.searchByContact("0812345", "budi@test.com");

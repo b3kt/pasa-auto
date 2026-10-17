@@ -1,6 +1,5 @@
 package com.github.b3kt.application.service.pazaauto;
 
-import com.github.b3kt.application.dto.customer.NopolCheckDto;
 import com.github.b3kt.application.dto.pazaauto.KendaraanOwnershipDto;
 import com.github.b3kt.application.dto.pazaauto.PelangganHistoryDto;
 import com.github.b3kt.application.dto.pazaauto.VehicleHistoryDto;
@@ -326,59 +325,6 @@ class KendaraanOwnershipServiceTest {
         when(ownershipRepository.findCurrentByNopol("UNKNOWN")).thenReturn(Optional.empty());
 
         assertNull(service.getVehicleByNopol("UNKNOWN"));
-    }
-
-    @Test
-    @DisplayName("checkNopol returns AVAILABLE when plate is unowned")
-    void testCheckNopol_available() {
-        when(ownershipRepository.findCurrentByNopol("B9999ZZ")).thenReturn(Optional.empty());
-
-        NopolCheckDto result = service.checkNopol(1L, "B9999ZZ");
-
-        assertEquals(NopolCheckDto.AVAILABLE, result.getStatus());
-        assertTrue(result.isCanRegister());
-        assertEquals("B9999ZZ", result.getNopol());
-    }
-
-    @Test
-    @DisplayName("checkNopol normalizes the plate before checking")
-    void testCheckNopol_normalizesNopol() {
-        when(ownershipRepository.findCurrentByNopol("B1234CD")).thenReturn(Optional.of(activeRow));
-
-        NopolCheckDto result = service.checkNopol(1L, "b 1234 cd");
-
-        assertEquals(NopolCheckDto.OWNED_BY_SELF, result.getStatus());
-        assertEquals("B1234CD", result.getNopol());
-    }
-
-    @Test
-    @DisplayName("checkNopol returns OWNED_BY_SELF when current customer owns the plate")
-    void testCheckNopol_ownedBySelf() {
-        when(ownershipRepository.findCurrentByNopol("B1234CD")).thenReturn(Optional.of(activeRow));
-
-        NopolCheckDto result = service.checkNopol(1L, "B1234CD");
-
-        assertEquals(NopolCheckDto.OWNED_BY_SELF, result.getStatus());
-        assertFalse(result.isCanRegister());
-    }
-
-    @Test
-    @DisplayName("checkNopol returns OWNED_BY_OTHER when another customer owns the plate")
-    void testCheckNopol_ownedByOther() {
-        when(ownershipRepository.findCurrentByNopol("B1234CD")).thenReturn(Optional.of(activeRow));
-
-        NopolCheckDto result = service.checkNopol(2L, "B1234CD");
-
-        assertEquals(NopolCheckDto.OWNED_BY_OTHER, result.getStatus());
-        assertFalse(result.isCanRegister());
-    }
-
-    @Test
-    @DisplayName("checkNopol throws when plate is blank")
-    void testCheckNopol_blank() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> service.checkNopol(1L, "   "));
-        assertTrue(ex.getMessage().contains("nopol is required"));
     }
 
     @Test

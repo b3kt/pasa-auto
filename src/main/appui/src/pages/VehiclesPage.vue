@@ -75,9 +75,11 @@ import { reactive, ref, onMounted, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { api } from 'boot/axios'
+import { useAuthStore } from 'stores/auth-store'
 
 const $q = useQuasar()
 const { t } = useI18n()
+const authStore = useAuthStore()
 const vehicles = ref([])
 const notLinked = ref(false)
 const submitting = ref(false)
@@ -221,11 +223,17 @@ async function saveVehicle() {
       })
       $q.notify({ type: 'positive', message: t('pages.vehicles.updated') })
     } else {
-      await api.post('/api/customer/vehicles', {
+      const response = await api.post('/api/customer/vehicles', {
         nopol: form.nopol,
         merk: form.merk || null,
         jenis: form.jenis || null
       })
+      // Registering a plate can adopt an existing on-record customer, moving the account onto a
+      // different pelangganId. Re-mint the access token so later calls scope to the new record.
+      if (response.data?.data?.relinked) {
+        authStore.markLinked()
+        await authStore.refreshAccessToken()
+      }
       $q.notify({ type: 'positive', message: t('pages.vehicles.registered') })
     }
     showDialog.value = false

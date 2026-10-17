@@ -68,7 +68,7 @@
           <q-item-section>{{ link.label }}</q-item-section>
         </q-item>
 
-        <q-separator dark />
+        <q-separator />
 
         <q-item v-ripple clickable @click="handleLogout">
           <q-item-section avatar>

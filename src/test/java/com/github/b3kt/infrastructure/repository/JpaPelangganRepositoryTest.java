@@ -4,12 +4,12 @@ import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.domain.model.pazaauto.Pelanggan;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganKendaraanEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganKendaraanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganRepository;
 import io.quarkus.cache.Cache;
 import io.quarkus.cache.CacheName;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
-import io.quarkus.panache.common.Sort;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -81,14 +81,29 @@ class JpaPelangganRepositoryTest {
     @Test
     @DisplayName("findByNopol returns domain when found")
     void findByNopolFound() {
-        when(panacheRepository.find(eq("nopol"), any(Sort.class), eq("B1234XYZ"))).thenReturn(query);
-        when(query.firstResultOptional()).thenReturn(Optional.of(testEntity));
+        TbPelangganKendaraanEntity ownership = new TbPelangganKendaraanEntity();
+        ownership.setPelangganId(1L);
+        when(ownershipRepository.findCurrentByNopol("B1234XYZ")).thenReturn(Optional.of(ownership));
+        when(panacheRepository.findByIdOptional(1L)).thenReturn(Optional.of(testEntity));
         doAnswer(invocation -> {
             java.util.function.Function<String, Optional<Pelanggan>> loader = invocation.getArgument(1);
             return io.smallrye.mutiny.Uni.createFrom().item(loader.apply("B1234XYZ"));
         }).when(cache).get(eq("B1234XYZ"), any());
         Optional<Pelanggan> result = repository.findByNopol("B1234XYZ");
         assertTrue(result.isPresent());
+    }
+
+    @Test
+    @DisplayName("findByNopol does not fall back to the legacy tb_pelanggan.nopol column")
+    void findByNopolNoLegacyFallback() {
+        when(ownershipRepository.findCurrentByNopol("B1234XYZ")).thenReturn(Optional.empty());
+        doAnswer(invocation -> {
+            java.util.function.Function<String, Optional<Pelanggan>> loader = invocation.getArgument(1);
+            return io.smallrye.mutiny.Uni.createFrom().item(loader.apply("B1234XYZ"));
+        }).when(cache).get(eq("B1234XYZ"), any());
+
+        assertTrue(repository.findByNopol("B 1234 xyz").isEmpty());
+        verify(panacheRepository, never()).findByIdOptional(any());
     }
 
     @Test
@@ -119,13 +134,14 @@ class JpaPelangganRepositoryTest {
     void findPaginatedWithSearch() {
         PageRequest pr = new PageRequest(1, 10);
         pr.setSearch("Budi");
-        when(panacheRepository.find(anyString(), anyString())).thenReturn(query);
+        when(panacheRepository.find(anyString(), anyString(), anyString())).thenReturn(query);
         when(query.count()).thenReturn(1L);
         when(query.page(any())).thenReturn(query);
         when(query.list()).thenReturn(List.of(testEntity));
 
         PageResponse<Pelanggan> result = repository.findPaginated(pr);
         assertNotNull(result);
+        verify(panacheRepository).find(contains("TbPelangganKendaraanEntity"), eq("%budi%"), eq("%BUDI%"));
     }
 
     @Test

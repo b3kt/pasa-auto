@@ -9,7 +9,6 @@ import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEnt
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganKendaraanEntity;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganKendaraanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganRepository;
-import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -47,19 +46,11 @@ public class JpaPelangganRepository implements PelangganRepository {
     }
 
     private Optional<Pelanggan> resolveByNopol(String norm) {
-        // Authoritative source: the current owner recorded in the ownership junction.
-        Optional<Long> ownerId = ownershipRepository.findCurrentByNopol(norm)
-                .map(TbPelangganKendaraanEntity::getPelangganId);
-        if (ownerId.isPresent()) {
-            Optional<Pelanggan> owner = panacheRepository.findByIdOptional(ownerId.get())
-                    .map(TbPelangganEntity::toDomain);
-            if (owner.isPresent()) {
-                return owner;
-            }
-        }
-        // Legacy fallback: deprecated tb_pelanggan.nopol for customers with no ownership row.
-        return panacheRepository.find("nopol", Sort.descending("updatedAt"), norm)
-                .firstResultOptional()
+        // The ownership junction is the only source: since V35 every legacy plate has an ownership
+        // row and tb_pelanggan.nopol is derived from it, so there is nothing left to fall back to.
+        return ownershipRepository.findCurrentByNopol(norm)
+                .map(TbPelangganKendaraanEntity::getPelangganId)
+                .flatMap(panacheRepository::findByIdOptional)
                 .map(TbPelangganEntity::toDomain);
     }
 
@@ -112,9 +103,13 @@ public class JpaPelangganRepository implements PelangganRepository {
     public PageResponse<Pelanggan> findPaginated(PageRequest pageRequest) {
         PageResponse<TbPelangganEntity> entityPage;
         if (pageRequest.getSearch() != null && !pageRequest.getSearch().isEmpty()) {
+            // Plates are matched against the customer's current vehicles, in canonical form.
             entityPage = PageHelper.paginate(panacheRepository, pageRequest,
-                    "lower(namaPelanggan) like ?1 or lower(nopol) like ?1 or lower(email) like ?1",
-                    "%" + pageRequest.getSearch().toLowerCase() + "%");
+                    "lower(namaPelanggan) like ?1 or lower(email) like ?1 or id in ("
+                            + "select k.pelangganId from TbPelangganKendaraanEntity k "
+                            + "where k.nopol like ?2 and k.current = true and k.deletedAt is null)",
+                    "%" + pageRequest.getSearch().toLowerCase() + "%",
+                    "%" + NopolNormalizer.normalize(pageRequest.getSearch()) + "%");
         } else {
             entityPage = PageHelper.findAll(panacheRepository, pageRequest);
         }

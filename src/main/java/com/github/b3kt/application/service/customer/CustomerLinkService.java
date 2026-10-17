@@ -65,7 +65,7 @@ public class CustomerLinkService {
                     dto.setPelangganId(p.getId());
                     dto.setNopol(p.getNopol());
                     dto.setMaskedName(maskName(p.getNamaPelanggan()));
-                    dto.setMaskedPhone(maskContact(p.getNoHp() != null ? p.getNoHp() : p.getTelepon()));
+                    dto.setMaskedPhone(maskContact(p.getNoHp() != null ? p.getNoHp() : p.getNoTelepon()));
                     dto.setMaskedEmail(maskContact(p.getEmail()));
                     return dto;
                 })
@@ -187,13 +187,8 @@ public class CustomerLinkService {
         if (account.getPelangganId() != null) {
             return;
         }
-        // Create a placeholder pelanggan record based on customer account profile
-        TbPelangganEntity pelanggan = PelangganPlaceholder.create();
-        pelanggan.setNamaPelanggan(account.getFullName());
-        if (account.getPhone() != null) {
-            pelanggan.setNoHp(account.getPhone());
-            pelanggan.setTelepon(account.getPhone());
-        }
+        // Start the customer's own record from the account profile; vehicles are added later.
+        TbPelangganEntity pelanggan = PortalPelanggan.create(account);
         pelangganRepository.persist(pelanggan);
         account.setPelangganId(pelanggan.getId());
         account.setLinkedAt(LocalDateTime.now());

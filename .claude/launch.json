@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "quarkus-dev",
+      "runtimeExecutable": "./mvnw",
+      "runtimeArgs": ["quarkus:dev", "-Dquarkus.console.enabled=false"],
+      "port": 8080
+    },
+    {
       "name": "webui-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "src/main/webui", "run", "dev"],

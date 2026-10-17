@@ -21,10 +21,11 @@ public class PelangganDto {
     @Schema(example = "10", description = "Unique identifier")
     private Long id;
 
-    @NotBlank(message = "No Polisi is required")
+    // Optional: a customer may own no vehicle (ADR-0011). Vehicles are managed through the ownership
+    // endpoints; this field is the single-vehicle view of the primary vehicle.
     @Size(max = 10, message = "No Polisi must not exceed 10 characters")
-    //@Pattern(regexp = "^[A-Z]\\d{1,4}[A-Z]{1,3}$", message = "Invalid No Polisi format")
-    @Schema(example = "B1234XYZ", description = "Vehicle license plate (Indonesian format)")
+    @Schema(example = "B1234XYZ", deprecated = true,
+            description = "Plate of the customer's primary vehicle; manage vehicles via the ownership endpoints")
     private String nopol;
 
     @NotBlank(message = "Nama Pelanggan is required")
@@ -40,17 +41,16 @@ public class PelangganDto {
     @Schema(example = "Jane Smith", description = "Contact person name")
     private String contactPerson;
 
-    @Size(max = 15, message = "Telepon must not exceed 15 characters")
-    @Schema(example = "021-5551234", description = "Landline phone number")
+    @Size(max = 25, message = "Telepon must not exceed 25 characters")
+    @Schema(example = "0215551234", deprecated = true, description = "Alias of noTelepon")
     private String telepon;
 
-    @NotBlank(message = "Merk is required")
     @Size(max = 50, message = "Merk must not exceed 50 characters")
-    @Schema(example = "Toyota", description = "Vehicle brand")
+    @Schema(example = "Toyota", deprecated = true, description = "Brand of the customer's primary vehicle")
     private String merk;
 
     @Size(max = 50, message = "Jenis must not exceed 50 characters")
-    @Schema(example = "Avanza", description = "Vehicle model/type")
+    @Schema(example = "Avanza", deprecated = true, description = "Model/type of the customer's primary vehicle")
     private String jenis;
 
     @Email(message = "Invalid email format")
@@ -74,14 +74,18 @@ public class PelangganDto {
     @Schema(example = "Jakarta", description = "City")
     private String kota;
 
-    @Size(max = 20, message = "No HP must not exceed 20 characters")
-    @Schema(example = "0812-3456-7890", description = "Mobile phone number")
+    @Size(max = 25, message = "No HP must not exceed 25 characters")
+    @Schema(example = "081234567890", description = "Mobile phone number, stored as canonical national digits")
     private String noHp;
 
-    @Size(max = 20, message = "No Telepon must not exceed 20 characters")
-    @Schema(example = "021-5555678", description = "Alternative phone number")
+    @Size(max = 25, message = "No Telepon must not exceed 25 characters")
+    @Schema(example = "0215555678", description = "Landline phone number, stored as canonical national digits")
     private String noTelepon;
 
     @Schema(example = "2020-01-15", description = "Customer registration date")
     private LocalDate tanggalJoin;
+
+    @Schema(example = "STAFF", readOnly = true,
+            description = "Record origin: STAFF (workshop data entry) or PORTAL (customer self-registration)")
+    private String sumber;
 }

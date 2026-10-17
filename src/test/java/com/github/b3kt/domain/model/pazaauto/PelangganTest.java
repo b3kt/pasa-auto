@@ -55,17 +55,13 @@ class PelangganTest {
     }
 
     @Test
-    @DisplayName("setNopol rejects null")
-    void setNopolNull() {
+    @DisplayName("setNopol stores blank as null (customer without a vehicle)")
+    void setNopolBlankIsNull() {
         Pelanggan p = new Pelanggan();
-        assertThrows(IllegalArgumentException.class, () -> p.setNopol(null));
-    }
-
-    @Test
-    @DisplayName("setNopol rejects blank")
-    void setNopolBlank() {
-        Pelanggan p = new Pelanggan();
-        assertThrows(IllegalArgumentException.class, () -> p.setNopol("  "));
+        p.setNopol("  ");
+        assertNull(p.getNopol());
+        p.setNopol(null);
+        assertNull(p.getNopol());
     }
 
     @Test
@@ -83,16 +79,22 @@ class PelangganTest {
     }
 
     @Test
-    @DisplayName("setMerk rejects null")
-    void setMerkNull() {
+    @DisplayName("setMerk stores blank as null")
+    void setMerkBlankIsNull() {
         Pelanggan p = new Pelanggan();
-        assertThrows(IllegalArgumentException.class, () -> p.setMerk(null));
+        p.setMerk("  ");
+        assertNull(p.getMerk());
+        p.setMerk(null);
+        assertNull(p.getMerk());
     }
 
     @Test
-    @DisplayName("setMerk rejects blank")
-    void setMerkBlank() {
+    @DisplayName("sumber and mergedIntoId round-trip")
+    void provenanceFields() {
         Pelanggan p = new Pelanggan();
-        assertThrows(IllegalArgumentException.class, () -> p.setMerk("  "));
+        p.setSumber(Pelanggan.SUMBER_PORTAL);
+        p.setMergedIntoId(9L);
+        assertEquals("PORTAL", p.getSumber());
+        assertEquals(9L, p.getMergedIntoId());
     }
 }

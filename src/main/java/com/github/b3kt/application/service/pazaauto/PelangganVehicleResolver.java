@@ -1,6 +1,5 @@
 package com.github.b3kt.application.service.pazaauto;
 
-import com.github.b3kt.application.helper.NopolNormalizer;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbKendaraanEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganKendaraanEntity;
@@ -19,9 +18,10 @@ import java.util.Optional;
  * vehicle ownership junction ({@code tb_pelanggan_kendaraan}) while those columns are being
  * phased out.
  *
- * <p>When a customer owns several vehicles, the "primary" vehicle is the one whose plate matches
- * the legacy {@code tb_pelanggan.nopol} value; otherwise the most recently acquired current
- * vehicle wins. This keeps the single-vehicle API surface behaving as it did before.
+ * <p>When a customer owns several vehicles, the "primary" vehicle is the current one acquired most
+ * recently (latest {@code tanggal_mulai}, ties to the highest id). This is the single rule shared
+ * with the {@code trg_pk_sync_legacy_vehicle} trigger and the {@code v_pelanggan_legacy} view
+ * (ADR-0011), so every reader of the single-vehicle view agrees on the same plate.
  */
 @ApplicationScoped
 public class PelangganVehicleResolver {
@@ -32,12 +32,11 @@ public class PelangganVehicleResolver {
     @Inject
     TbKendaraanRepository kendaraanRepository;
 
-    private static final Comparator<TbPelangganKendaraanEntity> PRIMARY_ORDER = Comparator
-            .comparingInt((TbPelangganKendaraanEntity row) -> row.getTanggalMulai() == null ? 1 : 0)
-            .thenComparing(TbPelangganKendaraanEntity::getTanggalMulai,
+    static final Comparator<TbPelangganKendaraanEntity> PRIMARY_ORDER = Comparator
+            .comparing(TbPelangganKendaraanEntity::getTanggalMulai,
                     Comparator.nullsLast(Comparator.reverseOrder()))
             .thenComparing(TbPelangganKendaraanEntity::getId,
-                    Comparator.nullsLast(Comparator.naturalOrder()));
+                    Comparator.nullsLast(Comparator.reverseOrder()));
 
     /**
      * Convenience lookup used by enrichment paths: resolve the current owner id of a plate
@@ -50,8 +49,8 @@ public class PelangganVehicleResolver {
 
     /**
      * Overwrite the deprecated vehicle view fields of {@code pelanggan} with the values derived
-     * from its current ownership rows. No-op when the customer owns no vehicle, so placeholder
-     * customers keep their existing values.
+     * from its current ownership rows. No-op when the customer owns no vehicle (the derived columns
+     * are already NULL for such a customer).
      */
     public void enrichVehicleInfo(TbPelangganEntity pelanggan) {
         if (pelanggan == null || pelanggan.getId() == null) {
@@ -61,18 +60,9 @@ public class PelangganVehicleResolver {
         if (current.isEmpty()) {
             return;
         }
-        String legacy = NopolNormalizer.normalize(pelanggan.getNopol());
         current.stream()
-                .sorted(primaryComparator(legacy))
-                .findFirst()
+                .min(PRIMARY_ORDER)
                 .ifPresent(row -> applyVehicle(pelanggan, row));
-    }
-
-    private Comparator<TbPelangganKendaraanEntity> primaryComparator(String legacyNopol) {
-        return Comparator
-                .comparingInt((TbPelangganKendaraanEntity row) ->
-                        NopolNormalizer.normalize(row.getNopol()).equals(legacyNopol) ? 0 : 1)
-                .thenComparing(PRIMARY_ORDER);
     }
 
     private void applyVehicle(TbPelangganEntity pelanggan, TbPelangganKendaraanEntity row) {

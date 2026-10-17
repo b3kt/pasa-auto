@@ -276,13 +276,12 @@ class SpkEnrichmentServiceTest {
     @DisplayName("Should not resolve ownership from a blank nopol")
     void testEnrich_blankNopol() {
         TbSpkEntity target = createTarget(null, "   ");
-        // The legacy lookup still runs; it is the ownership lookup that must be skipped.
-        when(pelangganRepository.find(eq("nopol"), (Object) eq("   "))).thenReturn(pelangganQuery);
-        when(pelangganQuery.firstResult()).thenReturn(null);
 
         enrichmentService.enrich(target);
 
         assertNull(target.getNamaPelanggan());
+        assertNull(target.getPelangganId());
         verifyNoInteractions(ownershipRepository);
+        verifyNoInteractions(pelangganRepository);
     }
 }

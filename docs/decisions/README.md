@@ -15,6 +15,8 @@ This directory contains Architecture Decision Records for the pasa-auto project.
 | [0007](0007-rbac-implementation.md) | Role-Based Access Control (RBAC) | Accepted | 2024-02-06 |
 | [0008](0008-domain-model-extraction.md) | Domain Model Extraction with Per-Aggregate Repositories | Accepted | 2026-05-22 |
 | [0009](0009-customer-self-service-portal.md) | Customer Self-Service Portal | Accepted | 2026-10-11 |
+| [0010](0010-nopol-authority-ownership-junction.md) | Vehicle Plate Authority Moves to the Ownership Junction | Accepted | 2026-10-15 |
+| [0011](0011-customer-data-normalization.md) | Customer Data Normalization | Accepted | 2026-10-17 |
 
 ## Template
 

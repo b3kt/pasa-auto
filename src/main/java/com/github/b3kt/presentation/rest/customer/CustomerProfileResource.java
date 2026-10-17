@@ -5,6 +5,7 @@ import com.github.b3kt.application.dto.customer.UpdateProfileRequest;
 import com.github.b3kt.application.dto.customer.VehicleClaimRequest;
 import com.github.b3kt.application.dto.pazaauto.KendaraanAttachRequest;
 import com.github.b3kt.application.service.customer.CustomerProfileService;
+import com.github.b3kt.application.service.customer.CustomerVehicleService;
 import com.github.b3kt.application.service.customer.VehicleClaimService;
 import com.github.b3kt.application.service.pazaauto.KendaraanOwnershipService;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKendaraanRepository;
@@ -38,6 +39,9 @@ public class CustomerProfileResource {
 
     @Inject
     CustomerProfileService profileService;
+
+    @Inject
+    CustomerVehicleService customerVehicleService;
 
     @Inject
     KendaraanOwnershipService kendaraanOwnershipService;
@@ -83,16 +87,8 @@ public class CustomerProfileResource {
     @Path("/vehicles")
     public Response registerVehicle(@Valid KendaraanAttachRequest request) {
         try {
-            kendaraanOwnershipService.attach(
-                    principal.pelangganIdOrThrow(),
-                    request.getNopol(),
-                    request.getMerk(),
-                    request.getJenis(),
-                    request.getTanggalMulai(),
-                    request.getKeterangan()
-            );
             return Response.ok(ApiResponse.success("Vehicle registered successfully",
-                    kendaraanOwnershipService.listCurrentVehiclesByPelanggan(principal.pelangganIdOrThrow()))).build();
+                    customerVehicleService.registerVehicle(principal.customerAccountId(), request))).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         }
@@ -135,7 +131,7 @@ public class CustomerProfileResource {
     public Response checkNopol(@QueryParam("nopol") String nopol) {
         try {
             return Response.ok(ApiResponse.success(
-                    kendaraanOwnershipService.checkNopol(principal.pelangganIdOrThrow(), nopol))).build();
+                    customerVehicleService.checkNopol(principal.customerAccountId(), nopol))).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         }

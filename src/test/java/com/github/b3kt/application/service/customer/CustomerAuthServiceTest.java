@@ -4,7 +4,9 @@ import com.github.b3kt.application.dto.customer.CustomerLoginResponse;
 import com.github.b3kt.application.dto.customer.CustomerRegisterRequest;
 import com.github.b3kt.domain.exception.AuthenticationException;
 import com.github.b3kt.infrastructure.persistence.entity.customer.CustomerAccountEntity;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
 import com.github.b3kt.infrastructure.persistence.repository.customer.CustomerAccountRepository;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganRepository;
 import com.github.b3kt.infrastructure.security.CustomerJwtTokenService;
 import com.github.b3kt.infrastructure.security.CustomerRefreshTokenClaims;
 import com.github.b3kt.infrastructure.security.PasswordEncoder;
@@ -13,6 +15,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -42,6 +45,9 @@ class CustomerAuthServiceTest {
     @Mock
     CustomerRefreshTokenService refreshTokenService;
 
+    @Mock
+    TbPelangganRepository pelangganRepository;
+
     @InjectMocks
     CustomerAuthService service;
 
@@ -70,6 +76,36 @@ class CustomerAuthServiceTest {
         request.setFullName("Budi");
         request.setPassword("ValidPass123");
         return request;
+    }
+
+    @Nested
+    @DisplayName("display name")
+    class DisplayNameTests {
+
+        @Test
+        @DisplayName("uses the linked customer record's name once the account is linked")
+        void linkedUsesPelangganName() {
+            CustomerAccountEntity account = account(true, 7L);
+            TbPelangganEntity pelanggan = new TbPelangganEntity();
+            pelanggan.setNamaPelanggan("Budi Santoso");
+            when(accountRepository.findByEmail("budi@test.com")).thenReturn(Optional.of(account));
+            when(passwordEncoder.matches("pw", "hash")).thenReturn(true);
+            when(pelangganRepository.findByIdCached(7L)).thenReturn(Optional.of(pelanggan));
+
+            assertEquals("Budi Santoso", service.login("budi@test.com", "pw").getFullName());
+        }
+
+        @Test
+        @DisplayName("falls back to the registration name when unlinked or the record is gone")
+        void fallsBackToAccountName() {
+            when(accountRepository.findByEmail("budi@test.com")).thenReturn(Optional.of(account(true, null)));
+            when(passwordEncoder.matches("pw", "hash")).thenReturn(true);
+            assertEquals("Budi", service.login("budi@test.com", "pw").getFullName());
+
+            when(accountRepository.findByEmail("budi@test.com")).thenReturn(Optional.of(account(true, 7L)));
+            when(pelangganRepository.findByIdCached(7L)).thenReturn(Optional.empty());
+            assertEquals("Budi", service.login("budi@test.com", "pw").getFullName());
+        }
     }
 
     @Nested
@@ -104,6 +140,23 @@ class CustomerAuthServiceTest {
 
             assertDoesNotThrow(() -> service.register(request));
             verify(accountRepository, never()).findByPhone(anyString());
+        }
+
+        @Test
+        @DisplayName("stores the phone in canonical form and checks duplicates against it")
+        void canonicalPhone() {
+            when(accountRepository.findByEmail("budi@test.com")).thenReturn(Optional.empty());
+            when(accountRepository.findByPhone("081234567")).thenReturn(Optional.empty());
+            when(passwordEncoder.encode(anyString())).thenReturn("hash");
+            CustomerRegisterRequest request = registerRequest();
+            request.setPhone("+62 812-345-67");
+
+            service.register(request);
+
+            ArgumentCaptor<CustomerAccountEntity> captor = ArgumentCaptor.forClass(CustomerAccountEntity.class);
+            verify(accountRepository).persist(captor.capture());
+            assertEquals("081234567", captor.getValue().getPhone());
+            verify(accountRepository).findByPhone("081234567");
         }
 
         @Test

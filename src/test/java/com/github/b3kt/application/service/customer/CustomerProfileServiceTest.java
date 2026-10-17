@@ -2,6 +2,7 @@ package com.github.b3kt.application.service.customer;
 
 import com.github.b3kt.application.dto.customer.CustomerProfileDto;
 import com.github.b3kt.application.dto.customer.UpdateProfileRequest;
+import com.github.b3kt.domain.model.pazaauto.Pelanggan;
 import com.github.b3kt.infrastructure.persistence.entity.customer.CustomerAccountEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
 import com.github.b3kt.infrastructure.persistence.repository.customer.CustomerAccountRepository;
@@ -77,11 +78,13 @@ class CustomerProfileServiceTest {
 
             assertEquals(5L, dto.getAccountId());
             assertEquals("budi@test.com", dto.getEmail());
+            assertEquals("Budi Santoso", dto.getFullName(), "linked record's name is authoritative");
             assertTrue(dto.isLinked());
             assertEquals(7L, dto.getPelangganId());
             assertEquals("Budi Santoso", dto.getNamaPelanggan());
             assertEquals("Jl. Merdeka 1", dto.getAlamat());
-            assertEquals("021", dto.getTelepon());
+            // telepon is the deprecated alias of noTelepon (ADR-0011), not the legacy tlpn value
+            assertEquals("021999", dto.getTelepon());
             assertEquals("08123", dto.getNoHp());
             assertEquals("021999", dto.getNoTelepon());
             assertEquals("budi@test.com", dto.getPelangganEmail());
@@ -99,6 +102,7 @@ class CustomerProfileServiceTest {
 
             assertFalse(dto.isLinked());
             assertNull(dto.getPelangganId());
+            assertEquals("Budi", dto.getFullName());
             verify(pelangganRepository, never()).findByIdCached(any());
         }
 
@@ -165,7 +169,7 @@ class CustomerProfileServiceTest {
         }
 
         @Test
-        @DisplayName("creates and links a placeholder record when the account is not linked")
+        @DisplayName("creates and links a portal-sourced record without a vehicle when the account is not linked")
         void createsWhenUnlinked() {
             CustomerAccountEntity account = account(false);
             when(accountRepository.findByIdOptional(5L)).thenReturn(Optional.of(account));
@@ -180,8 +184,10 @@ class CustomerProfileServiceTest {
             ArgumentCaptor<TbPelangganEntity> captor = ArgumentCaptor.forClass(TbPelangganEntity.class);
             verify(pelangganRepository).persist(captor.capture());
             TbPelangganEntity created = captor.getValue();
-            assertEquals("-", created.getNopol());
-            assertEquals("-", created.getMerk());
+            assertNull(created.getNopol());
+            assertNull(created.getMerk());
+            assertEquals(Pelanggan.SUMBER_PORTAL, created.getSumber());
+            assertEquals("baru@test.com", created.getEmail(), "the request's email overrides the seeded one");
             assertEquals("Budi Santoso", created.getNamaPelanggan());
             assertEquals(99L, account.getPelangganId());
             assertNotNull(account.getLinkedAt());

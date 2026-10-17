@@ -19,9 +19,9 @@ public class TbPelangganKendaraanRepository implements PanacheRepositoryBase<TbP
     EntityManager em;
 
     /**
-     * Selectable vehicles: one row per nopol with its current owner and vehicle master.
-     * Pelanggan rows that have no ownership row yet (legacy data) are appended so they
-     * stay selectable. Columns: nopol, nama_pelanggan, alamat, merk, jenis, id_pelanggan, id_kendaraan.
+     * Selectable vehicles: one row per nopol with its current owner and vehicle master. Since V35
+     * every legacy plate has an ownership row, so the junction alone is complete.
+     * Columns: nopol, nama_pelanggan, alamat, merk, jenis, id_pelanggan, id_kendaraan.
      */
     @SuppressWarnings("unchecked")
     public List<Object[]> findVehicleOptions() {
@@ -29,29 +29,14 @@ public class TbPelangganKendaraanRepository implements PanacheRepositoryBase<TbP
                 SELECT k.nopol,
                        p.nama_pelanggan,
                        p.alamat,
-                       COALESCE(kd.merk, p.merk),
-                       COALESCE(kd.jenis, p.jenis),
+                       kd.merk,
+                       kd.jenis,
                        k.id_pelanggan,
                        k.id_kendaraan
                 FROM tb_pelanggan_kendaraan k
                 JOIN tb_pelanggan p ON p.id = k.id_pelanggan AND p.deleted_at IS NULL
                 LEFT JOIN tb_kendaraan kd ON kd.id = k.id_kendaraan AND kd.deleted_at IS NULL
                 WHERE k.is_current = true AND k.deleted_at IS NULL
-                UNION ALL
-                SELECT p.nopol,
-                       p.nama_pelanggan,
-                       p.alamat,
-                       p.merk,
-                       p.jenis,
-                       p.id,
-                       NULL::bigint
-                FROM tb_pelanggan p
-                WHERE p.deleted_at IS NULL
-                  AND btrim(p.nopol) <> ''
-                  AND NOT EXISTS (SELECT 1 FROM tb_pelanggan_kendaraan k
-                                  WHERE regexp_replace(upper(k.nopol), '[[:space:]]', '', 'g')
-                                        = regexp_replace(upper(p.nopol), '[[:space:]]', '', 'g')
-                                    AND k.is_current = true AND k.deleted_at IS NULL)
                 ORDER BY 1
                 """;
         return em.createNativeQuery(sql).getResultList();
@@ -104,10 +89,19 @@ public class TbPelangganKendaraanRepository implements PanacheRepositoryBase<TbP
                 NopolNormalizer.normalize(nopol), date, date).firstResultOptional();
     }
 
+    /**
+     * Ends an ownership period. {@code until} is clamped to the period's start, so closing a row opened
+     * the same day (callers pass "new owner's start - 1 day") never yields a negative period, which the
+     * {@code chk_pk_period} constraint rejects from V36 on.
+     */
     @Transactional
     public void closeOwnership(Long id, LocalDate until, String keterangan) {
         findByIdOptional(id).ifPresent(row -> {
-            row.setTanggalAkhir(until);
+            LocalDate end = until == null ? LocalDate.now() : until;
+            if (row.getTanggalMulai() != null && end.isBefore(row.getTanggalMulai())) {
+                end = row.getTanggalMulai();
+            }
+            row.setTanggalAkhir(end);
             row.setCurrent(false);
             if (keterangan != null && !keterangan.isBlank()) {
                 row.setKeterangan(keterangan);

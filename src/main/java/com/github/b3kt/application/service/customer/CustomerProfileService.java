@@ -33,7 +33,13 @@ public class CustomerProfileService {
         dto.setLinked(account.isLinked());
 
         if (account.isLinked()) {
-            pelangganRepository.findByIdCached(account.getPelangganId()).ifPresent(p -> fillPelanggan(dto, p));
+            pelangganRepository.findByIdCached(account.getPelangganId()).ifPresent(p -> {
+                fillPelanggan(dto, p);
+                // Once linked, the customer record is authoritative for the name (ADR-0011).
+                if (p.getNamaPelanggan() != null && !p.getNamaPelanggan().isBlank()) {
+                    dto.setFullName(p.getNamaPelanggan());
+                }
+            });
         }
         return dto;
     }
@@ -74,12 +80,7 @@ public class CustomerProfileService {
                 return existing.get();
             }
         }
-        TbPelangganEntity pelanggan = PelangganPlaceholder.create();
-        pelanggan.setNamaPelanggan(account.getFullName());
-        if (account.getPhone() != null) {
-            pelanggan.setNoHp(account.getPhone());
-            pelanggan.setTelepon(account.getPhone());
-        }
+        TbPelangganEntity pelanggan = PortalPelanggan.create(account);
         pelangganRepository.persist(pelanggan);
         account.setPelangganId(pelanggan.getId());
         account.setLinkedAt(LocalDateTime.now());
@@ -90,7 +91,7 @@ public class CustomerProfileService {
         dto.setPelangganId(p.getId());
         dto.setNamaPelanggan(p.getNamaPelanggan());
         dto.setAlamat(p.getAlamat());
-        dto.setTelepon(p.getTelepon());
+        dto.setTelepon(p.getNoTelepon());
         dto.setNoHp(p.getNoHp());
         dto.setNoTelepon(p.getNoTelepon());
         dto.setPelangganEmail(p.getEmail());

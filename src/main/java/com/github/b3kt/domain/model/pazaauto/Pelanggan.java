@@ -6,10 +6,21 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 
+/**
+ * A workshop customer. Vehicles are owned through {@code tb_pelanggan_kendaraan} (ADR-0010/0011), so a
+ * customer may have zero, one or many vehicles; {@code nopol}/{@code merk}/{@code jenis} here are the
+ * deprecated single-vehicle view of the primary vehicle and are optional.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
 public class Pelanggan {
+
+    /** Record entered by workshop staff. */
+    public static final String SUMBER_STAFF = "STAFF";
+    /** Record created by the customer through the self-service portal. */
+    public static final String SUMBER_PORTAL = "PORTAL";
+
     private Long id;
     private String nopol;
     private String namaPelanggan;
@@ -26,6 +37,8 @@ public class Pelanggan {
     private String noHp;
     private String noTelepon;
     private LocalDate tanggalJoin;
+    private String sumber;
+    private Long mergedIntoId;
 
     public Pelanggan(String nopol, String namaPelanggan, String merk) {
         setNopol(nopol);
@@ -33,11 +46,9 @@ public class Pelanggan {
         setMerk(merk);
     }
 
+    /** Optional: a blank plate means the customer has no primary vehicle. */
     public void setNopol(String nopol) {
-        if (nopol == null || nopol.trim().isEmpty()) {
-            throw new IllegalArgumentException("nopol must not be blank");
-        }
-        this.nopol = nopol;
+        this.nopol = blankToNull(nopol);
     }
 
     public void setNamaPelanggan(String namaPelanggan) {
@@ -47,10 +58,12 @@ public class Pelanggan {
         this.namaPelanggan = namaPelanggan;
     }
 
+    /** Optional: only meaningful together with a plate. */
     public void setMerk(String merk) {
-        if (merk == null || merk.trim().isEmpty()) {
-            throw new IllegalArgumentException("merk must not be blank");
-        }
-        this.merk = merk;
+        this.merk = blankToNull(merk);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.trim().isEmpty() ? null : value;
     }
 }

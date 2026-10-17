@@ -42,7 +42,7 @@ public class SpkEnrichmentService {
                 target.setMerkKendaraan(pelanggan.getMerk());
                 target.setJenisKendaraan(pelanggan.getJenis());
             }
-        } else if (target.getNopol() != null) {
+        } else if (com.github.b3kt.application.helper.NopolNormalizer.isMeaningful(target.getNopol())) {
             boolean resolved = resolveFromOwnership(target);
             if (!resolved) {
                 TbPelangganEntity pelanggan = pelangganRepository

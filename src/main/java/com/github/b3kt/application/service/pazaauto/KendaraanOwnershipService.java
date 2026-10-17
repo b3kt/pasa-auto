@@ -1,6 +1,5 @@
 package com.github.b3kt.application.service.pazaauto;
 
-import com.github.b3kt.application.dto.customer.NopolCheckDto;
 import com.github.b3kt.application.dto.pazaauto.KendaraanOwnershipDto;
 import com.github.b3kt.application.dto.pazaauto.PelangganHistoryDto;
 import com.github.b3kt.application.dto.pazaauto.VehicleHistoryDto;
@@ -95,22 +94,6 @@ public class KendaraanOwnershipService {
                 .orElse(null);
     }
 
-    /**
-     * Checks whether a plate is already registered to a customer, so the portal can validate it
-     * before registering. Read-only - never creates an ownership row.
-     */
-    public NopolCheckDto checkNopol(Long pelangganId, String nopol) {
-        String norm = NopolNormalizer.normalize(nopol);
-        if (norm.isEmpty()) {
-            throw new IllegalArgumentException("nopol is required");
-        }
-        return ownershipRepository.findCurrentByNopol(norm)
-                .map(existing -> Objects.equals(existing.getPelangganId(), pelangganId)
-                        ? NopolCheckDto.ownedBySelf(norm)
-                        : NopolCheckDto.ownedByOther(norm))
-                .orElseGet(() -> NopolCheckDto.available(norm));
-    }
-
     @Transactional
     public KendaraanOwnershipDto attach(Long pelangganId, String nopol, String merk, String jenis,
                                         LocalDate tanggalMulai, String keterangan) {
@@ -169,25 +152,13 @@ public class KendaraanOwnershipService {
         ownership.setDeletedAt(java.time.LocalDateTime.now());
         ownershipRepository.getEntityManager().merge(ownership);
         pelangganNopolRepository.invalidateByNopol(nopol);
-
-        TbPelangganEntity pelanggan = pelangganRepository.findByIdCached(pelangganId)
-                .orElseThrow(() -> new IllegalArgumentException("Pelanggan not found: " + pelangganId));
-
-        List<TbPelangganKendaraanEntity> remainingVehicles = ownershipRepository.findByPelangganId(pelangganId)
-                .stream()
-                .filter(v -> v.getDeletedAt() == null)
-                .toList();
-
-        if (remainingVehicles.isEmpty()) {
-            pelanggan.setDeletedAt(java.time.LocalDateTime.now());
-            pelangganRepository.getEntityManager().merge(pelanggan);
-            pelangganRepository.invalidatePelangganCache();
-        }
+        // The customer record stays: a customer may own no vehicle (ADR-0011), and removing it would
+        // leave the linked portal account pointing at a deleted record.
+        pelangganRepository.invalidatePelangganCache();
     }
 
     /**
-     * Vehicles for the SPK nopol dropdown: every nopol with its current owner,
-     * plus legacy pelanggan that have no ownership row yet.
+     * Vehicles for the SPK nopol dropdown: every nopol with its current owner.
      */
     public List<VehicleOptionDto> listVehicleOptions() {
         List<VehicleOptionDto> options = new ArrayList<>();
