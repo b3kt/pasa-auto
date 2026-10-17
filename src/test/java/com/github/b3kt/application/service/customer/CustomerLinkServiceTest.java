@@ -6,6 +6,8 @@ import com.github.b3kt.application.dto.customer.LinkRequestResultDto;
 import com.github.b3kt.application.dto.customer.LinkSearchResultDto;
 import com.github.b3kt.application.dto.pazaauto.KendaraanOwnershipDto;
 import com.github.b3kt.application.service.pazaauto.KendaraanOwnershipService;
+import com.github.b3kt.application.service.pazaauto.PelangganMergeService;
+import com.github.b3kt.domain.model.pazaauto.Pelanggan;
 import com.github.b3kt.infrastructure.persistence.entity.customer.CustomerAccountEntity;
 import com.github.b3kt.infrastructure.persistence.entity.customer.CustomerPelangganLinkRequestEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
@@ -47,6 +49,9 @@ class CustomerLinkServiceTest {
 
     @Mock
     KendaraanOwnershipService kendaraanOwnershipService;
+
+    @Mock
+    PelangganMergeService mergeService;
 
     @InjectMocks
     CustomerLinkService service;
@@ -117,11 +122,11 @@ class CustomerLinkServiceTest {
     class SearchByContactTests {
 
         @Test
-        @DisplayName("maps every match with masked fields, falling back to the landline")
+        @DisplayName("maps every match with masked fields (mobile only, never the deprecated landline)")
         void found() {
             TbPelangganEntity p = pelanggan();
-            p.setNoHp(null);
-            p.setNoTelepon("0812345");
+            p.setNoHp("0812345");
+            p.setNoTelepon("0219999");
             when(pelangganRepository.findByContact("0812345", "budi@test.com")).thenReturn(List.of(p));
 
             List<LinkSearchResultDto> results = service.searchByContact("0812345", "budi@test.com");
@@ -326,6 +331,48 @@ class CustomerLinkServiceTest {
             service.approve(11L, "admin");
 
             assertEquals(CustomerPelangganLinkRequestEntity.STATUS_APPROVED, request.getStatus());
+        }
+
+        @Test
+        @DisplayName("merges the requester's own empty portal record into the approved record")
+        void foldsOwnEmptyPortalRecord() {
+            CustomerPelangganLinkRequestEntity request = new CustomerPelangganLinkRequestEntity();
+            request.setId(11L);
+            request.setCustomerAccountId(5L);
+            request.setPelangganId(7L);
+            request.setStatus(CustomerPelangganLinkRequestEntity.STATUS_PENDING);
+            TbPelangganEntity own = new TbPelangganEntity();
+            own.setId(99L);
+            own.setSumber(Pelanggan.SUMBER_PORTAL);
+            when(linkRequestRepository.findByIdOptional(11L)).thenReturn(Optional.of(request));
+            when(accountRepository.findByPelangganId(7L)).thenReturn(Optional.empty());
+            when(accountRepository.findByIdOptional(5L)).thenReturn(Optional.of(account(99L)));
+            when(pelangganRepository.findByIdOptional(99L)).thenReturn(Optional.of(own));
+            when(kendaraanOwnershipService.listCurrentVehiclesByPelanggan(99L)).thenReturn(List.of());
+
+            service.approve(11L, "admin");
+
+            verify(mergeService).merge(99L, 7L);
+        }
+
+        @Test
+        @DisplayName("does not merge a requester's own record that is a staff record")
+        void keepsOwnStaffRecord() {
+            CustomerPelangganLinkRequestEntity request = new CustomerPelangganLinkRequestEntity();
+            request.setId(11L);
+            request.setCustomerAccountId(5L);
+            request.setPelangganId(7L);
+            request.setStatus(CustomerPelangganLinkRequestEntity.STATUS_PENDING);
+            TbPelangganEntity staffRecord = new TbPelangganEntity();
+            staffRecord.setId(99L);
+            when(linkRequestRepository.findByIdOptional(11L)).thenReturn(Optional.of(request));
+            when(accountRepository.findByPelangganId(7L)).thenReturn(Optional.empty());
+            when(accountRepository.findByIdOptional(5L)).thenReturn(Optional.of(account(99L)));
+            when(pelangganRepository.findByIdOptional(99L)).thenReturn(Optional.of(staffRecord));
+
+            service.approve(11L, "admin");
+
+            verify(mergeService, never()).merge(any(), any());
         }
 
         @Test

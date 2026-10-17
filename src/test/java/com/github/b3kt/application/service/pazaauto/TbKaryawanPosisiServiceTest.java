@@ -45,6 +45,8 @@ class TbKaryawanPosisiServiceTest {
 
         PageResponse<TbKaryawanPosisiEntity> result = service.findPaginated(pr);
         assertEquals(1, result.getRowsNumber());
+        // The entity field is "posisi"; a query on any other name fails in JPQL at runtime
+        verify(repository).find(eq("lower(posisi) like ?1"), eq("%mekanik%"));
     }
 
     @Test
@@ -64,7 +66,7 @@ class TbKaryawanPosisiServiceTest {
     @DisplayName("findPaginated with sort")
     void findPaginatedWithSort() {
         PageRequest pr = new PageRequest(1, 10);
-        pr.setSortBy("namaPosisi");
+        pr.setSortBy("posisi");
         when(repository.findAll()).thenReturn(query);
         when(repository.findAll(any(Sort.class))).thenReturn(query);
         when(query.count()).thenReturn(1L);

@@ -7,7 +7,7 @@
         <div class="text-body2 text-grey-7 q-mt-sm">
           {{ $t('pages.notFound.message') }}
         </div>
-        <q-btn class="q-mt-md" color="primary" :label="$t('common.backToDashboard')" :to="authStore.isLoggedIn ? '/' : '/login'" />
+        <q-btn class="q-mt-md" color="primary" :label="$t('common.backToDashboard')" :to="authStore.canBrowse ? '/' : '/login'" />
       </q-card-section>
     </q-card>
   </q-page>

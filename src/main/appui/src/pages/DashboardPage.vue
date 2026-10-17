@@ -1,6 +1,5 @@
 <template>
   <q-page padding>
-    <div class="text-h6 q-mb-md">{{ $t('pages.dashboard.welcome', { name: profile?.fullName }) }}</div>
 
     <q-banner v-if="profile && !profile.linked" class="bg-warning text-white q-mb-md">
       {{ $t('pages.dashboard.notLinked') }}
@@ -13,7 +12,7 @@
       <div class="col-12 col-md-4">
         <q-card class="cursor-pointer" @click="$router.push('/profile')">
           <q-card-section>
-            <div class="text-subtitle2">{{ $t('pages.dashboard.customerRecord') }}</div>
+            <div class="text-subtitle2 text-weight-thin q-mb-md">{{ $t('pages.dashboard.customerRecord') }}</div>
             <div class="text-body1">{{ profile.namaPelanggan }}</div>
             <div class="text-caption text-grey-7">{{ profile.alamat }}</div>
             <div class="text-caption text-primary q-mt-xs">{{ $t('pages.dashboard.editProfile') }}</div>
@@ -23,7 +22,7 @@
       <div class="col-12 col-md-4">
         <q-card class="cursor-pointer" @click="$router.push('/vehicles')">
           <q-card-section>
-            <div class="text-subtitle2">{{ $t('pages.dashboard.myVehicles') }}</div>
+            <div class="text-subtitle2  text-weight-thin">{{ $t('pages.dashboard.myVehicles') }}</div>
             <div v-if="vehicles.length > 0" class="q-mt-sm">
               <div v-for="v in vehicles.slice(0, 3)" :key="v.id" class="text-body2 q-mb-xs">
                 <div class="text-weight-medium">{{ v.nopol }}</div>
@@ -42,7 +41,7 @@
       <div class="col-12 col-md-4">
         <q-card class="cursor-pointer" @click="$router.push('/bookings')">
           <q-card-section>
-            <div class="text-subtitle2">{{ $t('pages.dashboard.bookService') }}</div>
+            <div class="text-subtitle2  text-weight-thin">{{ $t('pages.dashboard.bookService') }}</div>
             <div v-if="upcomingBookings.length > 0" class="q-mt-sm">
               <div v-for="b in upcomingBookings.slice(0, 2)" :key="b.id" class="text-body2 q-mb-xs">
                 <div class="text-weight-medium">{{ b.serviceType || $t('pages.bookings.generalService') }}</div>
@@ -63,7 +62,7 @@
         <q-card class="cursor-pointer" @click="$router.push('/spk')">
           <q-card-section>
             <div class="row items-center justify-between">
-              <div class="text-subtitle2">{{ $t('pages.dashboard.serviceHistory') }}</div>
+              <div class="text-subtitle2  text-weight-thin">{{ $t('pages.dashboard.serviceHistory') }}</div>
               <div class="text-caption text-primary">{{ $t('pages.dashboard.viewAll') }}</div>
             </div>
             <div v-if="latestService" class="row items-center justify-between q-mt-sm">

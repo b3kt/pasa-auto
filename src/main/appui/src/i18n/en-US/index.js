@@ -14,7 +14,8 @@ export default {
     logout: 'Logout',
     loggedOut: 'Logged out successfully',
     required: 'Required',
-    backToDashboard: 'Back to dashboard'
+    backToDashboard: 'Back to dashboard',
+    offline: "You're offline. Showing data saved from your last visit; changes need a connection."
   },
 
   language: {
@@ -34,10 +35,10 @@ export default {
   pages: {
     login: {
       title: 'Sign in',
-      email: 'Email',
+      identifier: 'Email or phone number',
       password: 'Password',
       submit: 'Sign in',
-      emailRequired: 'Email is required',
+      identifierRequired: 'Email or phone number is required',
       passwordRequired: 'Password is required',
       sessionExpired: 'Your session has expired. Please sign in again.',
       noAccount: "Don't have an account? Register",
@@ -50,8 +51,9 @@ export default {
       fullName: 'Full name',
       fullNameRequired: 'Full name is required',
       email: 'Email',
-      emailRequired: 'Email is required',
-      phone: 'Phone (optional)',
+      phone: 'Mobile number',
+      contactHint: 'Enter an email, a mobile number, or both - you can sign in with either',
+      contactRequired: 'Enter an email or a mobile number',
       password: 'Password',
       passwordRule: 'At least 8 characters',
       submit: 'Register',
@@ -84,10 +86,10 @@ export default {
       address: 'Address',
       city: 'City',
       postalCode: 'Postal code',
-      phone: 'Phone',
       mobile: 'Mobile',
-      otherPhone: 'Other phone',
+      mobileHint: 'Also lets you sign in with this number',
       email: 'Email',
+      emailHint: 'Your sign-in email; it cannot be changed here',
       contactPerson: 'Contact person',
       updated: 'Profile updated',
       updateFailed: 'Could not update profile'
@@ -109,6 +111,14 @@ export default {
       saveFailed: 'Failed to save vehicle',
       ownedByOther: 'This plate was already registered before — link it to my profile now?',
       ownedBySelf: 'This plate number is already registered to your account.',
+      onRecordQuestion: 'This plate is already in our records: {vehicle}, registered to {owner}. Is this your car?',
+      onRecordYes: 'Yes, mine',
+      onRecordNo: 'No',
+      onRecordLinkNote: 'Your account will be linked to this existing customer record and its service history.',
+      onRecordTransferNote: 'Only the vehicle will be moved to your account; the existing record stays as it is.',
+      useRecordedData: 'Use the recorded brand and type',
+      tooManyChecks: 'Too many plate numbers checked. Try again in {minutes} minute(s).',
+      linkPendingApproval: 'The contact details on record differ from yours, so our staff will confirm the link first.',
       claimNow: 'Link now',
       claimConfirmTitle: 'Link vehicle',
       claimConfirmMessage: 'Link plate {nopol} to your profile now? Ownership will be transferred from the current owner.',
@@ -144,7 +154,7 @@ export default {
       status: {
         REQUESTED: 'Requested',
         CONFIRMED: 'Confirmed',
-        CONVERTED: 'Converted',
+        CONVERTED: 'Accepted',
         REJECTED: 'Rejected',
         CANCELLED: 'Cancelled'
       }

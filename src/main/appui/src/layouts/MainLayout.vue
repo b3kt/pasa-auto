@@ -3,7 +3,7 @@
     <q-header elevated class="bg-secondary">
       <q-toolbar>
         <q-btn
-          v-if="authStore.isLoggedIn"
+          v-if="authStore.canBrowse"
           flat
           dense
           round
@@ -18,7 +18,7 @@
         <q-space />
 
         <!-- Horizontal menu: desktop/tablet only (mobile uses the drawer below) -->
-        <div v-if="authStore.isLoggedIn" class="q-gutter-sm row items-center no-wrap gt-sm">
+        <div v-if="authStore.canBrowse" class="q-gutter-sm row items-center no-wrap gt-sm">
           <q-btn v-for="link in links" :key="link.to" flat dense :to="link.to" :label="link.label" />
           <q-btn flat dense icon="logout" :label="$t('common.logout')" @click="handleLogout" />
         </div>
@@ -43,10 +43,17 @@
           </q-menu>
         </q-btn>
       </q-toolbar>
+
+      <q-banner v-if="!authStore.online" dense class="bg-warning text-dark">
+        <template #avatar>
+          <q-icon name="cloud_off" />
+        </template>
+        {{ $t('common.offline') }}
+      </q-banner>
     </q-header>
 
     <q-drawer
-      v-if="authStore.isLoggedIn"
+      v-if="authStore.canBrowse"
       v-model="drawer"
       side="left"
       bordered

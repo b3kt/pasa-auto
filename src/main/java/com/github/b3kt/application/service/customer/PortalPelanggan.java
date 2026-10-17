@@ -15,13 +15,14 @@ final class PortalPelanggan {
     private PortalPelanggan() {
     }
 
-    /** Seeds the record from the account; the account's login phone becomes the mobile number. */
+    /**
+     * Seeds the record's name from the account. Phone and email are not copied: for a linked customer
+     * they are read from the account itself (ADR-0012).
+     */
     static TbPelangganEntity create(CustomerAccountEntity account) {
         TbPelangganEntity pelanggan = new TbPelangganEntity();
         pelanggan.setSumber(Pelanggan.SUMBER_PORTAL);
         pelanggan.setNamaPelanggan(account.getFullName());
-        pelanggan.setNoHp(account.getPhone());
-        pelanggan.setEmail(account.getEmail());
         return pelanggan;
     }
 }

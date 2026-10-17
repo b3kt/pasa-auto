@@ -116,10 +116,10 @@ class CustomerAuthServiceTest {
         @DisplayName("creates the account and issues tokens when the email and phone are free")
         void success() {
             when(accountRepository.findByEmail("budi@test.com")).thenReturn(Optional.empty());
-            when(accountRepository.findByPhone("08123")).thenReturn(Optional.empty());
+            when(accountRepository.findByPhone("081230001")).thenReturn(Optional.empty());
             when(passwordEncoder.encode("ValidPass123")).thenReturn("hash");
             CustomerRegisterRequest request = registerRequest();
-            request.setPhone("08123");
+            request.setPhone("081230001");
 
             CustomerLoginResponse response = service.register(request);
 
@@ -160,6 +160,46 @@ class CustomerAuthServiceTest {
         }
 
         @Test
+        @DisplayName("registers with a phone number only")
+        void phoneOnly() {
+            when(accountRepository.findByPhone("081234567")).thenReturn(Optional.empty());
+            when(passwordEncoder.encode(anyString())).thenReturn("hash");
+            CustomerRegisterRequest request = registerRequest();
+            request.setEmail("  ");
+            request.setPhone("0812-345-67");
+
+            service.register(request);
+
+            ArgumentCaptor<CustomerAccountEntity> captor = ArgumentCaptor.forClass(CustomerAccountEntity.class);
+            verify(accountRepository).persist(captor.capture());
+            assertNull(captor.getValue().getEmail());
+            assertEquals("081234567", captor.getValue().getPhone());
+            verify(accountRepository, never()).findByEmail(anyString());
+        }
+
+        @Test
+        @DisplayName("requires an email or a phone number")
+        void neitherEmailNorPhone() {
+            CustomerRegisterRequest request = registerRequest();
+            request.setEmail(null);
+            request.setPhone(null);
+
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> service.register(request));
+            assertEquals("Enter an email or a phone number", ex.getMessage());
+            verify(accountRepository, never()).persist(any(CustomerAccountEntity.class));
+        }
+
+        @Test
+        @DisplayName("rejects a phone number that is too short to be a login identifier")
+        void invalidPhone() {
+            CustomerRegisterRequest request = registerRequest();
+            request.setPhone("0812");
+
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> service.register(request));
+            assertEquals("Phone number is not valid", ex.getMessage());
+        }
+
+        @Test
         @DisplayName("rejects an email that is already registered")
         void duplicateEmail() {
             when(accountRepository.findByEmail("budi@test.com")).thenReturn(Optional.of(account(true, null)));
@@ -173,9 +213,9 @@ class CustomerAuthServiceTest {
         @DisplayName("rejects a phone that is already registered")
         void duplicatePhone() {
             when(accountRepository.findByEmail("budi@test.com")).thenReturn(Optional.empty());
-            when(accountRepository.findByPhone("08123")).thenReturn(Optional.of(account(true, null)));
+            when(accountRepository.findByPhone("081230001")).thenReturn(Optional.of(account(true, null)));
             CustomerRegisterRequest request = registerRequest();
-            request.setPhone("08123");
+            request.setPhone("081230001");
 
             IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                     () -> service.register(request));
@@ -198,6 +238,29 @@ class CustomerAuthServiceTest {
     class LoginTests {
 
         @Test
+        @DisplayName("accepts a phone number in any format as the login identifier")
+        void loginWithPhone() {
+            CustomerAccountEntity account = account(true, null);
+            account.setEmail(null);
+            account.setPhone("081234567");
+            when(accountRepository.findByPhone("+62 812-345-67")).thenReturn(Optional.of(account));
+            when(passwordEncoder.matches("pw", "hash")).thenReturn(true);
+
+            assertEquals("access", service.login("+62 812-345-67", "pw").getToken());
+            verify(accountRepository, never()).findByEmail(anyString());
+        }
+
+        @Test
+        @DisplayName("an identifier that is neither an email nor a phone is rejected like a wrong password")
+        void loginWithGarbageIdentifier() {
+            AuthenticationException ex = assertThrows(AuthenticationException.class,
+                    () -> service.login("not-a-login", "pw"));
+            assertEquals("Invalid email/phone or password", ex.getMessage());
+            verify(accountRepository, never()).findByPhone(anyString());
+            verify(passwordEncoder).matches(eq("pw"), any());
+        }
+
+        @Test
         @DisplayName("issues tokens on valid credentials")
         void success() {
             CustomerAccountEntity account = account(true, 7L);
@@ -217,7 +280,7 @@ class CustomerAuthServiceTest {
 
             AuthenticationException ex = assertThrows(AuthenticationException.class,
                     () -> service.login("budi@test.com", "secret"));
-            assertEquals("Invalid email or password", ex.getMessage());
+            assertEquals("Invalid email/phone or password", ex.getMessage());
             // A dummy hash is still computed so the timing does not differ from a real account
             verify(passwordEncoder).matches(eq("secret"), isNull());
         }

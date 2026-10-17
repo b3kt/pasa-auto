@@ -17,6 +17,8 @@ This directory contains Architecture Decision Records for the pasa-auto project.
 | [0009](0009-customer-self-service-portal.md) | Customer Self-Service Portal | Accepted | 2026-10-11 |
 | [0010](0010-nopol-authority-ownership-junction.md) | Vehicle Plate Authority Moves to the Ownership Junction | Accepted | 2026-10-15 |
 | [0011](0011-customer-data-normalization.md) | Customer Data Normalization | Accepted | 2026-10-17 |
+| [0012](0012-customer-contacts-from-account.md) | Customer Contact Details Come from the Portal Account | Accepted | 2026-10-17 |
+| [0013](0013-portal-vehicle-registration-existing-records.md) | Registering a Plate That Is Already on Record | Accepted | 2026-10-17 |
 
 ## Template
 

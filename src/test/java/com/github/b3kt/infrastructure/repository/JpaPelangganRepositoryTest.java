@@ -107,6 +107,23 @@ class JpaPelangganRepositoryTest {
     }
 
     @Test
+    @DisplayName("invalidatePelanggan clears the pelanggan cache and every plate of that customer")
+    void invalidatePelanggan() {
+        TbPelangganKendaraanEntity current = new TbPelangganKendaraanEntity();
+        current.setNopol("B1234XYZ");
+        TbPelangganKendaraanEntity previous = new TbPelangganKendaraanEntity();
+        previous.setNopol("B9999AA");
+        when(ownershipRepository.findByPelangganId(1L)).thenReturn(List.of(current, previous));
+        when(cache.invalidate(any())).thenReturn(io.smallrye.mutiny.Uni.createFrom().voidItem());
+
+        repository.invalidatePelanggan(1L);
+
+        verify(panacheRepository).invalidatePelangganCache();
+        verify(cache).invalidate("B1234XYZ");
+        verify(cache).invalidate("B9999AA");
+    }
+
+    @Test
     @DisplayName("findByNopol returns empty for null nopol")
     void findByNopolNull() {
         Optional<Pelanggan> result = repository.findByNopol(null);

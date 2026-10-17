@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "quarkus-dev",
-      "runtimeExecutable": "./mvnw",
-      "runtimeArgs": ["quarkus:dev", "-Dquarkus.console.enabled=false"],
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["CUSTOMER_PORTAL_ENABLED=true", "./mvnw", "quarkus:dev", "-Dquarkus.profile=dev", "-Dquarkus.console.enabled=false"],
       "port": 8080
     },
     {

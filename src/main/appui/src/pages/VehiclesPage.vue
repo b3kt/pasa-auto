@@ -39,7 +39,33 @@
           <q-form @submit="saveVehicle" class="q-gutter-sm">
             <q-input v-model="form.nopol" :label="$t('pages.vehicles.plateNumber')" outlined dense
               :rules="[val => !!val || $t('common.required')]" :disable="isEditMode"
-              :loading="checkingNopol" @blur="onNopolBlur" @update:model-value="onNopolChange" />
+              :loading="checkingNopol" @blur="onNopolBlur" @update:model-value="onNopolChange">
+              <template v-if="onRecord" v-slot:append>
+                <q-btn flat round dense size="sm" icon="auto_fix_high" color="primary"
+                  :aria-label="$t('pages.vehicles.useRecordedData')" @click="useRecordedVehicle">
+                  <q-tooltip>{{ $t('pages.vehicles.useRecordedData') }}</q-tooltip>
+                </q-btn>
+              </template>
+            </q-input>
+            <!-- Plate already on an unclaimed customer record: ask whether that record is theirs -->
+            <q-banner v-if="onRecord" dense class="bg-blue-1 text-blue-10 rounded-borders">
+              <template v-slot:avatar>
+                <q-icon name="info" color="primary" />
+              </template>
+              {{ $t('pages.vehicles.onRecordQuestion', {
+                vehicle: [onRecord.merk, onRecord.jenis].filter(Boolean).join(' ') || '-',
+                owner: onRecord.maskedOwnerName || '-'
+              }) }}
+              <div v-if="ownRecord !== null" class="text-caption q-mt-xs">
+                {{ ownRecord ? $t('pages.vehicles.onRecordLinkNote') : $t('pages.vehicles.onRecordTransferNote') }}
+              </div>
+              <template v-slot:action>
+                <q-btn dense :flat="ownRecord !== true" :unelevated="ownRecord === true" color="primary"
+                  :label="$t('pages.vehicles.onRecordYes')" @click="ownRecord = true" />
+                <q-btn dense :flat="ownRecord !== false" :unelevated="ownRecord === false" color="primary"
+                  :label="$t('pages.vehicles.onRecordNo')" @click="ownRecord = false" />
+              </template>
+            </q-banner>
             <q-banner v-if="nopolStatus === 'OWNED_BY_OTHER'" dense class="bg-negative text-white">
               {{ $t('pages.vehicles.ownedByOther') }}
               <template v-slot:action>
@@ -93,6 +119,10 @@ const originalNopol = ref('')
 const checkingNopol = ref(false)
 const claiming = ref(false)
 const nopolStatus = ref(null)
+// ON_RECORD check result ({ merk, jenis, maskedOwnerName }) and the customer's answer to
+// "is this record yours?": true links the record, false/null only moves the vehicle to them.
+const onRecord = ref(null)
+const ownRecord = ref(null)
 const form = reactive({ nopol: '', merk: '', jenis: '' })
 
 const merkOptions = computed(() => merkList.value.map(m => ({ label: m, value: m })))
@@ -148,6 +178,28 @@ function onMerkChange() {
 
 function onNopolChange() {
   nopolStatus.value = null
+  onRecord.value = null
+  ownRecord.value = null
+}
+
+/** Prefills brand/type from the existing record; the customer can still change both. */
+async function useRecordedVehicle() {
+  if (!onRecord.value) return
+  const { merk, jenis } = onRecord.value
+  if (merk && !merkList.value.includes(merk)) {
+    merkList.value = [...merkList.value, merk]
+  }
+  form.merk = merk || ''
+  form.jenis = ''
+  if (merk) {
+    await loadJenisList(merk)
+  } else {
+    jenisList.value = []
+  }
+  if (jenis && !jenisList.value.includes(jenis)) {
+    jenisList.value = [...jenisList.value, jenis]
+  }
+  form.jenis = jenis || ''
 }
 
 async function onNopolBlur() {
@@ -160,8 +212,13 @@ async function onNopolBlur() {
   checkingNopol.value = true
   try {
     const response = await api.get('/api/customer/vehicles/check-nopol', { params: { nopol } })
-    const status = response.data?.data?.status || null
+    const data = response.data?.data
+    const status = data?.status || null
     nopolStatus.value = status
+    onRecord.value = status === 'ON_RECORD'
+      ? { merk: data.merk, jenis: data.jenis, maskedOwnerName: data.maskedOwnerName }
+      : null
+    ownRecord.value = null
     if (status === 'OWNED_BY_OTHER') {
       $q.notify({ type: 'negative', message: t('pages.vehicles.ownedByOther') })
     } else if (status === 'OWNED_BY_SELF') {
@@ -169,7 +226,12 @@ async function onNopolBlur() {
     }
   } catch (e) {
     nopolStatus.value = null
-    if (e.response?.status !== 400) {
+    onRecord.value = null
+    if (e.response?.status === 429) {
+      // Plate lookups are rate limited (distinct plates per account/address); registering still works.
+      const minutes = Math.max(1, Math.ceil(Number(e.response.headers?.['retry-after'] || 60) / 60))
+      $q.notify({ type: 'warning', message: t('pages.vehicles.tooManyChecks', { minutes }) })
+    } else if (e.response?.status !== 400) {
       console.error('Failed to check plate number', e)
     }
   } finally {
@@ -226,8 +288,16 @@ async function saveVehicle() {
       const response = await api.post('/api/customer/vehicles', {
         nopol: form.nopol,
         merk: form.merk || null,
-        jenis: form.jenis || null
+        jenis: form.jenis || null,
+        ownRecord: onRecord.value ? ownRecord.value : null
       })
+      if (response.data?.data?.status === 'PENDING_APPROVAL') {
+        // The record's contact details differ from the account's: staff confirm the link first.
+        $q.notify({ type: 'info', message: t('pages.vehicles.linkPendingApproval') })
+        showDialog.value = false
+        resetForm()
+        return
+      }
       // Registering a plate can adopt an existing on-record customer, moving the account onto a
       // different pelangganId. Re-mint the access token so later calls scope to the new record.
       if (response.data?.data?.relinked) {
@@ -299,5 +369,7 @@ function resetForm() {
   jenisList.value = []
   originalNopol.value = ''
   nopolStatus.value = null
+  onRecord.value = null
+  ownRecord.value = null
 }
 </script>

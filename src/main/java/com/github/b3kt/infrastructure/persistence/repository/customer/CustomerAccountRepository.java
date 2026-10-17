@@ -5,6 +5,8 @@ import com.github.b3kt.infrastructure.persistence.entity.customer.CustomerAccoun
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 @ApplicationScoped
@@ -26,6 +28,14 @@ public class CustomerAccountRepository implements PanacheRepositoryBase<Customer
         String canonical = PhoneNormalizer.normalize(phone);
         return find("phone = ?1 or phone = ?2", canonical == null ? phone.trim() : canonical, phone.trim())
                 .firstResultOptional();
+    }
+
+    /** Live accounts linked to any of {@code pelangganIds}, for batch reads (one query per page). */
+    public List<CustomerAccountEntity> findByPelangganIds(Collection<Long> pelangganIds) {
+        if (pelangganIds == null || pelangganIds.isEmpty()) {
+            return List.of();
+        }
+        return find("pelangganId in ?1 and deletedAt is null", pelangganIds).list();
     }
 
     public Optional<CustomerAccountEntity> findByPelangganId(Long pelangganId) {

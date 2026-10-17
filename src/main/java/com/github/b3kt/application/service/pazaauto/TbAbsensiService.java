@@ -25,6 +25,9 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class TbAbsensiService extends AbstractCrudService<TbAbsensiEntity, Long> {
 
+    /** Statuses an admin may record with markAbsence; HADIR only comes from clocking in. */
+    private static final List<String> ABSENCE_STATUSES = List.of("IZIN", "SAKIT", "ALPHA", "CUTI");
+
     @Inject
     TbAbsensiRepository repository;
 
@@ -49,6 +52,7 @@ public class TbAbsensiService extends AbstractCrudService<TbAbsensiEntity, Long>
      */
     @Transactional
     public TbAbsensiEntity clockIn(Long karyawanId, String ipAddress, String deviceInfo, String location) {
+        requireKaryawanId(karyawanId);
         LocalDate today = LocalDate.now();
 
         // Check if already clocked in today
@@ -94,6 +98,7 @@ public class TbAbsensiService extends AbstractCrudService<TbAbsensiEntity, Long>
      */
     @Transactional
     public TbAbsensiEntity clockOut(Long karyawanId, String ipAddress, String location, String keterangan) {
+        requireKaryawanId(karyawanId);
         LocalDate today = LocalDate.now();
 
         TbAbsensiEntity absensi = repository.find("karyawanId = ?1 and tanggal = ?2", karyawanId, today).firstResult();
@@ -194,6 +199,9 @@ public class TbAbsensiService extends AbstractCrudService<TbAbsensiEntity, Long>
      * Get monthly attendance summary
      */
     public Map<String, Object> getMonthlySummary(Long karyawanId, int month, int year) {
+        if (month < 1 || month > 12 || year < 1) {
+            throw new IllegalArgumentException("month (1-12) and year are required");
+        }
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = startDate.plusMonths(1).minusDays(1);
 
@@ -221,6 +229,13 @@ public class TbAbsensiService extends AbstractCrudService<TbAbsensiEntity, Long>
      */
     @Transactional
     public TbAbsensiEntity markAbsence(Long karyawanId, LocalDate tanggal, String status, String keterangan) {
+        requireKaryawanId(karyawanId);
+        if (tanggal == null) {
+            throw new IllegalArgumentException("tanggal is required");
+        }
+        if (!ABSENCE_STATUSES.contains(status)) {
+            throw new IllegalArgumentException("status must be one of " + String.join(", ", ABSENCE_STATUSES));
+        }
         TbAbsensiEntity absensi = repository.find("karyawanId = ?1 and tanggal = ?2", karyawanId, tanggal)
                 .firstResult();
 
@@ -235,6 +250,12 @@ public class TbAbsensiService extends AbstractCrudService<TbAbsensiEntity, Long>
         absensi.setKeterangan(keterangan);
 
         return absensi;
+    }
+
+    private static void requireKaryawanId(Long karyawanId) {
+        if (karyawanId == null) {
+            throw new IllegalArgumentException("karyawanId is required");
+        }
     }
 
     // Configuration helper methods

@@ -43,9 +43,13 @@ public class CustomerJwtTokenServiceImpl implements CustomerJwtTokenService {
                 .subject(String.valueOf(account.getId()))
                 .groups(Set.of(Roles.CUSTOMER))
                 .claim(ACCT_TYPE_CLAIM, ACCT_TYPE_CUSTOMER)
-                .claim("email", account.getEmail())
                 .claim("fullName", account.getFullName())
                 .expiresIn(Duration.ofMinutes(expirationMinutes));
+
+        // A phone-only account has no email: omit the claim rather than emitting a null one.
+        if (account.getEmail() != null) {
+            builder.claim("email", account.getEmail());
+        }
 
         // Omitted entirely when unlinked, never a null claim, so downstream code fails closed.
         if (account.getPelangganId() != null) {

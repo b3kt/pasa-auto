@@ -30,6 +30,12 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     const authStore = useAuthStore()
     const requiresAuth = to.meta.customerAuth !== false
 
+    // An offline session whose device reports a connection again (or whose backend was down) gets
+    // another chance to become a real one on every navigation
+    if (authStore.isOfflineSession && navigator.onLine) {
+      await authStore.resumeSession()
+    }
+
     // Renew an expired access token; if that fails the session is over
     let token = authStore.token
     if (token && (requiresAuth || to.path === '/login') && !(await authStore.ensureValidToken())) {
@@ -41,9 +47,13 @@ export default defineRouter(function (/* { store, ssrContext } */) {
       }
     }
 
-    if (requiresAuth && !token) {
+    // Offline, a customer who was signed in keeps browsing the pages the service worker cached;
+    // signing in needs the network anyway
+    const canBrowse = !!token || authStore.isOfflineSession
+
+    if (requiresAuth && !canBrowse) {
       next('/login')
-    } else if (to.path === '/login' && token) {
+    } else if (to.path === '/login' && canBrowse) {
       next('/')
     } else {
       next()
@@ -54,8 +64,9 @@ export default defineRouter(function (/* { store, ssrContext } */) {
 })
 
 // Fail closed: if the backend cannot be reached to confirm the flag, treat the portal as switched
-// off rather than show a broken app. The 503 interceptor in boot/axios.js covers the same case
-// while the customer is already on a page.
+// off rather than show a broken app. Offline, the service worker answers with the last flag it saw
+// (src-pwa/custom-service-worker.js), so a portal that was on stays usable from the cache. The 503
+// interceptor in boot/axios.js covers the same case while the customer is already on a page.
 async function portalEnabled() {
   try {
     const { api } = await import('boot/axios')

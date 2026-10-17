@@ -29,7 +29,7 @@ public class TbKaryawanPosisiService extends AbstractCrudService<TbKaryawanPosis
     public PageResponse<TbKaryawanPosisiEntity> findPaginated(PageRequest pageRequest) {
         if (pageRequest.getSearch() != null && !pageRequest.getSearch().isEmpty()) {
             return PageHelper.paginate(repository, pageRequest,
-                    "lower(namaPosisi) like ?1",
+                    "lower(posisi) like ?1",
                     "%" + pageRequest.getSearch().toLowerCase() + "%");
         }
         return PageHelper.findAll(repository, pageRequest);

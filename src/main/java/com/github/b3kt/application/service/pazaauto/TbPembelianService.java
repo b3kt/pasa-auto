@@ -22,10 +22,17 @@ import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @ApplicationScoped
 @RequiredArgsConstructor
 public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, Long> {
+
+    /** Two-letter code, yyyyMMdd, then the sequence number: what generateNoPembelian produces. */
+    private static final Pattern GENERATED_NO_PEMBELIAN = Pattern.compile("[A-Z]{2}\\d{8}(\\d+)");
+    /** The older dashed form, CODE-yyyyMMdd-N. */
+    private static final Pattern DASHED_NO_PEMBELIAN = Pattern.compile("[^-]+-[^-]+-(\\d+)");
 
     private final TbPembelianRepository repository;
     private final TbPembelianDetailService detailService;
@@ -47,6 +54,7 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
     @Override
     @Transactional
     public TbPembelianEntity create(TbPembelianEntity entity) {
+        requireUniqueNoPembelian(entity.getNoPembelian(), null);
         setNoUrutFromNoPembelian(entity);
         // Save main pembelian record
         return super.create(entity);
@@ -54,6 +62,7 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
 
     @Transactional
     public TbPembelianEntity createWithDetails(TbPembelianEntity entity, List<TbPembelianDetailEntity> details) {
+        requireUniqueNoPembelian(entity.getNoPembelian(), null);
         setNoUrutFromNoPembelian(entity);
         // Save main pembelian record
         TbPembelianEntity saved = super.create(entity);
@@ -82,6 +91,8 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
         // For update, we need to handle stock reversal and re-application
         // First, get the old entity to reverse stock changes
         TbPembelianEntity oldEntity = findById(id);
+        requireUniqueNoPembelian(entity.getNoPembelian(), id);
+        setNoUrutFromNoPembelian(entity);
         List<TbPembelianDetailEntity> oldDetails = detailService.findByPembelianId(id);
 
         // Reverse old stock changes if feature is enabled
@@ -243,15 +254,41 @@ public class TbPembelianService extends AbstractCrudService<TbPembelianEntity, L
         return noPembelian;
     }
 
+    /**
+     * no_pembelian is unique in the database. Checking first turns a duplicate into a 400 with a clear
+     * message; left to the constraint, it would surface at commit as an unmapped 500.
+     */
+    private void requireUniqueNoPembelian(String noPembelian, Long ownId) {
+        if (noPembelian == null || noPembelian.isEmpty()) {
+            return;
+        }
+        long taken = ownId == null
+                ? repository.count("noPembelian = ?1", noPembelian)
+                : repository.count("noPembelian = ?1 and id <> ?2", noPembelian, ownId);
+        if (taken > 0) {
+            throw new IllegalArgumentException("No pembelian " + noPembelian + " already exists");
+        }
+    }
+
+    /**
+     * Reads the sequence number back out of noPembelian, so findMaxNoUrut sees it. Understands the
+     * format generateNoPembelian produces ({@code FS20261017N}) and the older dashed one
+     * ({@code FS-20261017-N}); any other value leaves noUrut as sent.
+     */
     private void setNoUrutFromNoPembelian(TbPembelianEntity entity) {
-        if (entity.getNoPembelian() != null && !entity.getNoPembelian().isEmpty()) {
+        String noPembelian = entity.getNoPembelian();
+        if (noPembelian == null || noPembelian.isEmpty()) {
+            return;
+        }
+        Matcher matcher = GENERATED_NO_PEMBELIAN.matcher(noPembelian);
+        if (!matcher.matches()) {
+            matcher = DASHED_NO_PEMBELIAN.matcher(noPembelian);
+        }
+        if (matcher.matches()) {
             try {
-                String[] parts = entity.getNoPembelian().split("-");
-                if (parts.length >= 3) {
-                    entity.setNoUrut(Integer.parseInt(parts[2]));
-                }
+                entity.setNoUrut(Integer.parseInt(matcher.group(1)));
             } catch (NumberFormatException e) {
-                // Ignore if format is invalid, noUrut will be null
+                // A sequence too long for an int is not one generateNoPembelian produced; leave noUrut as sent
             }
         }
     }

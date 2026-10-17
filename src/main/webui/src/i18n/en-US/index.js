@@ -140,6 +140,7 @@ export default {
       nameLabel: 'Customer Name *',
       nameRequired: 'Customer Name is required',
       phoneLabel: 'Phone Number',
+      contactFromAccountHint: 'Managed by the customer in the portal',
       addressLabel: 'Address',
       cityLabel: 'City',
       joinDateLabel: 'Join Date',

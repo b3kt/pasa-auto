@@ -261,44 +261,6 @@ class BrowserCache {
     }
   }
 
-  // Cache JavaScript files specifically
-  cacheJsFile(url, content, ttl = 7 * 24 * 60 * 60 * 1000) { // 7 days
-    return this.setItem('js-' + this.generateApiKey(url), {
-      url: url,
-      content: content,
-      type: 'javascript',
-      timestamp: Date.now()
-    }, ttl)
-  }
-
-  // Get cached JavaScript file
-  getCachedJsFile(url) {
-    const cached = this.getItem('js-' + this.generateApiKey(url))
-    if (cached && cached.type === 'javascript') {
-      return cached.content
-    }
-    return null
-  }
-
-  // Cache CSS files specifically
-  cacheCssFile(url, content, ttl = 7 * 24 * 60 * 60 * 1000) { // 7 days
-    return this.setItem('css-' + this.generateApiKey(url), {
-      url: url,
-      content: content,
-      type: 'css',
-      timestamp: Date.now()
-    }, ttl)
-  }
-
-  // Get cached CSS file
-  getCachedCssFile(url) {
-    const cached = this.getItem('css-' + this.generateApiKey(url))
-    if (cached && cached.type === 'css') {
-      return cached.content
-    }
-    return null
-  }
-
   // Cache API response
   async cacheApiResponse(url, response, ttl = this.defaultTTL) {
     const cacheKey = this.generateApiKey(url)

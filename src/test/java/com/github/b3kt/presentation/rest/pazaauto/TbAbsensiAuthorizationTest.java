@@ -187,4 +187,17 @@ class TbAbsensiAuthorizationTest extends IntegrationTestBase {
         given().auth().oauth2(admin).when().get("/api/pazaauto/absensi/history").then().statusCode(200);
         verify(service).getAttendanceHistory(isNull(), any(), any(), any(), any());
     }
+
+    @Test
+    @DisplayName("A malformed history date is a client error, not a server fault")
+    void malformedHistoryDate() {
+        String admin = token(Roles.ADMIN, null);
+        given().auth().oauth2(admin).queryParam("startDate", "17-10-2026")
+                .when().get("/api/pazaauto/absensi/history")
+                .then().statusCode(400);
+        given().auth().oauth2(admin).queryParam("endDate", "not-a-date")
+                .when().get("/api/pazaauto/absensi/history")
+                .then().statusCode(400);
+        verify(service, never()).getAttendanceHistory(any(), any(), any(), any(), any());
+    }
 }

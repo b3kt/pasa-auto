@@ -307,6 +307,32 @@ class TbAbsensiServiceTest {
     }
 
     @Test
+    @DisplayName("markAbsence rejects missing or unknown input as a client error")
+    void testMarkAbsence_invalidInput() {
+        LocalDate tanggal = LocalDate.of(2024, 1, 15);
+
+        assertThrows(IllegalArgumentException.class, () -> absensiService.markAbsence(null, tanggal, "IZIN", null));
+        assertThrows(IllegalArgumentException.class, () -> absensiService.markAbsence(1L, null, "IZIN", null));
+        assertThrows(IllegalArgumentException.class, () -> absensiService.markAbsence(1L, tanggal, null, null));
+        assertThrows(IllegalArgumentException.class, () -> absensiService.markAbsence(1L, tanggal, "HADIR", null));
+        verify(repository, never()).persist(any(TbAbsensiEntity.class));
+    }
+
+    @Test
+    @DisplayName("getMonthlySummary rejects a missing or out-of-range month as a client error")
+    void testGetMonthlySummary_invalidMonth() {
+        assertThrows(IllegalArgumentException.class, () -> absensiService.getMonthlySummary(1L, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> absensiService.getMonthlySummary(1L, 13, 2024));
+    }
+
+    @Test
+    @DisplayName("clockIn and clockOut require a karyawanId")
+    void testClock_requiresKaryawanId() {
+        assertThrows(IllegalArgumentException.class, () -> absensiService.clockIn(null, "127.0.0.1", null, null));
+        assertThrows(IllegalArgumentException.class, () -> absensiService.clockOut(null, "127.0.0.1", null, null));
+    }
+
+    @Test
     @DisplayName("getAttendanceHistory returns paginated results")
     void testGetAttendanceHistory() {
         TbAbsensiEntity entity = new TbAbsensiEntity();

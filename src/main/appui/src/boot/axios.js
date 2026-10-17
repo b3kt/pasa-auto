@@ -3,21 +3,16 @@ import axios from 'axios'
 import { useAuthStore } from 'stores/auth-store'
 
 // The customer portal talks exclusively to /api/customer/* (see boot/axios.js in ../../webui for the
-// staff app's interceptor set). There is no lookup cache and no offline queue here: a customer only
-// ever reads their own record, so every request goes to the network. The PWA service worker
-// precaches only the app shell and never /api responses (see src-pwa/custom-service-worker.js).
+// staff app's interceptor set). There is no lookup cache and no offline queue here: every request
+// goes to the network, and offline reads are answered by the PWA service worker from the GET
+// responses it cached while online (see src-pwa/custom-service-worker.js). Changes need the network.
 
-const getBaseURL = () => {
-  if (process.env.DEV) {
-    // In development the Quasar dev server (5174) is not the API origin
-    return 'http://localhost:8080'
-  }
-  // In production the bundle is served from the same origin as the API
-  return '/'
-}
-
+// Always origin-relative: in production the bundle is served from the same origin as the API, and in
+// development the portal is reached through Quarkus (http://<host>:8080/app/, proxied to 5174) or
+// directly on 5174, whose dev server proxies /api to Quarkus (see quasar.config.js). Hardcoding
+// localhost here would break every device other than the dev machine.
 const api = axios.create({
-  baseURL: getBaseURL(),
+  baseURL: '/',
   headers: {
     'Content-Type': 'application/json'
   }

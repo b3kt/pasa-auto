@@ -37,6 +37,9 @@ class TbPelangganServiceTest {
     @Mock
     private PelangganVehicleResolver vehicleResolver;
 
+    @Mock
+    private PelangganContactResolver contactResolver;
+
     @InjectMocks
     private TbPelangganService pelangganService;
 
@@ -252,5 +255,46 @@ class TbPelangganServiceTest {
         TbPelangganEntity entity = new TbPelangganEntity();
         pelangganService.setEntityId(entity, 42L);
         assertEquals(42L, entity.getId());
+    }
+
+    @Test
+    @DisplayName("update keeps the stored phone/email of a customer whose contact belongs to a portal account")
+    void testUpdate_contactManagedByAccount() {
+        testDomain.setNoHp("0811");
+        testDomain.setEmail("old@test.com");
+        when(pelangganRepository.findById(1L)).thenReturn(Optional.of(testDomain));
+        when(pelangganRepository.save(any(Pelanggan.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(contactResolver.isManagedByAccount(1L)).thenReturn(true);
+
+        TbPelangganEntity changes = new TbPelangganEntity();
+        changes.setNamaPelanggan("Budi Baru");
+        changes.setNoHp("0899");
+        changes.setEmail("new@test.com");
+        pelangganService.update(1L, changes);
+
+        org.mockito.ArgumentCaptor<Pelanggan> saved = org.mockito.ArgumentCaptor.forClass(Pelanggan.class);
+        verify(pelangganRepository).save(saved.capture());
+        assertEquals("Budi Baru", saved.getValue().getNamaPelanggan());
+        assertEquals("0811", saved.getValue().getNoHp());
+        assertEquals("old@test.com", saved.getValue().getEmail());
+    }
+
+    @Test
+    @DisplayName("update writes phone/email of a walk-in customer")
+    void testUpdate_walkInContact() {
+        when(pelangganRepository.findById(1L)).thenReturn(Optional.of(testDomain));
+        when(pelangganRepository.save(any(Pelanggan.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(contactResolver.isManagedByAccount(1L)).thenReturn(false);
+
+        TbPelangganEntity changes = new TbPelangganEntity();
+        changes.setNamaPelanggan("Budi");
+        changes.setNoHp("0899");
+        changes.setEmail("new@test.com");
+        pelangganService.update(1L, changes);
+
+        org.mockito.ArgumentCaptor<Pelanggan> saved = org.mockito.ArgumentCaptor.forClass(Pelanggan.class);
+        verify(pelangganRepository).save(saved.capture());
+        assertEquals("0899", saved.getValue().getNoHp());
+        assertEquals("new@test.com", saved.getValue().getEmail());
     }
 }

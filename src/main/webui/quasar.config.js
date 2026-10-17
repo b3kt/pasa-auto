@@ -139,6 +139,9 @@ export default defineConfig((ctx) => {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver
     devServer: {
+      // Listen on all interfaces so other devices on the LAN can reach it (Quarkus itself binds
+      // 0.0.0.0 via quarkus.http.host; Quinoa still connects to this server over localhost)
+      host: '0.0.0.0',
       port: 5173,
       // https: true,
       open: false, // opens browser window automatically
@@ -151,6 +154,11 @@ export default defineConfig((ctx) => {
         '/app': {
           target: 'http://localhost:5174',
           ws: true,
+          changeOrigin: true
+        },
+        // Only used when the staff app is opened on 5173 directly; via Quarkus (:8080) /api is same-origin
+        '/api': {
+          target: 'http://localhost:8080',
           changeOrigin: true
         }
       }

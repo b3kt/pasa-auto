@@ -140,6 +140,7 @@ export default {
       nameLabel: 'Nama Pelanggan *',
       nameRequired: 'Nama Pelanggan harus diisi',
       phoneLabel: 'No HP',
+      contactFromAccountHint: 'Dikelola pelanggan melalui portal',
       addressLabel: 'Alamat',
       cityLabel: 'Kota',
       joinDateLabel: 'Tanggal Join',

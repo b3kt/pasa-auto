@@ -70,6 +70,21 @@ public class JpaPelangganRepository implements PelangganRepository {
         }
     }
 
+    /**
+     * Evict everything cached about one customer after their own data (name, contacts, address)
+     * changed: the id/list entries in {@code pelanggan-cache} and the {@code pelanggan-by-nopol}
+     * entries for every plate they own or owned, which hold a copy of the same record.
+     */
+    public void invalidatePelanggan(Long pelangganId) {
+        panacheRepository.invalidatePelangganCache();
+        if (pelangganId == null) {
+            return;
+        }
+        invalidateByNopol(ownershipRepository.findByPelangganId(pelangganId).stream()
+                .map(TbPelangganKendaraanEntity::getNopol)
+                .toArray(String[]::new));
+    }
+
     @Override
     @jakarta.transaction.Transactional
     public Pelanggan save(Pelanggan pelanggan) {
@@ -82,6 +97,7 @@ public class JpaPelangganRepository implements PelangganRepository {
         invalidateByNopol(previousNopol, pelanggan.getNopol());
         TbPelangganEntity entity = TbPelangganEntity.fromDomain(pelanggan);
         TbPelangganEntity managed = panacheRepository.getEntityManager().merge(entity);
+        invalidatePelanggan(managed.getId());
         return managed.toDomain();
     }
 

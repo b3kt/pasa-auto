@@ -23,7 +23,6 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 import java.time.LocalDate;
 import java.util.Map;
 
-@lombok.extern.slf4j.Slf4j
 @RequestScoped
 @Path("/api/pazaauto/absensi")
 @Produces(MediaType.APPLICATION_JSON)
@@ -63,7 +62,7 @@ public class TbAbsensiResource {
     public Response clockIn(
             AbsensiDto dto,
             @Context HttpServerRequest request) {
-        TbAbsensiEntity entity = absensiMapper.toEntity(dto);
+        TbAbsensiEntity entity = toEntityOrEmpty(dto);
         Long karyawanId = resolveKaryawanId(entity.getKaryawanId());
         try {
             String ipAddress = getClientIpAddress(request);
@@ -72,11 +71,6 @@ public class TbAbsensiResource {
         } catch (IllegalStateException | SecurityException e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to clock in", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to clock in"))
                     .build();
         }
     }
@@ -89,7 +83,7 @@ public class TbAbsensiResource {
     public Response clockOut(
             AbsensiDto dto,
             @Context HttpServerRequest request) {
-        TbAbsensiEntity entity = absensiMapper.toEntity(dto);
+        TbAbsensiEntity entity = toEntityOrEmpty(dto);
         Long karyawanId = resolveKaryawanId(entity.getKaryawanId());
         try {
             String ipAddress = getClientIpAddress(request);
@@ -98,11 +92,6 @@ public class TbAbsensiResource {
         } catch (IllegalStateException | SecurityException e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to clock out", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to clock out"))
                     .build();
         }
     }
@@ -159,20 +148,13 @@ public class TbAbsensiResource {
     @Path("/today/{karyawanId}")
     public Response getTodayAttendance(@PathParam("karyawanId") Long karyawanId) {
         Long ownKaryawanId = resolveKaryawanId(karyawanId);
-        try {
-            TbAbsensiEntity result = service.getTodayAttendance(ownKaryawanId);
-            if (result == null) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("No attendance found for today"))
-                        .build();
-            }
-            return Response.ok(ApiResponse.success("Today's attendance retrieved", absensiMapper.toDto(result))).build();
-        } catch (Exception e) {
-            log.error("Failed to get today's attendance", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get today's attendance"))
+        TbAbsensiEntity result = service.getTodayAttendance(ownKaryawanId);
+        if (result == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("No attendance found for today"))
                     .build();
         }
+        return Response.ok(ApiResponse.success("Today's attendance retrieved", absensiMapper.toDto(result))).build();
     }
 
     /**
@@ -191,28 +173,22 @@ public class TbAbsensiResource {
             @QueryParam("descending") @DefaultValue("true") boolean descending) {
         // Admin/Owner may omit karyawanId to see everyone; employees always get their own history
         Long historyKaryawanId = resolveKaryawanId(karyawanId);
-        try {
-            PageRequest pageRequest = new PageRequest(page, rowsPerPage);
-            pageRequest.setSortBy(sortBy);
-            pageRequest.setDescending(descending);
+        PageRequest pageRequest = new PageRequest(page, rowsPerPage);
+        pageRequest.setSortBy(sortBy);
+        pageRequest.setDescending(descending);
 
-            LocalDate start = startDate != null ? LocalDate.parse(startDate) : null;
-            LocalDate end = endDate != null ? LocalDate.parse(endDate) : null;
+        // A malformed date throws DateTimeParseException, which the exception mapper answers with 400
+        LocalDate start = startDate != null && !startDate.isBlank() ? LocalDate.parse(startDate) : null;
+        LocalDate end = endDate != null && !endDate.isBlank() ? LocalDate.parse(endDate) : null;
 
-            PageResponse<TbAbsensiEntity> result = service.getAttendanceHistory(
-                    historyKaryawanId, start, end, status, pageRequest);
-            return Response.ok(ApiResponse.success("Attendance history retrieved",
-                    new PageResponse<>(
-                            absensiMapper.toDtoList(result.getRows()),
-                            result.getCurrentPage(),
-                            result.getRowsPerPage(),
-                            result.getTotalRows()))).build();
-        } catch (Exception e) {
-            log.error("Failed to get attendance history", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get attendance history"))
-                    .build();
-        }
+        PageResponse<TbAbsensiEntity> result = service.getAttendanceHistory(
+                historyKaryawanId, start, end, status, pageRequest);
+        return Response.ok(ApiResponse.success("Attendance history retrieved",
+                new PageResponse<>(
+                        absensiMapper.toDtoList(result.getRows()),
+                        result.getCurrentPage(),
+                        result.getRowsPerPage(),
+                        result.getTotalRows()))).build();
     }
 
     /**
@@ -225,15 +201,8 @@ public class TbAbsensiResource {
             @QueryParam("month") int month,
             @QueryParam("year") int year) {
         Long ownKaryawanId = resolveKaryawanId(karyawanId);
-        try {
-            Map<String, Object> summary = service.getMonthlySummary(ownKaryawanId, month, year);
-            return Response.ok(ApiResponse.success("Monthly summary retrieved", summary)).build();
-        } catch (Exception e) {
-            log.error("Failed to get monthly summary", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get monthly summary"))
-                    .build();
-        }
+        Map<String, Object> summary = service.getMonthlySummary(ownKaryawanId, month, year);
+        return Response.ok(ApiResponse.success("Monthly summary retrieved", summary)).build();
     }
 
     /**
@@ -243,16 +212,9 @@ public class TbAbsensiResource {
     @Path("/mark-absence")
     @RolesAllowed({Roles.ADMIN, Roles.OWNER})
     public Response markAbsence(AbsensiDto dto) {
-        try {
-            TbAbsensiEntity entity = absensiMapper.toEntity(dto);
-            TbAbsensiEntity result = service.markAbsence(entity.getKaryawanId(), entity.getTanggal(), entity.getStatus(), entity.getKeterangan());
-            return Response.ok(ApiResponse.success("Absence marked successfully", absensiMapper.toDto(result))).build();
-        } catch (Exception e) {
-            log.error("Failed to mark absence", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to mark absence"))
-                    .build();
-        }
+        TbAbsensiEntity entity = toEntityOrEmpty(dto);
+        TbAbsensiEntity result = service.markAbsence(entity.getKaryawanId(), entity.getTanggal(), entity.getStatus(), entity.getKeterangan());
+        return Response.ok(ApiResponse.success("Absence marked successfully", absensiMapper.toDto(result))).build();
     }
 
     @PUT
@@ -272,9 +234,11 @@ public class TbAbsensiResource {
         return Response.ok(ApiResponse.success("Absensi deleted")).build();
     }
 
-    /**
-     * Get client IP address from headers
-     */
+    /** A missing request body is treated as an empty one, so the checks below answer it instead of an NPE. */
+    private TbAbsensiEntity toEntityOrEmpty(AbsensiDto dto) {
+        return dto != null ? absensiMapper.toEntity(dto) : new TbAbsensiEntity();
+    }
+
     /**
      * Admin/Owner may act on any employee, so the requested id is used as-is.
      * Employees may only act on themselves: returns their own karyawanId from the token,

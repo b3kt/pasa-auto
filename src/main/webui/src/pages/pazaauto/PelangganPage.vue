@@ -30,8 +30,13 @@
             <q-input v-model="formData.namaPelanggan" :label="$t('pages.pelangganPage.nameLabel')" outlined dense
                      :rules="[val => !!val || $t('pages.pelangganPage.nameRequired')]"
                      hide-bottom-space/>
-            <q-input v-model="formData.email" :label="$t('email')" outlined dense type="email"/>
-            <q-input v-model="formData.noHp" :label="$t('pages.pelangganPage.phoneLabel')" outlined dense/>
+            <!-- A customer linked to a portal account manages phone/email there (ADR-0012) -->
+            <q-input v-model="formData.email" :label="$t('email')" outlined dense type="email"
+                     :readonly="formData.contactFromAccount"
+                     :hint="formData.contactFromAccount ? $t('pages.pelangganPage.contactFromAccountHint') : undefined"/>
+            <q-input v-model="formData.noHp" :label="$t('pages.pelangganPage.phoneLabel')" outlined dense
+                     :readonly="formData.contactFromAccount"
+                     :hint="formData.contactFromAccount ? $t('pages.pelangganPage.contactFromAccountHint') : undefined"/>
             <q-input v-model="formData.alamat" :label="$t('pages.pelangganPage.addressLabel')" outlined dense type="textarea" rows="2"/>
             <q-input v-model="formData.kota" :label="$t('pages.pelangganPage.cityLabel')" outlined dense/>
             <q-input v-model="formData.tanggalJoin" :label="$t('pages.pelangganPage.joinDateLabel')" outlined dense type="date"/>

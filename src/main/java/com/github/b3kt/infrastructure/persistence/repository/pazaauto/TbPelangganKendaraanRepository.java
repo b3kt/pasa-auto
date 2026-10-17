@@ -92,7 +92,7 @@ public class TbPelangganKendaraanRepository implements PanacheRepositoryBase<TbP
     /**
      * Ends an ownership period. {@code until} is clamped to the period's start, so closing a row opened
      * the same day (callers pass "new owner's start - 1 day") never yields a negative period, which the
-     * {@code chk_pk_period} constraint rejects from V36 on.
+     * {@code chk_pk_period} constraint rejects once the contract migration validates it.
      */
     @Transactional
     public void closeOwnership(Long id, LocalDate until, String keterangan) {

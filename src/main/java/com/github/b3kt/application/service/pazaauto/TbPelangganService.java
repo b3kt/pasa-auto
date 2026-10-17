@@ -23,6 +23,9 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
     @Inject
     PelangganVehicleResolver vehicleResolver;
 
+    @Inject
+    PelangganContactResolver contactResolver;
+
     @Override
     protected PanacheRepositoryBase<TbPelangganEntity, Long> getRepository() {
         throw new UnsupportedOperationException("Use PelangganRepository instead");
@@ -40,6 +43,7 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
                 .map(TbPelangganEntity::fromDomain)
                 .toList();
         rows.forEach(vehicleResolver::enrichVehicleInfo);
+        contactResolver.applyTo(rows);
         return rows;
     }
 
@@ -48,7 +52,7 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
         TbPelangganEntity entity = pelangganRepository.findById(id)
                 .map(TbPelangganEntity::fromDomain)
                 .orElse(null);
-        vehicleResolver.enrichVehicleInfo(entity);
+        enrich(entity);
         return entity;
     }
 
@@ -60,6 +64,7 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
                 .map(TbPelangganEntity::fromDomain)
                 .toList();
         rows.forEach(vehicleResolver::enrichVehicleInfo);
+        contactResolver.applyTo(rows);
         return new PageResponse<>(rows, domainPage.getPage(), domainPage.getRowsPerPage(), domainPage.getRowsNumber());
     }
 
@@ -70,7 +75,7 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
         Pelanggan saved = pelangganRepository.save(domain);
         ownershipSyncService.syncOnCreate(saved.getId(), saved.getNopol(), saved.getMerk(),
                 saved.getJenis(), saved.getTanggalJoin());
-        return TbPelangganEntity.fromDomain(saved);
+        return enrich(TbPelangganEntity.fromDomain(saved));
     }
 
     @Override
@@ -87,21 +92,22 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
         domain.setNamaPelanggan(entity.getNamaPelanggan());
         domain.setAlamat(entity.getAlamat());
         domain.setContactPerson(entity.getContactPerson());
-        domain.setTelepon(entity.getTelepon());
         domain.setMerk(entity.getMerk());
         domain.setJenis(entity.getJenis());
-        domain.setEmail(entity.getEmail());
         domain.setJenisKelamin(entity.getJenisKelamin());
         domain.setKeterangan(entity.getKeterangan());
         domain.setKodePos(entity.getKodePos());
         domain.setKota(entity.getKota());
-        domain.setNoHp(entity.getNoHp());
-        domain.setNoTelepon(entity.getNoTelepon());
         domain.setTanggalJoin(entity.getTanggalJoin());
+        // A linked customer's phone/email belong to their portal account (ADR-0012).
+        if (!contactResolver.isManagedByAccount(id)) {
+            domain.setNoHp(entity.getNoHp());
+            domain.setEmail(entity.getEmail());
+        }
         Pelanggan saved = pelangganRepository.save(domain);
         ownershipSyncService.syncOnUpdate(saved.getId(), oldNopol, oldMerk, oldJenis,
                 saved.getNopol(), saved.getMerk(), saved.getJenis(), saved.getTanggalJoin());
-        return TbPelangganEntity.fromDomain(saved);
+        return enrich(TbPelangganEntity.fromDomain(saved));
     }
 
     @Override
@@ -114,7 +120,7 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
         TbPelangganEntity entity = pelangganRepository.findByNopol(nopol)
                 .map(TbPelangganEntity::fromDomain)
                 .orElse(null);
-        vehicleResolver.enrichVehicleInfo(entity);
+        enrich(entity);
         return entity;
     }
 
@@ -130,18 +136,26 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
         if (data.getMerk() != null) domain.setMerk(data.getMerk());
         if (data.getJenis() != null) domain.setJenis(data.getJenis());
         if (data.getContactPerson() != null) domain.setContactPerson(data.getContactPerson());
-        if (data.getTelepon() != null) domain.setTelepon(data.getTelepon());
-        if (data.getEmail() != null) domain.setEmail(data.getEmail());
+        boolean contactFromAccount = contactResolver.isManagedByAccount(domain.getId());
+        if (data.getEmail() != null && !contactFromAccount) domain.setEmail(data.getEmail());
         if (data.getJenisKelamin() != null) domain.setJenisKelamin(data.getJenisKelamin());
         if (data.getKeterangan() != null) domain.setKeterangan(data.getKeterangan());
         if (data.getKodePos() != null) domain.setKodePos(data.getKodePos());
         if (data.getKota() != null) domain.setKota(data.getKota());
-        if (data.getNoHp() != null) domain.setNoHp(data.getNoHp());
-        if (data.getNoTelepon() != null) domain.setNoTelepon(data.getNoTelepon());
+        if (data.getNoHp() != null && !contactFromAccount) domain.setNoHp(data.getNoHp());
 
         Pelanggan saved = pelangganRepository.save(domain);
         ownershipSyncService.syncOnUpdate(saved.getId(), saved.getNopol(), oldMerk, oldJenis,
                 saved.getNopol(), saved.getMerk(), saved.getJenis(), saved.getTanggalJoin());
-        return TbPelangganEntity.fromDomain(saved);
+        return enrich(TbPelangganEntity.fromDomain(saved));
+    }
+
+    /** Fills the read-model view fields (primary vehicle, effective contact) of a detached copy. */
+    private TbPelangganEntity enrich(TbPelangganEntity entity) {
+        if (entity != null) {
+            vehicleResolver.enrichVehicleInfo(entity);
+            contactResolver.applyTo(List.of(entity));
+        }
+        return entity;
     }
 }

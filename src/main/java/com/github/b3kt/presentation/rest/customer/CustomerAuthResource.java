@@ -70,13 +70,16 @@ public class CustomerAuthResource {
     @PermitAll
     public Response login(@Valid CustomerLoginRequest loginRequest) {
         String clientIp = clientIp();
-        loginAttemptService.checkAllowed(loginRequest.getEmail(), clientIp);
+        // One counter per account target whatever the spelling ("+62 812..." and "0812...", any email
+        // case), in its own namespace so it never shares a lockout with a staff username.
+        String attemptKey = "customer-login:" + CustomerAuthService.loginKey(loginRequest.getIdentifier());
+        loginAttemptService.checkAllowed(attemptKey, clientIp);
         try {
-            CustomerLoginResponse response = authService.login(loginRequest.getEmail(), loginRequest.getPassword());
-            loginAttemptService.recordSuccess(loginRequest.getEmail());
+            CustomerLoginResponse response = authService.login(loginRequest.getIdentifier(), loginRequest.getPassword());
+            loginAttemptService.recordSuccess(attemptKey);
             return withRefreshCookie(Response.ok(ApiResponse.success("Login successful", response)), response);
         } catch (AuthenticationException e) {
-            loginAttemptService.recordFailure(loginRequest.getEmail(), clientIp);
+            loginAttemptService.recordFailure(attemptKey, clientIp);
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.<CustomerLoginResponse>error(e.getMessage()))
                     .build();

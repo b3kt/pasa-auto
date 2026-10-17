@@ -5,7 +5,9 @@ import com.github.b3kt.application.dto.customer.LinkRequestAdminDto;
 import com.github.b3kt.application.dto.customer.LinkRequestResultDto;
 import com.github.b3kt.application.dto.customer.LinkSearchResultDto;
 import com.github.b3kt.application.dto.pazaauto.KendaraanOwnershipDto;
+import com.github.b3kt.application.helper.Masking;
 import com.github.b3kt.application.service.pazaauto.KendaraanOwnershipService;
+import com.github.b3kt.application.service.pazaauto.PelangganMergeService;
 import com.github.b3kt.infrastructure.persistence.entity.customer.CustomerAccountEntity;
 import com.github.b3kt.infrastructure.persistence.entity.customer.CustomerPelangganLinkRequestEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
@@ -39,6 +41,9 @@ public class CustomerLinkService {
     @Inject
     KendaraanOwnershipService kendaraanOwnershipService;
 
+    @Inject
+    PelangganMergeService mergeService;
+
     public LinkSearchResultDto searchByNopol(String nopol) {
         KendaraanOwnershipDto owner = kendaraanOwnershipService.getVehicleByNopol(nopol);
         if (owner == null || owner.getIdPelanggan() == null) {
@@ -52,8 +57,8 @@ public class CustomerLinkService {
         LinkSearchResultDto dto = new LinkSearchResultDto();
         dto.setPelangganId(owner.getIdPelanggan());
         dto.setNopol(owner.getNopol());
-        dto.setMaskedName(maskName(owner.getNamaPelanggan()));
-        dto.setMaskedPhone(maskContact(owner.getNoHpPelanggan()));
+        dto.setMaskedName(Masking.maskName(owner.getNamaPelanggan()));
+        dto.setMaskedPhone(Masking.maskContact(owner.getNoHpPelanggan()));
         return dto;
     }
 
@@ -64,9 +69,10 @@ public class CustomerLinkService {
                     LinkSearchResultDto dto = new LinkSearchResultDto();
                     dto.setPelangganId(p.getId());
                     dto.setNopol(p.getNopol());
-                    dto.setMaskedName(maskName(p.getNamaPelanggan()));
-                    dto.setMaskedPhone(maskContact(p.getNoHp() != null ? p.getNoHp() : p.getNoTelepon()));
-                    dto.setMaskedEmail(maskContact(p.getEmail()));
+                    dto.setMaskedName(Masking.maskName(p.getNamaPelanggan()));
+                    // Only unclaimed (walk-in) records reach here, so their own contact fields apply.
+                    dto.setMaskedPhone(Masking.maskContact(p.getNoHp()));
+                    dto.setMaskedEmail(Masking.maskContact(p.getEmail()));
                     return dto;
                 })
                 .toList();
@@ -120,12 +126,28 @@ public class CustomerLinkService {
 
         CustomerAccountEntity account = accountRepository.findByIdOptional(request.getCustomerAccountId())
                 .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        foldOwnEmptyRecord(account, request.getPelangganId());
         account.setPelangganId(request.getPelangganId());
         account.setLinkedAt(LocalDateTime.now());
 
         request.setStatus(CustomerPelangganLinkRequestEntity.STATUS_APPROVED);
         request.setReviewedBy(reviewedBy);
         request.setReviewedAt(LocalDateTime.now());
+    }
+
+    /**
+     * A customer who requested a link may already hold a self-registered record without vehicles (e.g.
+     * after "skip linking"). Merge it into the approved record so it doesn't linger unlinked.
+     */
+    private void foldOwnEmptyRecord(CustomerAccountEntity account, Long approvedPelangganId) {
+        Long ownId = account.getPelangganId();
+        if (ownId == null || ownId.equals(approvedPelangganId)) {
+            return;
+        }
+        pelangganRepository.findByIdOptional(ownId)
+                .filter(TbPelangganEntity::isPortalSourced)
+                .filter(own -> kendaraanOwnershipService.listCurrentVehiclesByPelanggan(ownId).isEmpty())
+                .ifPresent(own -> mergeService.merge(ownId, approvedPelangganId));
     }
 
     @Transactional
@@ -166,17 +188,6 @@ public class CustomerLinkService {
         return dto;
     }
 
-    private static String maskName(String name) {
-        if (name == null || name.isBlank()) {
-            return null;
-        }
-        String trimmed = name.trim();
-        if (trimmed.length() <= 2) {
-            return trimmed.charAt(0) + "*";
-        }
-        return trimmed.charAt(0) + "*".repeat(trimmed.length() - 2) + trimmed.charAt(trimmed.length() - 1);
-    }
-
     @Transactional
     public void skipLinking(Long customerAccountId) {
         CustomerAccountEntity account = accountRepository.findByIdOptional(customerAccountId)
@@ -192,14 +203,5 @@ public class CustomerLinkService {
         pelangganRepository.persist(pelanggan);
         account.setPelangganId(pelanggan.getId());
         account.setLinkedAt(LocalDateTime.now());
-    }
-
-    private static String maskContact(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        String trimmed = value.trim();
-        int visible = Math.min(3, trimmed.length());
-        return "*".repeat(Math.max(0, trimmed.length() - visible)) + trimmed.substring(trimmed.length() - visible);
     }
 }

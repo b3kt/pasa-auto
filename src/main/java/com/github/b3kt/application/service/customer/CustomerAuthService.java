@@ -15,6 +15,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import java.util.Locale;
+import java.util.Optional;
+
 /**
  * Registration/login/refresh/logout for the customer portal. Independent of the staff
  * {@code AuthService} - a customer is never a {@code User}, so nothing here shares state with it
@@ -40,18 +43,28 @@ public class CustomerAuthService {
 
     private volatile String dummyHash;
 
+    /**
+     * Registers with an email, a phone number, or both (at least one); either can be used to log in.
+     */
     @Transactional
     public CustomerLoginResponse register(CustomerRegisterRequest request) {
-        String email = request.getEmail().trim();
-        if (accountRepository.findByEmail(email).isPresent()) {
-            throw new IllegalArgumentException("Email is already registered");
-        }
+        String email = request.getEmail() == null || request.getEmail().isBlank() ? null : request.getEmail().trim();
         // Canonical form, so "+62 812-3" and "0812 3" are recognised as the same login phone.
         String phone = PhoneNormalizer.normalize(request.getPhone());
+        if (request.getPhone() != null && !request.getPhone().isBlank() && !PhoneNormalizer.isValid(phone)) {
+            throw new IllegalArgumentException("Phone number is not valid");
+        }
+        if (email == null && phone == null) {
+            throw new IllegalArgumentException("Enter an email or a phone number");
+        }
+        if (email != null && accountRepository.findByEmail(email).isPresent()) {
+            throw new IllegalArgumentException("Email is already registered");
+        }
         if (phone != null && accountRepository.findByPhone(phone).isPresent()) {
             throw new IllegalArgumentException("Phone number is already registered");
         }
         PasswordPolicy.validate(request.getPassword(), email);
+        PasswordPolicy.validate(request.getPassword(), phone);
 
         CustomerAccountEntity account = new CustomerAccountEntity();
         account.setEmail(email);
@@ -64,15 +77,19 @@ public class CustomerAuthService {
         return issueTokens(account);
     }
 
+    /**
+     * Logs in with either login identifier: an email (anything containing {@code @}) or a phone number
+     * in any format. Unknown identifiers take the same time as a wrong password.
+     */
     @Transactional
-    public CustomerLoginResponse login(String email, String password) {
-        CustomerAccountEntity account = accountRepository.findByEmail(email).orElse(null);
+    public CustomerLoginResponse login(String identifier, String password) {
+        CustomerAccountEntity account = findByLoginIdentifier(identifier).orElse(null);
         if (account == null) {
             passwordEncoder.matches(password, dummyHash());
-            throw new AuthenticationException("Invalid email or password");
+            throw new AuthenticationException("Invalid email/phone or password");
         }
         if (!passwordEncoder.matches(password, account.getPasswordHash())) {
-            throw new AuthenticationException("Invalid email or password");
+            throw new AuthenticationException("Invalid email/phone or password");
         }
         if (!account.isActive()) {
             throw new AuthenticationException("Account is not active");
@@ -119,6 +136,7 @@ public class CustomerAuthService {
             throw new AuthenticationException("Current password is incorrect");
         }
         PasswordPolicy.validate(newPassword, account.getEmail());
+        PasswordPolicy.validate(newPassword, account.getPhone());
         if (newPassword.equals(currentPassword)) {
             throw new IllegalArgumentException("New password must be different from the current password");
         }
@@ -140,6 +158,34 @@ public class CustomerAuthService {
                 .map(p -> p.getNamaPelanggan())
                 .filter(name -> !name.isBlank())
                 .orElse(account.getFullName());
+    }
+
+    /**
+     * Canonical form of a login identifier (lower-case email, or canonical phone), so that rate limiting
+     * counts "+62 812-3" and "08123" as the same target. Never returns null.
+     */
+    public static String loginKey(String identifier) {
+        if (identifier == null) {
+            return "";
+        }
+        String trimmed = identifier.trim();
+        if (trimmed.contains("@")) {
+            return trimmed.toLowerCase(Locale.ROOT);
+        }
+        String phone = PhoneNormalizer.normalize(trimmed);
+        return phone != null ? phone : trimmed;
+    }
+
+    private Optional<CustomerAccountEntity> findByLoginIdentifier(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            return Optional.empty();
+        }
+        if (identifier.contains("@")) {
+            return accountRepository.findByEmail(identifier);
+        }
+        return PhoneNormalizer.normalize(identifier) == null
+                ? Optional.empty()
+                : accountRepository.findByPhone(identifier);
     }
 
     private String dummyHash() {

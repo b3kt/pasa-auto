@@ -2,15 +2,17 @@ package com.github.b3kt.application.service.customer;
 
 import com.github.b3kt.application.dto.customer.NopolCheckDto;
 import com.github.b3kt.application.dto.customer.VehicleRegistrationResultDto;
-import com.github.b3kt.application.dto.pazaauto.KendaraanAttachRequest;
+import com.github.b3kt.application.dto.customer.CustomerVehicleRegisterRequest;
 import com.github.b3kt.application.dto.pazaauto.KendaraanOwnershipDto;
 import com.github.b3kt.application.service.pazaauto.KendaraanOwnershipService;
 import com.github.b3kt.application.service.pazaauto.PelangganMergeService;
 import com.github.b3kt.domain.model.pazaauto.Pelanggan;
 import com.github.b3kt.infrastructure.persistence.entity.customer.CustomerAccountEntity;
+import com.github.b3kt.infrastructure.persistence.entity.customer.CustomerPelangganLinkRequestEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganKendaraanEntity;
 import com.github.b3kt.infrastructure.persistence.repository.customer.CustomerAccountRepository;
+import com.github.b3kt.infrastructure.persistence.repository.customer.CustomerPelangganLinkRequestRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganKendaraanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,6 +56,9 @@ class CustomerVehicleServiceTest {
 
     @Mock
     PelangganMergeService mergeService;
+
+    @Mock
+    CustomerPelangganLinkRequestRepository linkRequestRepository;
 
     @InjectMocks
     CustomerVehicleService service;
@@ -108,8 +113,21 @@ class CustomerVehicleServiceTest {
         return other;
     }
 
-    private KendaraanAttachRequest request(String nopol) {
-        return KendaraanAttachRequest.builder().nopol(nopol).build();
+    private CustomerVehicleRegisterRequest request(String nopol) {
+        return CustomerVehicleRegisterRequest.builder().nopol(nopol).build();
+    }
+
+    /** Request answering the "is this record yours?" prompt. */
+    private CustomerVehicleRegisterRequest request(String nopol, Boolean ownRecord) {
+        return CustomerVehicleRegisterRequest.builder().nopol(nopol).ownRecord(ownRecord).build();
+    }
+
+    /** B1567CFH is currently owned by the unclaimed on-record customer 2477. */
+    private void plateOnUnclaimedRecord() {
+        when(ownershipRepository.findCurrentByNopol("B1567CFH"))
+                .thenReturn(Optional.of(ownership(2443L, 2477L, "B1567CFH", true)));
+        when(accountRepository.findByPelangganId(2477L)).thenReturn(Optional.empty());
+        when(pelangganRepository.findByIdOptional(2477L)).thenReturn(Optional.of(onRecord));
     }
 
     private KendaraanOwnershipDto vehicleDto(String nopol, Long pelangganId) {
@@ -158,14 +176,23 @@ class CustomerVehicleServiceTest {
         }
 
         @Test
-        @DisplayName("AVAILABLE when the plate is on an unclaimed on-record customer (adoptable)")
-        void availableForAdoptable() {
+        @DisplayName("ON_RECORD with brand, type and a masked owner name when the plate is on an unclaimed record")
+        void onRecordForAdoptable() {
             linkedToPortalRecord();
-            when(ownershipRepository.findCurrentByNopol("B1567CFH"))
-                    .thenReturn(Optional.of(ownership(2443L, 2477L, "B1567CFH", true)));
-            when(accountRepository.findByPelangganId(2477L)).thenReturn(Optional.empty());
+            plateOnUnclaimedRecord();
+            KendaraanOwnershipDto vehicle = vehicleDto("B1567CFH", 2477L);
+            vehicle.setMerk("TOYOTA");
+            vehicle.setJenis("AVANZA");
+            vehicle.setNamaPelanggan("PAK SHOLEH");
+            when(ownershipService.getVehicleByNopol("B1567CFH")).thenReturn(vehicle);
 
-            assertTrue(service.checkNopol(5L, "B1567CFH").isCanRegister());
+            NopolCheckDto result = service.checkNopol(5L, "B1567CFH");
+
+            assertEquals(NopolCheckDto.ON_RECORD, result.getStatus());
+            assertTrue(result.isCanRegister());
+            assertEquals("TOYOTA", result.getMerk());
+            assertEquals("AVANZA", result.getJenis());
+            assertEquals("P********H", result.getMaskedOwnerName());
         }
 
         @Test
@@ -211,41 +238,121 @@ class CustomerVehicleServiceTest {
     class RegisterVehicle {
 
         @Test
-        @DisplayName("adopts an unclaimed on-record customer and merges the caller's own record into it")
+        @DisplayName("'yes, my record': links it and merges the caller's own record into it")
         void adoptsOnRecord() {
             linkedToPortalRecord();
-            when(ownershipRepository.findCurrentByNopol("B1567CFH"))
-                    .thenReturn(Optional.of(ownership(2443L, 2477L, "B1567CFH", true)));
-            when(accountRepository.findByPelangganId(2477L)).thenReturn(Optional.empty());
-            when(pelangganRepository.findByIdOptional(2477L)).thenReturn(Optional.of(onRecord));
+            plateOnUnclaimedRecord();
             when(ownershipService.listCurrentVehiclesByPelanggan(2477L))
                     .thenReturn(List.of(vehicleDto("B1567CFH", 2477L)));
 
-            VehicleRegistrationResultDto result = service.registerVehicle(5L, request("b1567 cfh"));
+            VehicleRegistrationResultDto result = service.registerVehicle(5L, request("b1567 cfh", true));
 
+            assertEquals(VehicleRegistrationResultDto.STATUS_REGISTERED, result.getStatus());
             assertTrue(result.isRelinked());
             assertEquals(2477L, account.getPelangganId());
             verify(mergeService).merge(2507L, 2477L);
-            // The adopted record already has the current ownership row: no duplicate is opened.
+            // The adopted record already has the current ownership row: no duplicate, no transfer.
             verify(ownershipService, never()).attach(any(), any(), any(), any(), any(), any());
+            verify(ownershipService, never()).transfer(any(), any(), any(), any());
             assertEquals(1, result.getVehicles().size());
         }
 
         @Test
-        @DisplayName("adopts directly (no merge) when the account has no record of its own yet")
+        @DisplayName("'yes': links directly (no merge) when the account has no record of its own yet")
         void adoptsWithoutOwnRecord() {
             account.setPelangganId(null);
             when(accountRepository.findByIdOptional(5L)).thenReturn(Optional.of(account));
-            when(ownershipRepository.findCurrentByNopol("B1567CFH"))
-                    .thenReturn(Optional.of(ownership(2443L, 2477L, "B1567CFH", true)));
-            when(accountRepository.findByPelangganId(2477L)).thenReturn(Optional.empty());
-            when(pelangganRepository.findByIdOptional(2477L)).thenReturn(Optional.of(onRecord));
+            plateOnUnclaimedRecord();
 
-            VehicleRegistrationResultDto result = service.registerVehicle(5L, request("B1567CFH"));
+            VehicleRegistrationResultDto result = service.registerVehicle(5L, request("B1567CFH", true));
 
             assertTrue(result.isRelinked());
             assertEquals(2477L, account.getPelangganId());
             verify(mergeService, never()).merge(any(), any());
+        }
+
+        @Test
+        @DisplayName("'yes': applies the brand/type the customer corrected to the adopted vehicle")
+        void adoptAppliesCorrections() {
+            linkedToPortalRecord();
+            plateOnUnclaimedRecord();
+            CustomerVehicleRegisterRequest request = request("B1567CFH", true);
+            request.setMerk("TOYOTA");
+            request.setJenis("INNOVA");
+
+            service.registerVehicle(5L, request);
+
+            verify(ownershipService).updateVehicle(2477L, "B1567CFH", "TOYOTA", "INNOVA");
+        }
+
+        @Test
+        @DisplayName("'yes' with a matching phone on record links immediately")
+        void adoptWithMatchingContact() {
+            linkedToPortalRecord();
+            plateOnUnclaimedRecord();
+            onRecord.setNoHp("+62 812");
+
+            VehicleRegistrationResultDto result = service.registerVehicle(5L, request("B1567CFH", true));
+
+            assertEquals(VehicleRegistrationResultDto.STATUS_REGISTERED, result.getStatus());
+            assertEquals(2477L, account.getPelangganId());
+        }
+
+        @Test
+        @DisplayName("'yes' but the record's contact contradicts the account: queued for staff approval")
+        void adoptWithConflictingContactNeedsApproval() {
+            linkedToPortalRecord();
+            plateOnUnclaimedRecord();
+            onRecord.setNoHp("08999000111");
+            onRecord.setEmail("sholeh@example.com");
+            when(linkRequestRepository.findPendingByCustomerAccount(5L)).thenReturn(Optional.empty());
+
+            VehicleRegistrationResultDto result = service.registerVehicle(5L, request("B1567CFH", true));
+
+            assertEquals(VehicleRegistrationResultDto.STATUS_PENDING_APPROVAL, result.getStatus());
+            assertEquals(2507L, account.getPelangganId(), "account stays on its own record until approved");
+            ArgumentCaptor<CustomerPelangganLinkRequestEntity> captor =
+                    ArgumentCaptor.forClass(CustomerPelangganLinkRequestEntity.class);
+            verify(linkRequestRepository).persist(captor.capture());
+            assertEquals(2477L, captor.getValue().getPelangganId());
+            assertEquals(CustomerPelangganLinkRequestEntity.MATCH_NOPOL, captor.getValue().getMatchType());
+            assertEquals("B1567CFH", captor.getValue().getMatchValue());
+            verify(mergeService, never()).merge(any(), any());
+            verify(ownershipService, never()).transfer(any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("'no, not my record': only the vehicle is transferred to the caller's own record")
+        void notMyRecordTransfersVehicle() {
+            linkedToPortalRecord();
+            plateOnUnclaimedRecord();
+
+            VehicleRegistrationResultDto result = service.registerVehicle(5L, request("B1567CFH", false));
+
+            assertEquals(VehicleRegistrationResultDto.STATUS_REGISTERED, result.getStatus());
+            assertFalse(result.isRelinked());
+            assertEquals(2507L, account.getPelangganId(), "the old record is not linked");
+            verify(ownershipService).transfer(eq("B1567CFH"), eq(2507L), any(), any());
+            verify(mergeService, never()).merge(any(), any());
+        }
+
+        @Test
+        @DisplayName("no answer and no own record yet: creates the caller's record, then transfers the vehicle")
+        void noAnswerCreatesOwnRecordThenTransfers() {
+            account.setPelangganId(null);
+            when(accountRepository.findByIdOptional(5L)).thenReturn(Optional.of(account));
+            plateOnUnclaimedRecord();
+            doAnswer(inv -> {
+                TbPelangganEntity created = inv.getArgument(0);
+                created.setId(9999L);
+                return null;
+            }).when(pelangganRepository).persist(any(TbPelangganEntity.class));
+
+            VehicleRegistrationResultDto result = service.registerVehicle(5L, request("B1567CFH"));
+
+            assertTrue(result.isRelinked());
+            assertEquals(9999L, account.getPelangganId());
+            verify(ownershipService).transfer(eq("B1567CFH"), eq(9999L), any(), any());
         }
 
         @Test
@@ -289,8 +396,9 @@ class CustomerVehicleServiceTest {
             assertEquals(Pelanggan.SUMBER_PORTAL, created.getSumber());
             assertNull(created.getNopol());
             assertEquals("Test User", created.getNamaPelanggan());
-            assertEquals("0812", created.getNoHp());
-            assertEquals("test@email.com", created.getEmail());
+            // Contacts stay on the account (ADR-0012); nothing is copied onto tb_pelanggan.
+            assertNull(created.getNoHp());
+            assertNull(created.getEmail());
 
             assertTrue(result.isRelinked());
             assertEquals(9999L, account.getPelangganId());

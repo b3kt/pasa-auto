@@ -7,6 +7,7 @@ import com.github.b3kt.infrastructure.persistence.entity.customer.CustomerAccoun
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
 import com.github.b3kt.infrastructure.persistence.repository.customer.CustomerAccountRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganRepository;
+import com.github.b3kt.infrastructure.repository.JpaPelangganRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,9 @@ class CustomerProfileServiceTest {
 
     @Mock
     TbPelangganRepository pelangganRepository;
+
+    @Mock
+    JpaPelangganRepository pelangganCache;
 
     @InjectMocks
     CustomerProfileService service;
@@ -83,10 +87,10 @@ class CustomerProfileServiceTest {
             assertEquals(7L, dto.getPelangganId());
             assertEquals("Budi Santoso", dto.getNamaPelanggan());
             assertEquals("Jl. Merdeka 1", dto.getAlamat());
-            // telepon is the deprecated alias of noTelepon (ADR-0011), not the legacy tlpn value
-            assertEquals("021999", dto.getTelepon());
+            // Contacts come from the account (ADR-0012); the landline is deprecated and never returned.
+            assertNull(dto.getTelepon());
+            assertNull(dto.getNoTelepon());
             assertEquals("08123", dto.getNoHp());
-            assertEquals("021999", dto.getNoTelepon());
             assertEquals("budi@test.com", dto.getPelangganEmail());
             assertEquals("Bandung", dto.getKota());
             assertEquals("40111", dto.getKodePos());
@@ -138,7 +142,7 @@ class CustomerProfileServiceTest {
             request.setNamaPelanggan("  Budi Santoso  ");
             request.setAlamat("Jl. Baru 2");
             request.setTelepon("022");
-            request.setNoHp("08999");
+            request.setNoHp("081299990000");
             request.setNoTelepon("022888");
             request.setEmail("baru@test.com");
             request.setKota("Jakarta");
@@ -148,24 +152,28 @@ class CustomerProfileServiceTest {
         }
 
         @Test
-        @DisplayName("copies every editable field onto the linked record and invalidates the cache")
+        @DisplayName("writes the record fields, puts the mobile number on the account and invalidates the cache")
         void success() {
             TbPelangganEntity p = pelanggan();
-            when(accountRepository.findByIdOptional(5L)).thenReturn(Optional.of(account(true)));
+            CustomerAccountEntity account = account(true);
+            when(accountRepository.findByIdOptional(5L)).thenReturn(Optional.of(account));
             when(pelangganRepository.findByIdOptional(7L)).thenReturn(Optional.of(p));
 
             service.updateProfile(5L, request());
 
             assertEquals("Budi Santoso", p.getNamaPelanggan());
             assertEquals("Jl. Baru 2", p.getAlamat());
-            assertEquals("022", p.getTelepon());
-            assertEquals("08999", p.getNoHp());
-            assertEquals("022888", p.getNoTelepon());
-            assertEquals("baru@test.com", p.getEmail());
+            // Contacts live on the account: the phone moves there, the login email is not changed,
+            // and the record's own contact columns and landline are left alone.
+            assertEquals("081299990000", account.getPhone());
+            assertEquals("budi@test.com", account.getEmail());
+            assertEquals("08123", p.getNoHp());
+            assertEquals("021999", p.getNoTelepon());
+            assertEquals("budi@test.com", p.getEmail());
             assertEquals("Jakarta", p.getKota());
             assertEquals("12345", p.getKodePos());
             assertEquals("Ani", p.getContactPerson());
-            verify(pelangganRepository).invalidatePelangganCache();
+            verify(pelangganCache).invalidatePelanggan(7L);
         }
 
         @Test
@@ -187,11 +195,56 @@ class CustomerProfileServiceTest {
             assertNull(created.getNopol());
             assertNull(created.getMerk());
             assertEquals(Pelanggan.SUMBER_PORTAL, created.getSumber());
-            assertEquals("baru@test.com", created.getEmail(), "the request's email overrides the seeded one");
+            assertNull(created.getEmail(), "contacts stay on the account");
+            assertNull(created.getNoHp());
             assertEquals("Budi Santoso", created.getNamaPelanggan());
             assertEquals(99L, account.getPelangganId());
             assertNotNull(account.getLinkedAt());
-            verify(pelangganRepository).invalidatePelangganCache();
+            verify(pelangganCache).invalidatePelanggan(99L);
+        }
+
+        @Test
+        @DisplayName("rejects a mobile number that another account already uses")
+        void phoneTakenByAnotherAccount() {
+            CustomerAccountEntity account = account(true);
+            CustomerAccountEntity other = new CustomerAccountEntity();
+            other.setId(6L);
+            when(accountRepository.findByIdOptional(5L)).thenReturn(Optional.of(account));
+            when(pelangganRepository.findByIdOptional(7L)).thenReturn(Optional.of(pelanggan()));
+            when(accountRepository.findByPhone("081299990000")).thenReturn(Optional.of(other));
+
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                    () -> service.updateProfile(5L, request()));
+            assertEquals("Phone number is already registered", ex.getMessage());
+            assertEquals("08123", account.getPhone());
+        }
+
+        @Test
+        @DisplayName("refuses to clear the phone of an account that has no email (its only login identifier)")
+        void phoneIsOnlyLoginIdentifier() {
+            CustomerAccountEntity account = account(true);
+            account.setEmail(null);
+            when(accountRepository.findByIdOptional(5L)).thenReturn(Optional.of(account));
+            when(pelangganRepository.findByIdOptional(7L)).thenReturn(Optional.of(pelanggan()));
+            UpdateProfileRequest request = request();
+            request.setNoHp("");
+
+            assertThrows(IllegalArgumentException.class, () -> service.updateProfile(5L, request));
+            assertEquals("08123", account.getPhone());
+        }
+
+        @Test
+        @DisplayName("normalizes the mobile number before storing it on the account")
+        void normalizesPhone() {
+            CustomerAccountEntity account = account(true);
+            when(accountRepository.findByIdOptional(5L)).thenReturn(Optional.of(account));
+            when(pelangganRepository.findByIdOptional(7L)).thenReturn(Optional.of(pelanggan()));
+            UpdateProfileRequest request = request();
+            request.setNoHp("+62 812-000-111");
+
+            service.updateProfile(5L, request);
+
+            assertEquals("0812000111", account.getPhone());
         }
 
         @Test
@@ -223,7 +276,7 @@ class CustomerProfileServiceTest {
             IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                     () -> service.updateProfile(5L, request));
             assertEquals("Account not found", ex.getMessage());
-            verify(pelangganRepository, never()).invalidatePelangganCache();
+            verify(pelangganCache, never()).invalidatePelanggan(any());
         }
     }
 }

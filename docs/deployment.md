@@ -55,6 +55,9 @@ cp .env.example .env
 | `LOGIN_MAX_FAILURES_PER_USER` | 5 | Failed logins before an account is locked |
 | `LOGIN_MAX_FAILURES_PER_IP` | 20 | Failed logins before a client IP is locked |
 | `LOGIN_LOCKOUT_MINUTES` | 15 | Lock duration, counted from the last failure |
+| `NOPOL_LOOKUP_MAX_PLATES_PER_ACCOUNT` | 20 | Distinct plates one customer account may look up in the portal per window |
+| `NOPOL_LOOKUP_MAX_PLATES_PER_IP` | 60 | Distinct plates one client IP may look up per window, across accounts |
+| `NOPOL_LOOKUP_WINDOW_MINUTES` | 15 | Plate-lookup window; counters reset when it ends |
 | `APP_LOG_LEVEL` | INFO | App log level; `DEBUG` logs request/response bodies (credentials masked, `/api/auth/*` omitted) |
 | `DB_MAX_SIZE` | 10 | Max DB connections |
 | `DB_MIN_SIZE` | 2 | Min DB connections |

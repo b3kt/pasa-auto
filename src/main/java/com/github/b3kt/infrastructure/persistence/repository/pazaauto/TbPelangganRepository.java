@@ -2,7 +2,7 @@ package com.github.b3kt.infrastructure.persistence.repository.pazaauto;
 
 import com.github.b3kt.application.helper.PhoneNormalizer;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
-import io.quarkus.cache.CacheInvalidate;
+import io.quarkus.cache.CacheInvalidateAll;
 import io.quarkus.cache.CacheResult;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -18,7 +18,12 @@ public class TbPelangganRepository implements PanacheRepositoryBase<TbPelangganE
         return find("id = ?1 and deletedAt is null", id).firstResultOptional();
     }
 
-    @CacheInvalidate(cacheName = "pelanggan-cache")
+    /**
+     * Clears the whole pelanggan cache. It must be "all": entries are keyed by the
+     * {@link #findByIdCached} id (and the {@link #findAllCached} default key), and a parameterless
+     * {@code @CacheInvalidate} would only evict the default key, leaving every per-id entry stale.
+     */
+    @CacheInvalidateAll(cacheName = "pelanggan-cache")
     public void invalidatePelangganCache() {
         // Cache invalidation triggered on write operations
     }
@@ -26,7 +31,8 @@ public class TbPelangganRepository implements PanacheRepositoryBase<TbPelangganE
     /**
      * Matches a customer's self-reported phone/email against the contact fields on record, for the
      * customer portal's "link my account" search. Phones are compared in canonical form
-     * ({@link PhoneNormalizer}), so {@code +62 812-3456} matches a stored {@code 08123456}. Not cached:
+     * ({@link PhoneNormalizer}), so {@code +62 812-3456} matches a stored {@code 08123456}; the
+     * deprecated landline is not matched (ADR-0012). Not cached:
      * a customer-supplied value used as a query parameter shouldn't populate the shared lookup cache.
      */
     public List<TbPelangganEntity> findByContact(String phone, String email) {
@@ -36,11 +42,11 @@ public class TbPelangganRepository implements PanacheRepositoryBase<TbPelangganE
             return List.of();
         }
         if (normalizedPhone != null && normalizedEmail != null) {
-            return find("deletedAt is null and ((noHp = ?1 or noTelepon = ?1) or lower(email) = ?2)",
+            return find("deletedAt is null and (noHp = ?1 or lower(email) = ?2)",
                     normalizedPhone, normalizedEmail.toLowerCase()).list();
         }
         if (normalizedPhone != null) {
-            return find("deletedAt is null and (noHp = ?1 or noTelepon = ?1)", normalizedPhone).list();
+            return find("deletedAt is null and noHp = ?1", normalizedPhone).list();
         }
         return find("deletedAt is null and lower(email) = ?1", normalizedEmail.toLowerCase()).list();
     }

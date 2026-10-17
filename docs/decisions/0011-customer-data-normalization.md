@@ -1,7 +1,7 @@
 # ADR-0011: Customer Data Normalization (tb_pelanggan / tb_pelanggan_kendaraan / tb_customer_accounts)
 
 ## Status
-**Accepted** - 2026-10-17 (V35 and release N implemented; V36 pending)
+**Accepted** - 2026-10-17 (V35 and release N implemented; contract migration pending)
 
 ## Context
 `tb_pelanggan` began as a flat "customer + their one car" record. Since then, vehicle ownership moved to
@@ -158,21 +158,21 @@ Implemented in `src/main/resources/db/migration/V35__normalize_customer_data_exp
    listener stores the customer JWT subject, the account id, in `created_by`).
 2. **Legacy plates are preserved before the column becomes derived.** A live customer whose legacy plate has no
    ownership row of their own gets one: a current row when nobody owns the plate (earliest customer wins), and
-   a closed historical row otherwise. Otherwise the recompute in step 7, and V36's drop, would lose the plate.
+   a closed historical row otherwise. Otherwise the recompute in step 7, and the contract migration's drop, would lose the plate.
 3. The `'-'`/blank sentinels in `nopol`/`merk`/`jenis` become `NULL`.
 4. Phones: `tlpn` is folded into an empty `no_hp` (mobile-looking) or `no_telepon`. `tlpn` itself is left
-   untouched until V36, and `no_hp`/`no_telepon` are canonicalized. Account phones are canonicalized only where
+   untouched until the contract migration, and `no_hp`/`no_telepon` are canonicalized. Account phones are canonicalized only where
    that doesn't collide with another account (audit c); colliding ones stay as they are for manual resolution.
    Indexes are added on `no_hp`, `no_telepon` and `lower(email)`.
 5. Ownership: closed rows without an end date get one; `chk_pk_nopol_canonical` and `chk_pk_current_open` are
-   added `NOT VALID`; the `id_pelanggan` FK becomes `ON DELETE RESTRICT`. **`chk_pk_period` is deferred to V36**,
+   added `NOT VALID`; the `id_pelanggan` FK becomes `ON DELETE RESTRICT`. **`chk_pk_period` is deferred to the contract migration**,
    because the previous build closes a same-day ownership with "start - 1 day", which the constraint would reject
    even as `NOT VALID`. Release N clamps the end date instead.
 6. `fk_spk_pelanggan` and `fk_penjualan_pelanggan` are added `NOT VALID`.
 7. Trigger `trg_pk_sync_legacy_vehicle` becomes the only writer of `tb_pelanggan.nopol/merk/jenis`, followed by
    a one-time recompute for every live customer. Customers without a current vehicle end up with `NULL`.
 8. View `v_pelanggan_legacy` keeps the old column names (`tlpn` = `no_telepon`) and doesn't reference any column
-   V36 drops.
+   the contract migration drops.
 9. `COMMENT ON` documents deprecated columns, snapshots and the semantics of the new columns.
 
 Verified against a scratch PostgreSQL 16 with V1–V34 applied and seeded edge cases: multiple vehicles,
@@ -201,12 +201,15 @@ and that each new constraint and FK rejects bad writes.
   The `fullName` JWT claim still carries `full_name`; the portal prefers the response value.
 - `KendaraanOwnershipService.deleteVehicle` no longer soft-deletes the customer when the last vehicle goes.
 
-Still reading the trigger-derived columns in release N (they are correct, but have to move before V36):
+Still reading the trigger-derived columns in release N (they are correct, but have to move before the contract migration):
 the bound-customer branch and legacy fallback in `SpkEnrichmentService`, `TbPenjualanService` (merk/nopol
 for receipts), `CustomerLinkService` (plate shown in search results), and `TbPelangganService` update/patch
 (which pass the primary plate through to `PelangganOwnershipSyncService`).
 
-#### V36: contract (ships with release N+1, at least one release after N, once audits (c)/(d) are clean)
+V36 became ADR-0012's contact migration, so the contract step takes the next free number. V35's own
+comments still say "V36"; they refer to this step and stay as they are because V35 is applied.
+
+#### Contract migration (V37 or later; ships with release N+1, at least one release after N, once audits (c)/(d) are clean)
 ```sql
 -- Negative periods from pre-release-N closes (audit e) must be fixed first.
 ALTER TABLE tb_pelanggan_kendaraan
@@ -217,8 +220,7 @@ ALTER TABLE tb_spk       VALIDATE CONSTRAINT fk_spk_pelanggan;
 ALTER TABLE tb_penjualan VALIDATE CONSTRAINT fk_penjualan_pelanggan;
 
 ALTER TABLE tb_pelanggan
-    ADD CONSTRAINT chk_pelanggan_no_hp_canonical      CHECK (no_hp      ~ '^0[0-9]{6,15}$'),
-    ADD CONSTRAINT chk_pelanggan_no_telepon_canonical CHECK (no_telepon ~ '^0[0-9]{6,15}$');
+    ADD CONSTRAINT chk_pelanggan_no_hp_canonical CHECK (no_hp ~ '^0[0-9]{6,15}$');
 ALTER TABLE tb_customer_accounts
     ADD CONSTRAINT chk_customer_accounts_phone_canonical CHECK (phone ~ '^0[0-9]{6,15}$');
 
@@ -230,8 +232,10 @@ DROP INDEX IF EXISTS tb_pelanggan_nama_index;
 CREATE INDEX IF NOT EXISTS idx_pelanggan_nama ON tb_pelanggan (nama_pelanggan) WHERE deleted_at IS NULL;
 DROP INDEX IF EXISTS idx_pk_nopol_norm;     -- redundant once chk_pk_nopol_canonical is validated
 
-ALTER TABLE tb_pelanggan DROP COLUMN nopol, DROP COLUMN merk, DROP COLUMN jenis, DROP COLUMN tlpn;
--- v_pelanggan_legacy does not reference the dropped columns, so it survives unchanged.
+-- no_telepon is dropped too: the landline is deprecated by ADR-0012.
+ALTER TABLE tb_pelanggan DROP COLUMN nopol, DROP COLUMN merk, DROP COLUMN jenis, DROP COLUMN tlpn,
+                         DROP COLUMN no_telepon;
+-- v_pelanggan_legacy (as redefined by V36) does not reference the dropped columns, so it survives.
 ```
 In release N+1, `TbPelangganEntity` stops mapping `nopol`/`merk`/`jenis`/`tlpn`. The DTO keeps them, marked
 `@Deprecated`, until the staff SPA's customer page moves to the multi-vehicle view.
@@ -240,8 +244,8 @@ In release N+1, `TbPelangganEntity` stops mapping `nopol`/`merk`/`jenis`/`tlpn`.
 | State | Roll back to | Safe? | Why |
 |---|---|---|---|
 | V35 + release N | release N-1 | Yes | Columns still exist; NULL plate is treated like `'-'`; trigger keeps `nopol` current; `NOT VALID` constraints only affect writes N-1 already does correctly |
-| V36 + release N+1 | release N | Only if N+1 has been the oldest deployable build for a full release | N still maps the columns read-only, so Hibernate validation fails once they're gone. Ship the entity change (N+1) first and V36 in N+2, or accept that N is out of the rollback window |
-| V36 + release N+1 | release N-1 | No | Expected for a contract step. Don't ship V36 until N-1 is out of the rollback window |
+| Contract + release N+1 | release N | Only if N+1 has been the oldest deployable build for a full release | N still maps the columns read-only, so Hibernate validation fails once they're gone. Ship the entity change (N+1) first and the contract migration in N+2, or accept that N is out of the rollback window |
+| Contract + release N+1 | release N-1 | No | Expected for a contract step. Don't ship the contract migration until N-1 is out of the rollback window |
 
 ## Consequences
 - **Positive**: Each fact has one owner. Vehicles live only in ownership, profile only in `tb_pelanggan`,

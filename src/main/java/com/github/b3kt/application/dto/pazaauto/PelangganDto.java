@@ -41,8 +41,9 @@ public class PelangganDto {
     @Schema(example = "Jane Smith", description = "Contact person name")
     private String contactPerson;
 
+    // Deprecated landline (ADR-0012): always null in responses and ignored on write.
     @Size(max = 25, message = "Telepon must not exceed 25 characters")
-    @Schema(example = "0215551234", deprecated = true, description = "Alias of noTelepon")
+    @Schema(deprecated = true, description = "Deprecated landline; always null, ignored on write")
     private String telepon;
 
     @Size(max = 50, message = "Merk must not exceed 50 characters")
@@ -75,11 +76,12 @@ public class PelangganDto {
     private String kota;
 
     @Size(max = 25, message = "No HP must not exceed 25 characters")
-    @Schema(example = "081234567890", description = "Mobile phone number, stored as canonical national digits")
+    @Schema(example = "081234567890", description = "Mobile phone, canonical national digits. For a customer "
+            + "linked to a portal account this is the account's phone and is ignored on write (see contactFromAccount)")
     private String noHp;
 
     @Size(max = 25, message = "No Telepon must not exceed 25 characters")
-    @Schema(example = "0215555678", description = "Landline phone number, stored as canonical national digits")
+    @Schema(deprecated = true, description = "Deprecated landline; always null, ignored on write")
     private String noTelepon;
 
     @Schema(example = "2020-01-15", description = "Customer registration date")
@@ -88,4 +90,8 @@ public class PelangganDto {
     @Schema(example = "STAFF", readOnly = true,
             description = "Record origin: STAFF (workshop data entry) or PORTAL (customer self-registration)")
     private String sumber;
+
+    @Schema(readOnly = true, description = "True when noHp/email come from the customer's portal account "
+            + "(tb_customer_accounts); staff edits to them are then ignored")
+    private boolean contactFromAccount;
 }

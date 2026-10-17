@@ -59,6 +59,9 @@ public class KendaraanOwnershipService {
     @Inject
     JpaPelangganRepository pelangganNopolRepository;
 
+    @Inject
+    PelangganContactResolver contactResolver;
+
     @Transactional
     public KendaraanOwnershipDto transfer(String nopol, Long idPelangganBaru,
                                           LocalDate tanggalAwal, String keterangan) {
@@ -149,7 +152,13 @@ public class KendaraanOwnershipService {
             throw new IllegalArgumentException("Vehicle does not belong to this customer");
         }
 
-        ownership.setDeletedAt(java.time.LocalDateTime.now());
+        // Close the period as well as soft-deleting it: idx_pk_current_nopol only looks at is_current,
+        // so a deleted-but-current row would block re-registering the same plate.
+        LocalDate today = LocalDate.now();
+        LocalDate mulai = ownership.getTanggalMulai();
+        ownership.setCurrent(false);
+        ownership.setTanggalAkhir(mulai != null && today.isBefore(mulai) ? mulai : today);
+        ownership.setDeletedAt(LocalDateTime.now());
         ownershipRepository.getEntityManager().merge(ownership);
         pelangganNopolRepository.invalidateByNopol(nopol);
         // The customer record stays: a customer may own no vehicle (ADR-0011), and removing it would
@@ -231,7 +240,7 @@ public class KendaraanOwnershipService {
         dto.setIdPelanggan(p.getId());
         dto.setNamaPelanggan(p.getNamaPelanggan());
         dto.setAlamat(p.getAlamat());
-        dto.setNoHp(p.getNoHp());
+        dto.setNoHp(contactResolver.resolve(p).noHp());
         dto.setVehicles(listVehiclesByPelanggan(pelangganId));
         dto.setTransactions(findTransactionsByPelanggan(pelangganId));
         return dto;
@@ -405,7 +414,7 @@ public class KendaraanOwnershipService {
         pelangganRepository.findByIdCached(row.getPelangganId()).ifPresent(p -> {
             dto.setNamaPelanggan(p.getNamaPelanggan());
             dto.setAlamatPelanggan(p.getAlamat());
-            dto.setNoHpPelanggan(p.getNoHp());
+            dto.setNoHpPelanggan(contactResolver.resolve(p).noHp());
         });
         return dto;
     }

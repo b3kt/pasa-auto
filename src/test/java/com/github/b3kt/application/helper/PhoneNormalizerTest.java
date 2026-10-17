@@ -38,4 +38,15 @@ class PhoneNormalizerTest {
         String once = PhoneNormalizer.normalize("+62 812-3456-7890");
         assertEquals(once, PhoneNormalizer.normalize(once));
     }
+
+    @Test
+    @DisplayName("isValid accepts plausible national numbers only")
+    void isValid() {
+        assertTrue(PhoneNormalizer.isValid("+62 812-3456-7890"));
+        assertTrue(PhoneNormalizer.isValid("0215551234"));
+        assertFalse(PhoneNormalizer.isValid("0812"));
+        assertFalse(PhoneNormalizer.isValid("12345678"));
+        assertFalse(PhoneNormalizer.isValid("abc"));
+        assertFalse(PhoneNormalizer.isValid(null));
+    }
 }

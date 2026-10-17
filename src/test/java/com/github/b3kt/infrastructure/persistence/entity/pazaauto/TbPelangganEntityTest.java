@@ -9,43 +9,30 @@ import static org.junit.jupiter.api.Assertions.*;
 class TbPelangganEntityTest {
 
     @Test
-    @DisplayName("normalizes phones and mirrors the deprecated tlpn from noTelepon")
-    void normalizesPhones() {
+    @DisplayName("normalizes the mobile number and leaves the deprecated landline untouched")
+    void normalizesMobileOnly() {
         TbPelangganEntity e = new TbPelangganEntity();
         e.setNoHp("+62 812-3456-7890");
         e.setNoTelepon("(021) 555 1234");
-        e.setTelepon("stale legacy value");
+        e.setTelepon("legacy");
 
         e.normalizeContacts();
 
         assertEquals("081234567890", e.getNoHp());
-        assertEquals("0215551234", e.getNoTelepon());
-        assertEquals("0215551234", e.getTelepon());
+        // Not written by the application any more (insertable/updatable = false): no rewriting either.
+        assertEquals("(021) 555 1234", e.getNoTelepon());
+        assertEquals("legacy", e.getTelepon());
     }
 
     @Test
-    @DisplayName("a write that only sets the deprecated telepon lands in noTelepon")
-    void teleponAliasWrite() {
+    @DisplayName("a blank mobile number is stored as null")
+    void blankMobileIsNull() {
         TbPelangganEntity e = new TbPelangganEntity();
-        e.setTelepon("021-777");
+        e.setNoHp("  ");
 
         e.normalizeContacts();
 
-        assertEquals("021777", e.getNoTelepon());
-        assertEquals("021777", e.getTelepon());
-    }
-
-    @Test
-    @DisplayName("clearing noTelepon with a blank value is not undone by a stale telepon")
-    void blankNoTeleponClears() {
-        TbPelangganEntity e = new TbPelangganEntity();
-        e.setNoTelepon("");
-        e.setTelepon("021-777");
-
-        e.normalizeContacts();
-
-        assertNull(e.getNoTelepon());
-        assertNull(e.getTelepon());
+        assertNull(e.getNoHp());
     }
 
     @Test

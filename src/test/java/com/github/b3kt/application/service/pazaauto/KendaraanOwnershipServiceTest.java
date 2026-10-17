@@ -67,6 +67,9 @@ class KendaraanOwnershipServiceTest {
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     JpaPelangganRepository pelangganNopolRepository;
 
+    @Mock
+    PelangganContactResolver contactResolver;
+
     @InjectMocks
     KendaraanOwnershipService service;
 
@@ -77,6 +80,10 @@ class KendaraanOwnershipServiceTest {
 
     @BeforeEach
     void setUp() {
+        when(contactResolver.resolve(any())).thenAnswer(inv -> {
+            TbPelangganEntity p = inv.getArgument(0);
+            return new PelangganContactResolver.Contact(p.getNoHp(), p.getEmail(), false);
+        });
         toyotaSUV = new TbKendaraanEntity();
         toyotaSUV.setId(10L);
         toyotaSUV.setMerk("Toyota");

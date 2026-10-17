@@ -1,16 +1,21 @@
 <template>
   <q-page class="flex flex-center">
-    <q-card class="register-card" style="min-width: 350px">
+    <q-card class="register-card no-shadow" style="min-width: 350px">
       <q-card-section>
         <div class="text-h6 text-center q-mb-lg">{{ $t('pages.register.title') }}</div>
         <q-form @submit="onSubmit" class="q-gutter-md">
           <q-input v-model="fullName" :label="$t('pages.register.fullName')"
             :rules="[val => !!val || $t('pages.register.fullNameRequired')]" outlined dense hide-bottom-space />
 
-          <q-input v-model="email" :label="$t('pages.register.email')" type="email"
-            :rules="[val => !!val || $t('pages.register.emailRequired')]" outlined dense hide-bottom-space />
+          <!-- Email, phone or both; each one can be used to sign in -->
+          <q-input v-model="email" :label="$t('pages.register.email')" type="email" autocomplete="email"
+            :rules="[() => hasContact() || $t('pages.register.contactRequired')]"
+            outlined dense hide-bottom-space />
 
-          <q-input v-model="phone" :label="$t('pages.register.phone')" outlined dense hide-bottom-space />
+          <q-input v-model="phone" :label="$t('pages.register.phone')" type="tel" autocomplete="tel"
+            :hint="$t('pages.register.contactHint')"
+            :rules="[() => hasContact() || $t('pages.register.contactRequired')]"
+            outlined dense />
 
           <q-input v-model="password" :label="$t('pages.register.password')" type="password"
             :rules="[val => !!val && val.length >= 8 || $t('pages.register.passwordRule')]"
@@ -50,14 +55,16 @@ const password = ref('')
 const loading = ref(false)
 const error = ref('')
 
+const hasContact = () => !!email.value?.trim() || !!phone.value?.trim()
+
 const onSubmit = async () => {
   error.value = ''
   loading.value = true
   try {
     const result = await authStore.register({
       fullName: fullName.value,
-      email: email.value,
-      phone: phone.value || null,
+      email: email.value?.trim() || null,
+      phone: phone.value?.trim() || null,
       password: password.value
     })
     if (result.success) {

@@ -26,7 +26,7 @@ public class TbPelangganEntity extends BaseEntity {
 
     /**
      * Deprecated single-vehicle view of the primary vehicle. Read-only: the column is maintained by the
-     * {@code trg_pk_sync_legacy_vehicle} trigger from the ownership junction and dropped in V36. The
+     * {@code trg_pk_sync_legacy_vehicle} trigger from the ownership junction and dropped by the contract migration. The
      * field is still set in memory by the compatibility read layer and carried to ownership sync.
      */
     @Column(name = "nopol", length = 10, insertable = false, updatable = false)
@@ -42,10 +42,10 @@ public class TbPelangganEntity extends BaseEntity {
     private String contactPerson;
 
     /**
-     * Deprecated alias of {@link #noTelepon}: mirrored from it on every write and dropped in V36. A
-     * write that sets only this field (no {@code noTelepon}) is applied to {@code noTelepon}.
+     * Deprecated landline (ADR-0012): read-only, no longer written or shown, dropped in the contract
+     * migration. Kept mapped only so the legacy value stays readable until then.
      */
-    @Column(name = "tlpn", length = 25)
+    @Column(name = "tlpn", length = 25, insertable = false, updatable = false)
     private String telepon;
 
     /** Deprecated, read-only; see {@link #nopol}. */
@@ -56,6 +56,11 @@ public class TbPelangganEntity extends BaseEntity {
     @Column(name = "jenis", length = 50, insertable = false, updatable = false)
     private String jenis;
 
+    /**
+     * Contact email of a walk-in customer. Superseded by {@code tb_customer_accounts.email} once the
+     * customer is linked to a portal account (ADR-0012); resolve it through
+     * {@code PelangganContactResolver}, not this field.
+     */
     @Column(name = "email", length = 100)
     private String email;
 
@@ -71,12 +76,16 @@ public class TbPelangganEntity extends BaseEntity {
     @Column(name = "kota", length = 100)
     private String kota;
 
-    /** Mobile phone, canonical national digits (see {@link PhoneNormalizer}). */
+    /**
+     * Mobile phone of a walk-in customer, canonical national digits (see {@link PhoneNormalizer}).
+     * Superseded by {@code tb_customer_accounts.phone} once the customer is linked to a portal
+     * account (ADR-0012); resolve it through {@code PelangganContactResolver}, not this field.
+     */
     @Column(name = "no_hp", length = 25)
     private String noHp;
 
-    /** Landline phone, canonical national digits (see {@link PhoneNormalizer}). */
-    @Column(name = "no_telepon", length = 25)
+    /** Deprecated landline (ADR-0012): read-only; see {@link #telepon}. */
+    @Column(name = "no_telepon", length = 25, insertable = false, updatable = false)
     private String noTelepon;
 
     @Column(name = "tanggal_join")
@@ -90,15 +99,17 @@ public class TbPelangganEntity extends BaseEntity {
     @Column(name = "merged_into_id")
     private Long mergedIntoId;
 
+    /**
+     * Read-model flag, not persisted: true when {@link #noHp}/{@link #email} on this copy were
+     * filled from the linked portal account by {@code PelangganContactResolver}.
+     */
+    @Transient
+    private boolean contactFromAccount;
+
     @PrePersist
     @PreUpdate
     void normalizeContacts() {
-        if (noTelepon == null && telepon != null && !telepon.isBlank()) {
-            noTelepon = telepon;
-        }
         noHp = PhoneNormalizer.normalize(noHp);
-        noTelepon = PhoneNormalizer.normalize(noTelepon);
-        telepon = noTelepon;
         if (sumber == null || sumber.isBlank()) {
             sumber = Pelanggan.SUMBER_STAFF;
         }

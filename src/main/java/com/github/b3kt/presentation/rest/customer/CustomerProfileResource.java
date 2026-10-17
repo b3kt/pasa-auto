@@ -1,17 +1,22 @@
 package com.github.b3kt.presentation.rest.customer;
 
 import com.github.b3kt.application.dto.ApiResponse;
+import com.github.b3kt.application.dto.customer.CustomerVehicleRegisterRequest;
 import com.github.b3kt.application.dto.customer.UpdateProfileRequest;
 import com.github.b3kt.application.dto.customer.VehicleClaimRequest;
 import com.github.b3kt.application.dto.pazaauto.KendaraanAttachRequest;
 import com.github.b3kt.application.service.customer.CustomerProfileService;
+import com.github.b3kt.application.helper.NopolNormalizer;
 import com.github.b3kt.application.service.customer.CustomerVehicleService;
+import com.github.b3kt.application.service.customer.NopolLookupRateLimiter;
 import com.github.b3kt.application.service.customer.VehicleClaimService;
 import com.github.b3kt.application.service.pazaauto.KendaraanOwnershipService;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKendaraanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbMerkKendaraanRepository;
 import com.github.b3kt.infrastructure.security.CustomerPrincipal;
 import com.github.b3kt.infrastructure.security.Roles;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.net.SocketAddress;
 import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
@@ -26,6 +31,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
@@ -58,6 +64,12 @@ public class CustomerProfileResource {
     @Inject
     CustomerPrincipal principal;
 
+    @Inject
+    NopolLookupRateLimiter lookupRateLimiter;
+
+    @Context
+    HttpServerRequest request;
+
     @GET
     @Path("/profile")
     public Response profile() {
@@ -85,7 +97,7 @@ public class CustomerProfileResource {
 
     @POST
     @Path("/vehicles")
-    public Response registerVehicle(@Valid KendaraanAttachRequest request) {
+    public Response registerVehicle(@Valid CustomerVehicleRegisterRequest request) {
         try {
             return Response.ok(ApiResponse.success("Vehicle registered successfully",
                     customerVehicleService.registerVehicle(principal.customerAccountId(), request))).build();
@@ -129,6 +141,12 @@ public class CustomerProfileResource {
     @GET
     @Path("/vehicles/check-nopol")
     public Response checkNopol(@QueryParam("nopol") String nopol) {
+        // A lookup reveals whether a plate is on record (ADR-0013): bound how many distinct plates one
+        // account / one address can probe. Over the limit -> 429 with Retry-After (global mapper).
+        String norm = NopolNormalizer.normalize(nopol);
+        if (!norm.isEmpty()) {
+            lookupRateLimiter.checkAndRecord(principal.customerAccountId(), clientIp(), norm);
+        }
         try {
             return Response.ok(ApiResponse.success(
                     customerVehicleService.checkNopol(principal.customerAccountId(), nopol))).build();
@@ -163,5 +181,10 @@ public class CustomerProfileResource {
             return Response.ok(ApiResponse.success(kendaraanRepository.findDistinctJenisByMerk(merk))).build();
         }
         return Response.ok(ApiResponse.success(kendaraanRepository.findDistinctJenis())).build();
+    }
+
+    private String clientIp() {
+        SocketAddress remoteAddress = request != null ? request.remoteAddress() : null;
+        return remoteAddress != null ? remoteAddress.hostAddress() : null;
     }
 }

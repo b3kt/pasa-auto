@@ -20,7 +20,8 @@ import java.time.LocalDateTime;
 @Setter
 public class CustomerAccountEntity extends BaseEntity {
 
-    @Column(name = "email", length = 150, nullable = false)
+    /** Login identifier; optional when {@code phone} is set (at least one of the two is required). */
+    @Column(name = "email", length = 150)
     private String email;
 
     @Column(name = "phone", length = 20)

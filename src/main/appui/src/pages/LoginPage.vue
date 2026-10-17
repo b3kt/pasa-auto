@@ -1,13 +1,13 @@
 <template>
   <q-page class="flex flex-center">
-    <q-card class="login-card" style="min-width: 350px">
+    <q-card class="login-card no-shadow" style="min-width: 350px">
       <q-card-section>
         <div class="text-h6 text-center q-mb-lg">{{ $t('pages.login.title') }}</div>
         <q-form @submit="onSubmit" class="q-gutter-md">
-          <q-input v-model="email" :label="$t('pages.login.email')" type="email"
-            :rules="[val => !!val || $t('pages.login.emailRequired')]" outlined dense hide-bottom-space>
+          <q-input v-model="identifier" :label="$t('pages.login.identifier')" autocomplete="username"
+            :rules="[val => !!val || $t('pages.login.identifierRequired')]" outlined dense hide-bottom-space>
             <template v-slot:prepend>
-              <q-icon name="mail" />
+              <q-icon name="person" />
             </template>
           </q-input>
 
@@ -46,7 +46,8 @@ const $q = useQuasar()
 const { t } = useI18n()
 const authStore = useAuthStore()
 
-const email = ref('')
+// Email or phone number: the server tells them apart (an email contains "@").
+const identifier = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
@@ -61,7 +62,7 @@ const onSubmit = async () => {
   error.value = ''
   loading.value = true
   try {
-    const result = await authStore.login(email.value, password.value)
+    const result = await authStore.login(identifier.value, password.value)
     if (result.success) {
       $q.notify({ type: 'positive', message: t('pages.login.success') })
       router.push('/')

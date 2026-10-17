@@ -1,5 +1,7 @@
 package com.github.b3kt.application.helper;
 
+import java.util.regex.Pattern;
+
 /**
  * Canonicalizes phone numbers so values that differ only by formatting still resolve to the same
  * record. The canonical form is digits only in Indonesian national format: a leading {@code 62}
@@ -11,7 +13,19 @@ package com.github.b3kt.application.helper;
  */
 public final class PhoneNormalizer {
 
+    /** Canonical national number: a leading 0 and 8-15 digits in total. */
+    private static final Pattern VALID = Pattern.compile("^0[0-9]{7,14}$");
+
     private PhoneNormalizer() {
+    }
+
+    /**
+     * @return true when {@code phone} normalizes to a plausible national number, i.e. it can serve as
+     *         a login identifier.
+     */
+    public static boolean isValid(String phone) {
+        String canonical = normalize(phone);
+        return canonical != null && VALID.matcher(canonical).matches();
     }
 
     /**

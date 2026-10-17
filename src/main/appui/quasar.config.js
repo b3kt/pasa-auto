@@ -89,9 +89,18 @@ export default defineConfig((ctx) => {
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver
     devServer: {
+      // Listen on all interfaces so other devices on the LAN can reach it
+      host: '0.0.0.0',
       // 5173 belongs to the staff app's dev server (and to the Quinoa dev proxy)
       port: 5174,
-      open: false // opens browser window automatically
+      open: false, // opens browser window automatically
+      // Only used when the portal is opened on 5174 directly; via Quarkus (:8080/app/) /api is same-origin
+      proxy: {
+        '/api': {
+          target: 'http://localhost:8080',
+          changeOrigin: true
+        }
+      }
     },
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework

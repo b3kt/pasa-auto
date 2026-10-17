@@ -1,7 +1,8 @@
 # ADR-0009: Customer Self-Service Portal
 
 ## Status
-**Accepted** - 2026-10-11
+**Accepted** - 2026-10-11 (amended by [ADR-0012](0012-customer-contacts-from-account.md): customers register and
+sign in with an email, a phone number, or both)
 
 ## Context
 Customers (owners of vehicles serviced by the workshop) currently have no access to the system: every SPK, pembelian, and penjualan record is created and viewed by staff. We want customers to see the status and history of their own vehicles and to raise a service-booking request, without exposing the staff ERP.

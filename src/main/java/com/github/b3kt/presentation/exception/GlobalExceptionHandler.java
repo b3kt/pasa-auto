@@ -13,6 +13,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 
+import java.time.format.DateTimeParseException;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -86,6 +87,18 @@ public class GlobalExceptionHandler {
         }
     }
 
+
+    @Provider
+    public static class DateTimeParseExceptionMapper implements ExceptionMapper<DateTimeParseException> {
+        @Override
+        public Response toResponse(DateTimeParseException exception) {
+            // A malformed date in a query parameter is a client mistake, not a server fault
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Invalid date '" + exception.getParsedString()
+                            + "', expected the format yyyy-MM-dd"))
+                    .build();
+        }
+    }
 
     @Provider
     public static class OptimisticLockingExceptionMapper implements ExceptionMapper<OptimisticLockException> {

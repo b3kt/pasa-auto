@@ -13,7 +13,8 @@ export default {
     logout: 'Keluar',
     loggedOut: 'Berhasil keluar',
     required: 'Wajib diisi',
-    backToDashboard: 'Kembali ke dasbor'
+    backToDashboard: 'Kembali ke dasbor',
+    offline: 'Anda sedang offline. Menampilkan data dari kunjungan terakhir; perubahan memerlukan koneksi.'
   },
 
   language: {
@@ -33,10 +34,10 @@ export default {
   pages: {
     login: {
       title: 'Masuk',
-      email: 'Email',
+      identifier: 'Email atau nomor HP',
       password: 'Kata sandi',
       submit: 'Masuk',
-      emailRequired: 'Email wajib diisi',
+      identifierRequired: 'Email atau nomor HP wajib diisi',
       passwordRequired: 'Kata sandi wajib diisi',
       sessionExpired: 'Sesi Anda telah berakhir. Silakan masuk kembali.',
       noAccount: 'Belum punya akun? Daftar',
@@ -49,8 +50,9 @@ export default {
       fullName: 'Nama lengkap',
       fullNameRequired: 'Nama lengkap wajib diisi',
       email: 'Email',
-      emailRequired: 'Email wajib diisi',
-      phone: 'Telepon (opsional)',
+      phone: 'Nomor HP',
+      contactHint: 'Isi email, nomor HP, atau keduanya - keduanya bisa dipakai untuk masuk',
+      contactRequired: 'Isi email atau nomor HP',
       password: 'Kata sandi',
       passwordRule: 'Minimal 8 karakter',
       submit: 'Daftar',
@@ -83,10 +85,10 @@ export default {
       address: 'Alamat',
       city: 'Kota',
       postalCode: 'Kode pos',
-      phone: 'Telepon',
       mobile: 'HP',
-      otherPhone: 'Telepon lainnya',
+      mobileHint: 'Juga dipakai untuk masuk dengan nomor ini',
       email: 'Email',
+      emailHint: 'Email untuk masuk; tidak dapat diubah di sini',
       contactPerson: 'Narahubung',
       updated: 'Profil diperbarui',
       updateFailed: 'Tidak dapat memperbarui profil'
@@ -108,6 +110,14 @@ export default {
       saveFailed: 'Gagal menyimpan kendaraan',
       ownedByOther: 'Nomor polisi sudah terdaftar sebelumnya, tautkan sekarang ke profil saya?',
       ownedBySelf: 'Nomor polisi ini sudah terdaftar pada akun Anda.',
+      onRecordQuestion: 'Nomor polisi ini sudah terdaftar sebelumnya: {vehicle}, atas nama {owner}. Apakah ini kendaraan Anda?',
+      onRecordYes: 'Ya, milik saya',
+      onRecordNo: 'Bukan',
+      onRecordLinkNote: 'Akun Anda akan ditautkan ke data pelanggan ini beserta riwayat servisnya.',
+      onRecordTransferNote: 'Hanya kendaraan yang dipindahkan ke akun Anda; data pelanggan lama tetap seperti semula.',
+      useRecordedData: 'Gunakan merk dan jenis yang tercatat',
+      tooManyChecks: 'Terlalu banyak nomor polisi yang dicek. Coba lagi dalam {minutes} menit.',
+      linkPendingApproval: 'Kontak pada data lama berbeda dengan akun Anda, jadi staf akan mengonfirmasi penautan terlebih dahulu.',
       claimNow: 'Tautkan sekarang',
       claimConfirmTitle: 'Tautkan kendaraan',
       claimConfirmMessage: 'Tautkan nomor polisi {nopol} ke profil Anda sekarang? Kepemilikan akan dialihkan dari pemilik saat ini.',
@@ -143,7 +153,7 @@ export default {
       status: {
         REQUESTED: 'Diajukan',
         CONFIRMED: 'Dikonfirmasi',
-        CONVERTED: 'Dikonversi',
+        CONVERTED: 'Diterima',
         REJECTED: 'Ditolak',
         CANCELLED: 'Dibatalkan'
       }

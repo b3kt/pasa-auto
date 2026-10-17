@@ -1191,5 +1191,73 @@ class TbPembelianServiceTest {
 
             assertNull(entity.getNoUrut());
         }
+
+        @Test
+        @DisplayName("parses noUrut from the format generateNoPembelian produces")
+        void parsesGeneratedFormat() {
+            TbPembelianEntity entity = new TbPembelianEntity();
+            entity.setNoPembelian("FO2026101712");
+
+            service.create(entity);
+
+            assertEquals(12, entity.getNoUrut());
+        }
+
+        @Test
+        @DisplayName("update also derives noUrut, so a full-replace PUT does not drop it")
+        void updateDerivesNoUrut() {
+            when(repository.findByIdOptional(1L)).thenReturn(Optional.of(testEntity));
+            when(repository.getEntityManager()).thenReturn(entityManager);
+            TbPembelianEntity update = new TbPembelianEntity();
+            update.setNoPembelian("FB202610173");
+            when(entityManager.merge(any(TbPembelianEntity.class))).thenReturn(update);
+
+            service.update(1L, update);
+
+            assertEquals(3, update.getNoUrut());
+        }
+    }
+
+    // ─── duplicate noPembelian ────────────────────────────────────────
+
+    @Nested
+    @DisplayName("duplicate noPembelian")
+    class DuplicateNoPembelian {
+
+        @Test
+        @DisplayName("create rejects a number that already exists")
+        void createRejectsDuplicate() {
+            when(repository.count("noPembelian = ?1", "FB202610171")).thenReturn(1L);
+            TbPembelianEntity entity = new TbPembelianEntity();
+            entity.setNoPembelian("FB202610171");
+
+            IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> service.create(entity));
+
+            assertTrue(e.getMessage().contains("FB202610171"));
+            verify(repository, never()).persist(any(TbPembelianEntity.class));
+        }
+
+        @Test
+        @DisplayName("createWithDetails rejects a number that already exists")
+        void createWithDetailsRejectsDuplicate() {
+            when(repository.count("noPembelian = ?1", "FB202610171")).thenReturn(1L);
+            TbPembelianEntity entity = new TbPembelianEntity();
+            entity.setNoPembelian("FB202610171");
+
+            assertThrows(IllegalArgumentException.class, () -> service.createWithDetails(entity, List.of()));
+            verify(repository, never()).persist(any(TbPembelianEntity.class));
+        }
+
+        @Test
+        @DisplayName("update rejects a number used by another purchase, but not its own")
+        void updateRejectsOthersNumber() {
+            when(repository.findByIdOptional(1L)).thenReturn(Optional.of(testEntity));
+            when(repository.count("noPembelian = ?1 and id <> ?2", "FB202610171", 1L)).thenReturn(1L);
+            TbPembelianEntity update = new TbPembelianEntity();
+            update.setNoPembelian("FB202610171");
+
+            assertThrows(IllegalArgumentException.class, () -> service.update(1L, update));
+            verify(entityManager, never()).merge(any());
+        }
     }
 }

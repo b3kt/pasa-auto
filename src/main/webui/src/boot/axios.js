@@ -58,18 +58,12 @@ function requestCacheUrl(config) {
 // "export default () => {}" function below (which runs individually
 // for each client)
 
-// Determine base URL based on environment
-const getBaseURL = () => {
-  if (process.env.DEV) {
-    // In development, Quinoa proxies API requests to Quarkus backend
-    return 'http://localhost:8080'
-  }
-  // In production, use the same origin
-  return '/'
-}
-
+// Always origin-relative: in production the bundle is served from the same origin as the API, and in
+// development the app is reached through Quarkus (http://<host>:8080, Quinoa proxies to 5173) or
+// directly on 5173, whose dev server proxies /api to Quarkus (see quasar.config.js). Hardcoding
+// localhost here would break every device other than the dev machine.
 const api = axios.create({
-  baseURL: getBaseURL(),
+  baseURL: '/',
   headers: {
     'Content-Type': 'application/json'
   }
