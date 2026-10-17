@@ -123,6 +123,11 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-opentelemetry</artifactId>
         </dependency>
+        <!-- JDBC spans (quarkus.datasource.jdbc.telemetry); version managed by the Quarkus BOM -->
+        <dependency>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-jdbc</artifactId>
+        </dependency>
         <!-- Health checks -->
         <dependency>
             <groupId>io.quarkus</groupId>

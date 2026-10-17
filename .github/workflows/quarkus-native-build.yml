@@ -14,6 +14,22 @@ jobs:
   native-linux:
     runs-on: ubuntu-latest
 
+    # Database for the native smoke test below (Flyway migrates it on startup)
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: pasa_auto
+          POSTGRES_USER: pasa_ci
+          POSTGRES_PASSWORD: pasa_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pasa_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,6 +53,80 @@ jobs:
           GRAALVM_HOME: ${{ env.JAVA_HOME }}
         run: |
           mvn clean package -Pnative -Dnative -DskipTests
+
+      # The Grafana credentials go only to the running binary in the smoke test, never to the build,
+      # so no artifact or installer contains them. Secrets cannot be tested in `if:`, hence this step.
+      - name: Check Grafana Cloud smoke-test secrets
+        id: grafana
+        env:
+          GRAFANA_OTLP_TOKEN: ${{ secrets.GRAFANA_OTLP_TOKEN }}
+        run: |
+          if [ -n "$GRAFANA_OTLP_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GRAFANA_OTLP_TOKEN is not set; skipping the Grafana Cloud export smoke test"
+          fi
+
+      - name: Smoke test native binary exporting to Grafana Cloud
+        if: steps.grafana.outputs.configured == 'true'
+        env:
+          GRAFANA_OTLP_ENDPOINT: ${{ secrets.GRAFANA_OTLP_ENDPOINT }}
+          GRAFANA_INSTANCE_ID: ${{ secrets.GRAFANA_INSTANCE_ID }}
+          GRAFANA_OTLP_TOKEN: ${{ secrets.GRAFANA_OTLP_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          keys="$RUNNER_TEMP/keys"
+          mkdir -p "$keys"
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$keys/private.pem"
+          openssl rsa -pubout -in "$keys/private.pem" -out "$keys/public.pem"
+
+          auth=$(printf '%s:%s' "$GRAFANA_INSTANCE_ID" "$GRAFANA_OTLP_TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+
+          export DB_URL=jdbc:postgresql://localhost:5432/pasa_auto
+          export DB_USERNAME=pasa_ci
+          export DB_PASSWORD=pasa_ci
+          export FLYWAY_MIGRATE_AT_START=true
+          export JWT_PRIVATE_KEY="$keys/private.pem"
+          export JWT_PUBLIC_KEY="$keys/public.pem"
+          export LOG_PATH="$RUNNER_TEMP/app.log"
+          export OTEL_SDK_DISABLED=false
+          export OTEL_EXPORTER_OTLP_ENDPOINT="$GRAFANA_OTLP_ENDPOINT"
+          export OTEL_EXPORTER_OTLP_HEADERS="authorization=Basic $auth"
+          # Keeps smoke-test data apart from production in Grafana
+          export DEPLOYMENT_ENVIRONMENT=ci
+          # Production exports metrics every 60 s; the run is shorter than that
+          export QUARKUS_OTEL_METRIC_EXPORT_INTERVAL=5s
+
+          out="$RUNNER_TEMP/native-stdout.log"
+          runner=$(ls target/*-runner | head -1)
+          "$runner" > "$out" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true; cat "$out"' EXIT
+
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:9000/q/health > /dev/null 2>&1; then break; fi
+            if ! kill -0 "$pid" 2>/dev/null; then echo "::error::Native binary exited during startup"; exit 1; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:9000/q/health
+          echo
+
+          # A traced request: 401 is expected and still produces a server span
+          curl -s -o /dev/null -w "GET /api/pazaauto/barang -> %{http_code}\n" http://localhost:8080/api/pazaauto/barang
+
+          # Span batches go out every 5 s, logs every 1 s, metrics every 5 s here; shutdown flushes the rest
+          sleep 15
+          kill "$pid"
+          wait "$pid" || true
+
+          if grep -q "Failed to export" "$out"; then
+            grep "Failed to export" "$out" | sed 's/^/::error::/'
+            exit 1
+          fi
+          echo "Native binary started and exported to Grafana Cloud without errors"
 
       - name: Upload Native Binary runner
         uses: actions/upload-artifact@v4

@@ -233,7 +233,8 @@ public class TbAbsensiService extends AbstractCrudService<TbAbsensiEntity, Long>
         if (tanggal == null) {
             throw new IllegalArgumentException("tanggal is required");
         }
-        if (!ABSENCE_STATUSES.contains(status)) {
+        // List.of(...).contains(null) throws NullPointerException, so a missing status is checked first
+        if (status == null || !ABSENCE_STATUSES.contains(status)) {
             throw new IllegalArgumentException("status must be one of " + String.join(", ", ABSENCE_STATUSES));
         }
         TbAbsensiEntity absensi = repository.find("karyawanId = ?1 and tanggal = ?2", karyawanId, tanggal)

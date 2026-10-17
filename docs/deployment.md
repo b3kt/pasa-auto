@@ -65,6 +65,7 @@ cp .env.example .env
 | `OPENAPI_ENABLED` | false | Include the OpenAPI schema (build-time; rebuild required) |
 | `RBAC_ENABLED` | false | Enable RBAC module |
 | `LOG_PATH` | `./app.log` | Log file path |
+| `OTEL_SDK_DISABLED` | true | `false` exports traces, metrics and logs to Grafana Cloud; see [OpenTelemetry](#opentelemetry-grafana-cloud) |
 
 ---
 
@@ -309,18 +310,87 @@ Logs are written to:
 
 Log rotation: 10 MB max per file, 30 backups retained.
 
-### OpenTelemetry
+### OpenTelemetry (Grafana Cloud)
 
-OpenTelemetry is enabled by default for tracing and log injection:
+The `quarkus-opentelemetry` extension sends traces, metrics and logs over OTLP straight to the
+Grafana Cloud OTLP gateway. No collector or Java agent is involved, and this works in the native
+image. (The Grafana `-javaagent` cannot: a native binary has no JVM to attach an agent to.)
 
-```properties
-quarkus.otel.enabled=true
-quarkus.otel.traces.enabled=true
-quarkus.otel.logs.enabled=true
-quarkus.otel.exporter.otlp.enabled=false
-```
+What gets sent:
 
-Set `quarkus.otel.exporter.otlp.enabled=true` and configure exporter endpoint for production tracing.
+- **Traces**: every REST request, outgoing REST client calls, and each SQL statement (JDBC spans)
+- **Metrics**: HTTP server and JVM/runtime metrics, exported every 60 s (cumulative)
+- **Logs**: application log records, linked to the active trace and span
+
+Signals, exporter, sampler type and JDBC tracing are fixed at **build** time in
+`application.properties`, so every build, the CI native binaries included, contains the exporter.
+Whether anything is sent is decided at **runtime**. Telemetry is **off** unless `OTEL_SDK_DISABLED=false`
+is set, so dev, tests and Electron desktop installs send nothing by default. No token is part of the build.
+
+#### Setup
+
+1. In the Grafana Cloud portal, open your stack, then **OpenTelemetry → Configure**. Note the
+   **OTLP endpoint** and **Instance ID**, and generate a token. The token needs the
+   `metrics:write`, `logs:write` and `traces:write` scopes.
+2. Build the Basic-auth value from `instanceId:token`:
+
+   ```bash
+   printf '%s:%s' "<instance-id>" "<token>" | base64 -w0
+   ```
+
+   On Windows (PowerShell):
+
+   ```powershell
+   [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("<instance-id>:<token>"))
+   ```
+
+3. Set these variables in `.env`, the systemd `EnvironmentFile`, or the Docker `env_file`:
+
+   ```bash
+   OTEL_SDK_DISABLED=false
+   OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-<region>.grafana.net/otlp
+   OTEL_EXPORTER_OTLP_HEADERS="authorization=Basic <base64 from step 2>"
+   DEPLOYMENT_ENVIRONMENT=production
+   ```
+
+   Use a **real space** after `Basic`. The env-var snippet in the Grafana UI writes `Basic%20...`,
+   which Quarkus sends unchanged, so Grafana rejects it with 401. Don't append `/v1/traces` to the
+   endpoint: the exporter adds `/v1/traces`, `/v1/metrics` and `/v1/logs` itself.
+
+4. Restart the app. Traces appear under **Explore → Tempo**, metrics under **Mimir/Prometheus**, and
+   logs under **Loki**. Look for `service_name="pasa-auto"`. The service also shows up in
+   **Application Observability**.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OTEL_SDK_DISABLED` | `true` | `false` turns telemetry export on |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4318` | OTLP gateway base URL (`http/protobuf`) |
+| `OTEL_EXPORTER_OTLP_HEADERS` | none | `authorization=Basic <base64(instanceId:token)>` |
+| `OTEL_SERVICE_NAME` | `pasa-auto` | `service.name` resource attribute |
+| `DEPLOYMENT_ENVIRONMENT` | `production` | `deployment.environment` resource attribute |
+| `OTEL_TRACES_SAMPLER_ARG` | `1.0` | Fraction of new traces kept (e.g. `0.25`); traces continued from a caller follow its decision |
+| `APP_VERSION` | project version | `service.version` resource attribute |
+
+**Electron desktop:** telemetry stays off. To turn it on for one install, add the variables above in
+the Electron configuration manager (environment variables). Never ship the token in the installer
+or in a packaged `.env`: anyone with the installer could extract it and write data into your stack.
+
+**CI smoke test:** the `native-linux` job in `.github/workflows/quarkus-native-build.yml` starts the
+freshly built binary against a throwaway Postgres, exports for about 15 s to Grafana Cloud
+(`deployment.environment=ci`), and fails if any export fails. It runs only when these repository
+secrets are set. Otherwise it's skipped with a notice:
+
+| Secret | Value |
+|--------|-------|
+| `GRAFANA_OTLP_ENDPOINT` | `https://otlp-gateway-prod-<region>.grafana.net/otlp` |
+| `GRAFANA_INSTANCE_ID` | Stack instance ID from the OpenTelemetry tile |
+| `GRAFANA_OTLP_TOKEN` | Access-policy token with `metrics:write`, `logs:write`, `traces:write` |
+
+The secrets reach only the running binary in that step, never the build, so no artifact contains them.
+
+**Troubleshooting:** export failures are logged under the `io.quarkus.opentelemetry` and
+`io.opentelemetry` categories. A 401 means the header is wrong (check for `%20` and the instance ID).
+A 404 usually means the endpoint is missing `/otlp` or has an extra `/v1/...`.
 
 ---
 
