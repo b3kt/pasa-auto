@@ -15,6 +15,7 @@ import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKendaraa
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbMerkKendaraanRepository;
 import com.github.b3kt.infrastructure.security.CustomerPrincipal;
 import com.github.b3kt.infrastructure.security.Roles;
+import com.github.b3kt.presentation.exception.RestErrorLogger;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.net.SocketAddress;
 import jakarta.annotation.security.PermitAll;
@@ -84,6 +85,7 @@ public class CustomerProfileResource {
             return Response.ok(ApiResponse.success("Profile updated",
                     profileService.getProfile(principal.customerAccountId()))).build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         }
     }
@@ -102,6 +104,7 @@ public class CustomerProfileResource {
             return Response.ok(ApiResponse.success("Vehicle registered successfully",
                     customerVehicleService.registerVehicle(principal.customerAccountId(), request))).build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         }
     }
@@ -119,6 +122,7 @@ public class CustomerProfileResource {
             return Response.ok(ApiResponse.success("Vehicle updated successfully",
                     kendaraanOwnershipService.listCurrentVehiclesByPelanggan(principal.pelangganIdOrThrow()))).build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         }
     }
@@ -134,6 +138,7 @@ public class CustomerProfileResource {
             return Response.ok(ApiResponse.success("Vehicle deleted successfully",
                     kendaraanOwnershipService.listCurrentVehiclesByPelanggan(principal.pelangganIdOrThrow()))).build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         }
     }
@@ -151,6 +156,7 @@ public class CustomerProfileResource {
             return Response.ok(ApiResponse.success(
                     customerVehicleService.checkNopol(principal.customerAccountId(), nopol))).build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         }
     }
@@ -162,6 +168,7 @@ public class CustomerProfileResource {
             return Response.ok(ApiResponse.success("Vehicle claim received",
                     vehicleClaimService.requestClaim(principal.customerAccountId(), request.getNopol()))).build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         }
     }

@@ -4,6 +4,7 @@ import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.customer.ReviewRequest;
 import com.github.b3kt.application.service.customer.CustomerLinkService;
 import com.github.b3kt.infrastructure.security.Roles;
+import com.github.b3kt.presentation.exception.RestErrorLogger;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
@@ -38,6 +39,7 @@ public class CustomerLinkApprovalResource {
             linkService.approve(id, identity.getPrincipal().getName());
             return Response.ok(ApiResponse.success("Link request approved", null)).build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         }
     }
@@ -49,6 +51,7 @@ public class CustomerLinkApprovalResource {
             linkService.reject(id, identity.getPrincipal().getName(), request != null ? request.getNote() : null);
             return Response.ok(ApiResponse.success("Link request rejected", null)).build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         }
     }

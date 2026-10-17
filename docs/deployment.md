@@ -51,6 +51,7 @@ cp .env.example .env
 | `JWT_REFRESH_EXPIRATION_DAYS` | 7 | Refresh token lifetime (sliding) |
 | `PROXY_ADDRESS_FORWARDING` | false | Trust `X-Forwarded-*` headers; enable only behind a reverse proxy |
 | `TRUSTED_PROXIES` | 127.0.0.1 | Proxy addresses whose forwarding headers are honored |
+| `FLYWAY_MIGRATE_AT_START` | true | Apply pending migrations on startup; with `false`, an unmigrated database fails startup with "Schema validation: missing table" |
 | `FLYWAY_VALIDATE_ON_MIGRATE` | true | Verify applied migrations match the shipped files |
 | `LOGIN_MAX_FAILURES_PER_USER` | 5 | Failed logins before an account is locked |
 | `LOGIN_MAX_FAILURES_PER_IP` | 20 | Failed logins before a client IP is locked |
@@ -66,6 +67,8 @@ cp .env.example .env
 | `RBAC_ENABLED` | false | Enable RBAC module |
 | `LOG_PATH` | `./app.log` | Log file path |
 | `OTEL_SDK_DISABLED` | true | `false` exports traces, metrics and logs to Grafana Cloud; see [OpenTelemetry](#opentelemetry-grafana-cloud) |
+| `QUARKUS_MANAGEMENT_HOST` | 127.0.0.1 | Bind address of the management interface (`/q/health`, `/q/metrics`); see [Management Interface](#management-interface) |
+| `QUARKUS_MANAGEMENT_PORT` | 9000 | Port of the management interface |
 
 ---
 
@@ -296,11 +299,29 @@ KEY_FILE_PATH=/etc/letsencrypt/live/your-domain.com/privkey.pem
 
 ## Monitoring
 
-### Health Checks
+### Management Interface
+
+Health and metrics endpoints are not on the main HTTP port. They are served by a separate management
+interface that listens on `127.0.0.1:9000` by default (`QUARKUS_MANAGEMENT_HOST`,
+`QUARKUS_MANAGEMENT_PORT`), so they never reach the public port. Requesting them on port 8080
+returns **404**.
 
 | Endpoint | Purpose |
 |----------|---------|
-| `/health` | Overall health status |
+| `http://127.0.0.1:9000/q/health` | Overall health status |
+| `http://127.0.0.1:9000/health/live` | Liveness (no `/q` prefix) |
+| `http://127.0.0.1:9000/health/ready` | Readiness: database connection and migration version (no `/q` prefix) |
+| `http://127.0.0.1:9000/q/metrics` | Micrometer metrics in Prometheus format, for local inspection |
+
+Metrics reach Grafana through the OTLP push described in
+[OpenTelemetry](#opentelemetry-grafana-cloud), not by scraping. Nothing needs to reach port 9000
+from outside, so keep the default `127.0.0.1` binding. `/q/metrics` comes from the Micrometer
+registry, while the pushed metrics come from the OpenTelemetry instrumentation, so the two don't
+match one to one.
+
+In Docker, `127.0.0.1` is the container's own loopback. A `healthcheck` that runs inside the
+container works as-is; publishing `9000` in `ports:` does not, unless you set
+`QUARKUS_MANAGEMENT_HOST=0.0.0.0`.
 
 ### Logging
 
@@ -309,6 +330,15 @@ Logs are written to:
 - File: `/var/log/pasa-auto/app.log` (configurable via `LOG_PATH`)
 
 Log rotation: 10 MB max per file, 30 backups retained.
+
+Every REST response with a 4xx/5xx status that came from an exception is logged with its stack trace
+and the request (`PUT /api/pazaauto/pelanggan/12 -> 400 Bad Request: ...`) under the category
+`com.github.b3kt.rest.errors`: 4xx at WARN, 5xx at ERROR (with the `errorId` returned to the client).
+Failed logins are included, so expect one WARN per wrong password. To keep only server errors:
+
+```properties
+quarkus.log.category."com.github.b3kt.rest.errors".level=ERROR
+```
 
 ### OpenTelemetry (Grafana Cloud)
 
@@ -390,7 +420,8 @@ The secrets reach only the running binary in that step, never the build, so no a
 
 **Troubleshooting:** export failures are logged under the `io.quarkus.opentelemetry` and
 `io.opentelemetry` categories. A 401 means the header is wrong (check for `%20` and the instance ID).
-A 404 usually means the endpoint is missing `/otlp` or has an extra `/v1/...`.
+A 404 usually means the endpoint is missing `/otlp` or has an extra `/v1/...`. To see what the app is
+measuring without Grafana, run `curl http://127.0.0.1:9000/q/metrics` on the host.
 
 ---
 

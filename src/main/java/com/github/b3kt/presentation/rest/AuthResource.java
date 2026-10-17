@@ -11,6 +11,7 @@ import com.github.b3kt.application.dto.LoginResponse;
 import com.github.b3kt.application.dto.UserInfo;
 import com.github.b3kt.application.service.AuthService;
 import com.github.b3kt.domain.exception.AuthenticationException;
+import com.github.b3kt.presentation.exception.RestErrorLogger;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -119,6 +120,7 @@ public class AuthResource {
             loginAttemptService.recordSuccess(loginRequest.getUsername());
             return withRefreshCookie(Response.ok(ApiResponse.success("Login successful", response)), response);
         } catch (AuthenticationException e) {
+            RestErrorLogger.log(Response.Status.UNAUTHORIZED, e);
             loginAttemptService.recordFailure(loginRequest.getUsername(), clientIp);
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.<LoginResponse>error(e.getMessage()))
@@ -203,6 +205,7 @@ public class AuthResource {
             UserInfo userInfo = authService.getUserInfo(jwt);
             return Response.ok(ApiResponse.success(userInfo)).build();
         } catch (Exception e) {
+            RestErrorLogger.log(Response.Status.UNAUTHORIZED, e);
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.<UserInfo>error("Invalid or expired token"))
                     .build();
@@ -230,6 +233,7 @@ public class AuthResource {
             UserInfo userInfo = authService.updateProfile(username, request.getEmail());
             return Response.ok(ApiResponse.success("Profile updated successfully", userInfo)).build();
         } catch (AuthenticationException e) {
+            RestErrorLogger.log(Response.Status.UNAUTHORIZED, e);
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.<UserInfo>error(e.getMessage()))
                     .build();
@@ -265,11 +269,13 @@ public class AuthResource {
             return withRefreshCookie(
                     Response.ok(ApiResponse.success("Password changed successfully", response)), response);
         } catch (AuthenticationException e) {
+            RestErrorLogger.log(Response.Status.UNAUTHORIZED, e);
             loginAttemptService.recordFailure(username, clientIp);
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.<LoginResponse>error(e.getMessage()))
                     .build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.<LoginResponse>error(e.getMessage()))
                     .build();
@@ -316,6 +322,7 @@ public class AuthResource {
             LoginResponse response = authService.refreshToken(refreshToken);
             return withRefreshCookie(Response.ok(ApiResponse.success("Token refreshed successfully", response)), response);
         } catch (AuthenticationException e) {
+            RestErrorLogger.log(Response.Status.UNAUTHORIZED, e);
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.<LoginResponse>error(e.getMessage()))
                     .build();

@@ -8,6 +8,7 @@ import com.github.b3kt.application.properties.RbacProperties;
 import com.github.b3kt.application.service.RbacService;
 import com.github.b3kt.domain.model.Permission;
 import com.github.b3kt.domain.model.Role;
+import com.github.b3kt.presentation.exception.RestErrorLogger;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -77,10 +78,12 @@ public class RbacResource {
             Role role = rbacService.createRole(request.getName(), request.getDescription());
             return Response.ok(ApiResponse.success("Role created successfully", role)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.<Role>error(e.getMessage()))
                     .build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.<Role>error(e.getMessage()))
                     .build();
@@ -100,6 +103,7 @@ public class RbacResource {
             List<Role> roles = rbacService.getAllRoles();
             return Response.ok(ApiResponse.success(roles)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.<List<Role>>error(e.getMessage()))
                     .build();
@@ -119,10 +123,12 @@ public class RbacResource {
             Role role = rbacService.getRoleById(id);
             return Response.ok(ApiResponse.success(role)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.<Role>error(e.getMessage()))
                     .build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.NOT_FOUND, e);
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(ApiResponse.<Role>error(e.getMessage()))
                     .build();
@@ -142,10 +148,12 @@ public class RbacResource {
             Role role = rbacService.updateRole(id, request.getName(), request.getDescription());
             return Response.ok(ApiResponse.success("Role updated successfully", role)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.<Role>error(e.getMessage()))
                     .build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.<Role>error(e.getMessage()))
                     .build();
@@ -165,10 +173,12 @@ public class RbacResource {
             rbacService.deleteRole(id);
             return Response.ok(ApiResponse.success("Role deleted successfully", null)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.NOT_FOUND, e);
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
@@ -188,10 +198,12 @@ public class RbacResource {
             rbacService.activateRole(id);
             return Response.ok(ApiResponse.success("Role activated successfully", null)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.NOT_FOUND, e);
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
@@ -211,10 +223,12 @@ public class RbacResource {
             rbacService.deactivateRole(id);
             return Response.ok(ApiResponse.success("Role deactivated successfully", null)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.NOT_FOUND, e);
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
@@ -240,10 +254,12 @@ public class RbacResource {
             );
             return Response.ok(ApiResponse.success("Permission created successfully", permission)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.<Permission>error(e.getMessage()))
                     .build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.<Permission>error(e.getMessage()))
                     .build();
@@ -263,6 +279,7 @@ public class RbacResource {
             List<Permission> permissions = rbacService.getAllPermissions();
             return Response.ok(ApiResponse.success(permissions)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.<List<Permission>>error(e.getMessage()))
                     .build();
@@ -282,10 +299,12 @@ public class RbacResource {
             Permission permission = rbacService.getPermissionById(id);
             return Response.ok(ApiResponse.success(permission)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.<Permission>error(e.getMessage()))
                     .build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.NOT_FOUND, e);
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(ApiResponse.<Permission>error(e.getMessage()))
                     .build();
@@ -308,10 +327,12 @@ public class RbacResource {
             rbacService.assignPermissionToRole(roleId, permissionId);
             return Response.ok(ApiResponse.success("Permission assigned to role successfully", null)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
@@ -333,10 +354,12 @@ public class RbacResource {
             rbacService.removePermissionFromRole(roleId, permissionId);
             return Response.ok(ApiResponse.success("Permission removed from role successfully", null)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
@@ -356,10 +379,12 @@ public class RbacResource {
             Set<Permission> permissions = rbacService.getRolePermissions(roleId);
             return Response.ok(ApiResponse.success(permissions)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.<Set<Permission>>error(e.getMessage()))
                     .build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.NOT_FOUND, e);
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(ApiResponse.<Set<Permission>>error(e.getMessage()))
                     .build();
@@ -382,10 +407,12 @@ public class RbacResource {
             rbacService.assignRoleToUser(username, roleId);
             return Response.ok(ApiResponse.success("Role assigned to user successfully", null)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (IllegalArgumentException | com.github.b3kt.domain.exception.UserNotFoundException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
@@ -407,10 +434,12 @@ public class RbacResource {
             rbacService.removeRoleFromUser(username, roleId);
             return Response.ok(ApiResponse.success("Role removed from user successfully", null)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (IllegalArgumentException | com.github.b3kt.domain.exception.UserNotFoundException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
@@ -430,10 +459,12 @@ public class RbacResource {
             Set<Role> roles = rbacService.getUserRoles(username);
             return Response.ok(ApiResponse.success(roles)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.<Set<Role>>error(e.getMessage()))
                     .build();
         } catch (com.github.b3kt.domain.exception.UserNotFoundException e) {
+            RestErrorLogger.log(Response.Status.NOT_FOUND, e);
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(ApiResponse.<Set<Role>>error(e.getMessage()))
                     .build();
@@ -453,10 +484,12 @@ public class RbacResource {
             Set<Permission> permissions = rbacService.getUserPermissions(username);
             return Response.ok(ApiResponse.success(permissions)).build();
         } catch (IllegalStateException e) {
+            RestErrorLogger.log(Response.Status.FORBIDDEN, e);
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.<Set<Permission>>error(e.getMessage()))
                     .build();
         } catch (com.github.b3kt.domain.exception.UserNotFoundException e) {
+            RestErrorLogger.log(Response.Status.NOT_FOUND, e);
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(ApiResponse.<Set<Permission>>error(e.getMessage()))
                     .build();

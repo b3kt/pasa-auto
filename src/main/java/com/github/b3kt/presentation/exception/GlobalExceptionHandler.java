@@ -17,7 +17,6 @@ import java.time.format.DateTimeParseException;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.jboss.logging.Logger;
 
 /**
  * Global exception handler for REST endpoints.
@@ -26,12 +25,11 @@ import org.jboss.logging.Logger;
 @Provider
 public class GlobalExceptionHandler {
 
-    private static final Logger LOG = Logger.getLogger(GlobalExceptionHandler.class);
-
     @Provider
     public static class AuthenticationExceptionMapper implements ExceptionMapper<AuthenticationException> {
         @Override
         public Response toResponse(AuthenticationException exception) {
+            RestErrorLogger.log(Response.Status.UNAUTHORIZED, exception);
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.error(exception.getMessage()))
                     .build();
@@ -42,6 +40,7 @@ public class GlobalExceptionHandler {
     public static class TooManyAttemptsExceptionMapper implements ExceptionMapper<TooManyAttemptsException> {
         @Override
         public Response toResponse(TooManyAttemptsException exception) {
+            RestErrorLogger.log(Response.Status.TOO_MANY_REQUESTS, exception);
             return Response.status(Response.Status.TOO_MANY_REQUESTS)
                     .header("Retry-After", exception.getRetryAfterSeconds())
                     .entity(ApiResponse.error(exception.getMessage()))
@@ -53,6 +52,7 @@ public class GlobalExceptionHandler {
     public static class UserNotFoundExceptionMapper implements ExceptionMapper<UserNotFoundException> {
         @Override
         public Response toResponse(UserNotFoundException exception) {
+            RestErrorLogger.log(Response.Status.NOT_FOUND, exception);
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(ApiResponse.error(exception.getMessage()))
                     .build();
@@ -63,6 +63,7 @@ public class GlobalExceptionHandler {
     public static class ConstraintViolationExceptionMapper implements ExceptionMapper<ConstraintViolationException> {
         @Override
         public Response toResponse(ConstraintViolationException exception) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, exception);
             String message = exception.getConstraintViolations().stream()
                     .map(ConstraintViolation::getMessage)
                     .collect(Collectors.joining(", "));
@@ -77,6 +78,7 @@ public class GlobalExceptionHandler {
     public static class IllegalArgumentExceptionMapper implements ExceptionMapper<IllegalArgumentException> {
         @Override
         public Response toResponse(IllegalArgumentException exception) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, exception);
             // Domain rules (e.g. the password policy) phrase these for the user; a failed parse does not
             String message = exception instanceof NumberFormatException
                     ? "Invalid value format"
@@ -105,7 +107,7 @@ public class GlobalExceptionHandler {
         @Override
         public Response toResponse(OptimisticLockException exception) {
             // The raw message names entity classes and identifiers; the user only needs to retry
-            LOG.debug("Optimistic lock conflict", exception);
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, exception);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error("This record was changed by someone else. Reload and try again."))
                     .build();
@@ -116,7 +118,7 @@ public class GlobalExceptionHandler {
     public static class EntityNotFoundExceptionMapper implements ExceptionMapper<EntityNotFoundException> {
         @Override
         public Response toResponse(EntityNotFoundException exception) {
-            LOG.debug("Entity not found", exception);
+            RestErrorLogger.log(Response.Status.NOT_FOUND, exception);
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(ApiResponse.error("Data not found"))
                     .build();
@@ -133,10 +135,14 @@ public class GlobalExceptionHandler {
         public Response toResponse(Exception exception) {
             // Responses built by JAX-RS itself (404, 405, security failures) must pass through unchanged
             if (exception instanceof WebApplicationException webApplicationException) {
-                return webApplicationException.getResponse();
+                Response response = webApplicationException.getResponse();
+                if (response.getStatusInfo().getFamily() != Response.Status.Family.SUCCESSFUL) {
+                    RestErrorLogger.log(response.getStatusInfo(), exception);
+                }
+                return response;
             }
             String errorId = UUID.randomUUID().toString();
-            LOG.errorf(exception, "Unhandled exception [errorId=%s]", errorId);
+            RestErrorLogger.log(Response.Status.INTERNAL_SERVER_ERROR, exception, "errorId=" + errorId);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Internal server error. Reference: " + errorId))
                     .build();

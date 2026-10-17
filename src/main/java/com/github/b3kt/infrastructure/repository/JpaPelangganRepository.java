@@ -88,14 +88,18 @@ public class JpaPelangganRepository implements PelangganRepository {
     @Override
     @jakarta.transaction.Transactional
     public Pelanggan save(Pelanggan pelanggan) {
-        String previousNopol = null;
-        if (pelanggan.getId() != null) {
-            previousNopol = panacheRepository.findByIdOptional(pelanggan.getId())
-                    .map(TbPelangganEntity::getNopol)
-                    .orElse(null);
-        }
-        invalidateByNopol(previousNopol, pelanggan.getNopol());
+        TbPelangganEntity existing = pelanggan.getId() == null ? null
+                : panacheRepository.findByIdOptional(pelanggan.getId()).orElse(null);
+        invalidateByNopol(existing == null ? null : existing.getNopol(), pelanggan.getNopol());
         TbPelangganEntity entity = TbPelangganEntity.fromDomain(pelanggan);
+        if (existing != null) {
+            // The domain model (like every DTO) carries no row version, so the rebuilt entity has
+            // version == null, which merge() reads as a stale row and rejects ("Row was already
+            // updated or deleted by another transaction"). Carry the stored version forward, as
+            // AbstractCrudService.update does (last write wins), and keep the soft-delete marker.
+            entity.setVersion(existing.getVersion());
+            entity.setDeletedAt(existing.getDeletedAt());
+        }
         TbPelangganEntity managed = panacheRepository.getEntityManager().merge(entity);
         invalidatePelanggan(managed.getId());
         return managed.toDomain();

@@ -10,6 +10,7 @@ import com.github.b3kt.application.service.customer.CustomerAuthService;
 import com.github.b3kt.domain.exception.AuthenticationException;
 import com.github.b3kt.infrastructure.security.CustomerPrincipal;
 import com.github.b3kt.infrastructure.security.Roles;
+import com.github.b3kt.presentation.exception.RestErrorLogger;
 import com.github.b3kt.presentation.rest.AuthCookies;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.net.SocketAddress;
@@ -59,6 +60,7 @@ public class CustomerAuthResource {
             CustomerLoginResponse response = authService.register(registerRequest);
             return withRefreshCookie(Response.ok(ApiResponse.success("Registration successful", response)), response);
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.<CustomerLoginResponse>error(e.getMessage()))
                     .build();
@@ -79,6 +81,7 @@ public class CustomerAuthResource {
             loginAttemptService.recordSuccess(attemptKey);
             return withRefreshCookie(Response.ok(ApiResponse.success("Login successful", response)), response);
         } catch (AuthenticationException e) {
+            RestErrorLogger.log(Response.Status.UNAUTHORIZED, e);
             loginAttemptService.recordFailure(attemptKey, clientIp);
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.<CustomerLoginResponse>error(e.getMessage()))
@@ -102,6 +105,7 @@ public class CustomerAuthResource {
             CustomerLoginResponse response = authService.refreshToken(refreshToken);
             return withRefreshCookie(Response.ok(ApiResponse.success("Token refreshed successfully", response)), response);
         } catch (AuthenticationException e) {
+            RestErrorLogger.log(Response.Status.UNAUTHORIZED, e);
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.<CustomerLoginResponse>error(e.getMessage()))
                     .build();
@@ -143,11 +147,13 @@ public class CustomerAuthResource {
             loginAttemptService.recordSuccess("customer:" + accountId);
             return withRefreshCookie(Response.ok(ApiResponse.success("Password changed successfully", response)), response);
         } catch (AuthenticationException e) {
+            RestErrorLogger.log(Response.Status.UNAUTHORIZED, e);
             loginAttemptService.recordFailure("customer:" + accountId, clientIp);
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.<CustomerLoginResponse>error(e.getMessage()))
                     .build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.<CustomerLoginResponse>error(e.getMessage()))
                     .build();

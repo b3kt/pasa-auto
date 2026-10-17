@@ -5,6 +5,7 @@ import com.github.b3kt.application.dto.customer.ConvertToSpkRequest;
 import com.github.b3kt.application.dto.customer.ReviewRequest;
 import com.github.b3kt.application.service.customer.CustomerBookingService;
 import com.github.b3kt.infrastructure.security.Roles;
+import com.github.b3kt.presentation.exception.RestErrorLogger;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -35,6 +36,7 @@ public class CustomerBookingAdminResource {
             bookingService.confirm(id, request != null ? request.getNote() : null);
             return Response.ok(ApiResponse.success("Booking confirmed", null)).build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         }
     }
@@ -46,6 +48,7 @@ public class CustomerBookingAdminResource {
             bookingService.reject(id, request != null ? request.getNote() : null);
             return Response.ok(ApiResponse.success("Booking rejected", null)).build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         }
     }
@@ -57,6 +60,7 @@ public class CustomerBookingAdminResource {
             Long spkId = bookingService.convertToSpk(id, request);
             return Response.ok(ApiResponse.success("Converted to work order", java.util.Map.of("spkId", spkId))).build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         }
     }

@@ -9,6 +9,7 @@ import com.github.b3kt.application.dto.pazaauto.AbsensiDto;
 import com.github.b3kt.application.mapper.pazaauto.AbsensiMapper;
 import com.github.b3kt.application.service.pazaauto.TbAbsensiService;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbAbsensiEntity;
+import com.github.b3kt.presentation.exception.RestErrorLogger;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.net.SocketAddress;
@@ -69,6 +70,7 @@ public class TbAbsensiResource {
             TbAbsensiEntity result = service.clockIn(karyawanId, ipAddress, entity.getDeviceInfo(), entity.getLokasiMasuk());
             return Response.ok(ApiResponse.success("Clock-in successful", absensiMapper.toDto(result))).build();
         } catch (IllegalStateException | SecurityException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
@@ -90,6 +92,7 @@ public class TbAbsensiResource {
             TbAbsensiEntity result = service.clockOut(karyawanId, ipAddress, entity.getLokasiKeluar(), entity.getKeterangan());
             return Response.ok(ApiResponse.success("Clock-out successful", absensiMapper.toDto(result))).build();
         } catch (IllegalStateException | SecurityException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();

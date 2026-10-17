@@ -6,6 +6,7 @@ import com.github.b3kt.application.dto.customer.CustomerBookingDto;
 import com.github.b3kt.application.service.customer.CustomerBookingService;
 import com.github.b3kt.infrastructure.security.CustomerPrincipal;
 import com.github.b3kt.infrastructure.security.Roles;
+import com.github.b3kt.presentation.exception.RestErrorLogger;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -56,6 +57,7 @@ public class CustomerBookingResource {
             bookingService.cancel(id, principal.pelangganIdOrThrow());
             return Response.ok(ApiResponse.success("Booking cancelled", null)).build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         }
     }

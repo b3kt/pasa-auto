@@ -7,6 +7,7 @@ import com.github.b3kt.application.dto.customer.LinkSearchResultDto;
 import com.github.b3kt.application.service.customer.CustomerLinkService;
 import com.github.b3kt.infrastructure.security.CustomerPrincipal;
 import com.github.b3kt.infrastructure.security.Roles;
+import com.github.b3kt.presentation.exception.RestErrorLogger;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -57,6 +58,7 @@ public class CustomerLinkResource {
             linkService.skipLinking(principal.customerAccountId());
             return Response.ok(ApiResponse.success("Account left unlinked; placeholder customer record created if needed", null)).build();
         } catch (IllegalArgumentException e) {
+            RestErrorLogger.log(Response.Status.BAD_REQUEST, e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
