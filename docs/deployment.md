@@ -332,7 +332,8 @@ Logs are written to:
 Log rotation: 10 MB max per file, 30 backups retained.
 
 Every REST response with a 4xx/5xx status that came from an exception is logged with its stack trace
-and the request (`PUT /api/pazaauto/pelanggan/12 -> 400 Bad Request: ...`) under the category
+, the request and the client IP (`PUT /api/pazaauto/pelanggan/12 from 10.0.0.7 -> 400 Bad Request: ...`)
+under the category
 `com.github.b3kt.rest.errors`: 4xx at WARN, 5xx at ERROR (with the `errorId` returned to the client).
 Failed logins are included, so expect one WARN per wrong password. To keep only server errors:
 
