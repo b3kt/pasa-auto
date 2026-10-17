@@ -38,7 +38,18 @@
         <q-card-section class="col scroll q-pa-md">
           <q-form @submit="saveVehicle" class="q-gutter-sm">
             <q-input v-model="form.nopol" :label="$t('pages.vehicles.plateNumber')" outlined dense
-              :rules="[val => !!val || $t('common.required')]" :disable="isEditMode" />
+              :rules="[val => !!val || $t('common.required')]" :disable="isEditMode"
+              :loading="checkingNopol" @blur="onNopolBlur" @update:model-value="onNopolChange" />
+            <q-banner v-if="nopolStatus === 'OWNED_BY_OTHER'" dense class="bg-negative text-white">
+              {{ $t('pages.vehicles.ownedByOther') }}
+              <template v-slot:action>
+                <q-btn flat color="white" :label="$t('pages.vehicles.claimNow')" :loading="claiming"
+                  :disable="claiming" @click="confirmClaim" />
+              </template>
+            </q-banner>
+            <q-banner v-else-if="nopolStatus === 'OWNED_BY_SELF'" dense class="bg-warning text-white">
+              {{ $t('pages.vehicles.ownedBySelf') }}
+            </q-banner>
             <q-select v-model="form.merk" :label="$t('pages.vehicles.brand')" outlined dense clearable
               emit-value map-options :options="merkOptions" :loading="loadingMerk"
               @update:model-value="onMerkChange" />
@@ -52,7 +63,7 @@
         <q-card-actions align="right">
           <q-btn flat :label="$t('common.cancel')" v-close-popup @click="onDialogHide" />
           <q-btn flat :label="isEditMode ? $t('common.save') : $t('pages.vehicles.register')" color="primary"
-            :loading="submitting" :disable="submitting" @click="saveVehicle" />
+            :loading="submitting" :disable="submitting || nopolBlocked" @click="saveVehicle" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -77,10 +88,14 @@ const jenisList = ref([])
 const showDialog = ref(false)
 const isEditMode = ref(false)
 const originalNopol = ref('')
+const checkingNopol = ref(false)
+const claiming = ref(false)
+const nopolStatus = ref(null)
 const form = reactive({ nopol: '', merk: '', jenis: '' })
 
 const merkOptions = computed(() => merkList.value.map(m => ({ label: m, value: m })))
 const jenisOptions = computed(() => jenisList.value.map(j => ({ label: j, value: j })))
+const nopolBlocked = computed(() => ['OWNED_BY_SELF', 'OWNED_BY_OTHER'].includes(nopolStatus.value))
 
 onMounted(async () => {
   try {
@@ -129,7 +144,74 @@ function onMerkChange() {
   }
 }
 
+function onNopolChange() {
+  nopolStatus.value = null
+}
+
+async function onNopolBlur() {
+  if (isEditMode.value) return
+  const nopol = form.nopol?.trim()
+  if (!nopol) {
+    nopolStatus.value = null
+    return
+  }
+  checkingNopol.value = true
+  try {
+    const response = await api.get('/api/customer/vehicles/check-nopol', { params: { nopol } })
+    const status = response.data?.data?.status || null
+    nopolStatus.value = status
+    if (status === 'OWNED_BY_OTHER') {
+      $q.notify({ type: 'negative', message: t('pages.vehicles.ownedByOther') })
+    } else if (status === 'OWNED_BY_SELF') {
+      $q.notify({ type: 'warning', message: t('pages.vehicles.ownedBySelf') })
+    }
+  } catch (e) {
+    nopolStatus.value = null
+    if (e.response?.status !== 400) {
+      console.error('Failed to check plate number', e)
+    }
+  } finally {
+    checkingNopol.value = false
+  }
+}
+
+function confirmClaim() {
+  const nopol = form.nopol?.trim()
+  if (!nopol) return
+  $q.dialog({
+    title: t('pages.vehicles.claimConfirmTitle'),
+    message: t('pages.vehicles.claimConfirmMessage', { nopol }),
+    cancel: true,
+    persistent: true,
+    maximized: $q.screen.lt.sm
+  }).onOk(async () => {
+    claiming.value = true
+    try {
+      const response = await api.post('/api/customer/vehicles/claim', { nopol })
+      const status = response.data?.data?.status
+      if (status === 'LINKED') {
+        $q.notify({ type: 'positive', message: t('pages.vehicles.claimLinked') })
+        showDialog.value = false
+        resetForm()
+        const res = await api.get('/api/customer/vehicles')
+        vehicles.value = res.data?.data || []
+      } else {
+        $q.notify({ type: 'info', message: t('pages.vehicles.claimPending') })
+      }
+    } catch (e) {
+      $q.notify({ type: 'negative', message: e.response?.data?.error || t('pages.vehicles.claimFailed') })
+    } finally {
+      claiming.value = false
+    }
+  })
+}
+
 async function saveVehicle() {
+  if (nopolBlocked.value) {
+    const key = nopolStatus.value === 'OWNED_BY_SELF' ? 'pages.vehicles.ownedBySelf' : 'pages.vehicles.ownedByOther'
+    $q.notify({ type: 'negative', message: t(key) })
+    return
+  }
   submitting.value = true
   try {
     if (isEditMode.value) {
@@ -208,5 +290,6 @@ function resetForm() {
   form.jenis = ''
   jenisList.value = []
   originalNopol.value = ''
+  nopolStatus.value = null
 }
 </script>

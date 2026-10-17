@@ -2,11 +2,13 @@ package com.github.b3kt.infrastructure.repository;
 
 import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
+import com.github.b3kt.application.helper.NopolNormalizer;
 import com.github.b3kt.application.helper.PageHelper;
 import com.github.b3kt.domain.model.pazaauto.Pelanggan;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
+import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganKendaraanEntity;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganKendaraanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganRepository;
-import io.quarkus.cache.CacheResult;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -21,6 +23,9 @@ public class JpaPelangganRepository implements PelangganRepository {
     TbPelangganRepository panacheRepository;
 
     @Inject
+    TbPelangganKendaraanRepository ownershipRepository;
+
+    @Inject
     @io.quarkus.cache.CacheName("pelanggan-by-nopol")
     io.quarkus.cache.Cache cache;
 
@@ -31,29 +36,59 @@ public class JpaPelangganRepository implements PelangganRepository {
     }
 
     @Override
-    @CacheResult(cacheName = "pelanggan-by-nopol")
     public Optional<Pelanggan> findByNopol(String nopol) {
-        if (nopol == null || nopol.trim().isEmpty()) {
+        String norm = NopolNormalizer.normalize(nopol);
+        if (norm.isEmpty()) {
             return Optional.empty();
         }
-        return panacheRepository.find("nopol", Sort.descending("updatedAt"), nopol)
+        // Cache keyed on the canonical plate so 'B 1019 CYM' and 'B1019CYM' share one entry,
+        // and ownership-write invalidation can target a single key.
+        return cache.get(norm, key -> resolveByNopol(norm)).await().indefinitely();
+    }
+
+    private Optional<Pelanggan> resolveByNopol(String norm) {
+        // Authoritative source: the current owner recorded in the ownership junction.
+        Optional<Long> ownerId = ownershipRepository.findCurrentByNopol(norm)
+                .map(TbPelangganKendaraanEntity::getPelangganId);
+        if (ownerId.isPresent()) {
+            Optional<Pelanggan> owner = panacheRepository.findByIdOptional(ownerId.get())
+                    .map(TbPelangganEntity::toDomain);
+            if (owner.isPresent()) {
+                return owner;
+            }
+        }
+        // Legacy fallback: deprecated tb_pelanggan.nopol for customers with no ownership row.
+        return panacheRepository.find("nopol", Sort.descending("updatedAt"), norm)
                 .firstResultOptional()
                 .map(TbPelangganEntity::toDomain);
+    }
+
+    /**
+     * Evict cached nopol lookups. Called whenever vehicle ownership changes (attach, transfer,
+     * detach, master change) so the ownership-based resolution does not serve stale owners.
+     */
+    public void invalidateByNopol(String... nopols) {
+        if (nopols == null) {
+            return;
+        }
+        for (String nopol : nopols) {
+            String norm = NopolNormalizer.normalize(nopol);
+            if (!norm.isEmpty()) {
+                cache.invalidate(norm).await().indefinitely();
+            }
+        }
     }
 
     @Override
     @jakarta.transaction.Transactional
     public Pelanggan save(Pelanggan pelanggan) {
+        String previousNopol = null;
         if (pelanggan.getId() != null) {
-            panacheRepository.findByIdOptional(pelanggan.getId()).ifPresent(old -> {
-                if (!old.getNopol().equals(pelanggan.getNopol())) {
-                    cache.invalidate(old.getNopol()).await().indefinitely();
-                }
-            });
+            previousNopol = panacheRepository.findByIdOptional(pelanggan.getId())
+                    .map(TbPelangganEntity::getNopol)
+                    .orElse(null);
         }
-        if (pelanggan.getNopol() != null) {
-            cache.invalidate(pelanggan.getNopol()).await().indefinitely();
-        }
+        invalidateByNopol(previousNopol, pelanggan.getNopol());
         TbPelangganEntity entity = TbPelangganEntity.fromDomain(pelanggan);
         TbPelangganEntity managed = panacheRepository.getEntityManager().merge(entity);
         return managed.toDomain();

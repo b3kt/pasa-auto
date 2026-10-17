@@ -4,6 +4,7 @@ import com.github.b3kt.application.dto.PageRequest;
 import com.github.b3kt.application.dto.PageResponse;
 import com.github.b3kt.domain.model.pazaauto.Pelanggan;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganEntity;
+import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganKendaraanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganRepository;
 import io.quarkus.cache.Cache;
 import io.quarkus.cache.CacheName;
@@ -30,6 +31,9 @@ class JpaPelangganRepositoryTest {
 
     @Mock
     TbPelangganRepository panacheRepository;
+
+    @Mock
+    TbPelangganKendaraanRepository ownershipRepository;
 
     @Mock
     Cache cache;
@@ -79,6 +83,10 @@ class JpaPelangganRepositoryTest {
     void findByNopolFound() {
         when(panacheRepository.find(eq("nopol"), any(Sort.class), eq("B1234XYZ"))).thenReturn(query);
         when(query.firstResultOptional()).thenReturn(Optional.of(testEntity));
+        doAnswer(invocation -> {
+            java.util.function.Function<String, Optional<Pelanggan>> loader = invocation.getArgument(1);
+            return io.smallrye.mutiny.Uni.createFrom().item(loader.apply("B1234XYZ"));
+        }).when(cache).get(eq("B1234XYZ"), any());
         Optional<Pelanggan> result = repository.findByNopol("B1234XYZ");
         assertTrue(result.isPresent());
     }

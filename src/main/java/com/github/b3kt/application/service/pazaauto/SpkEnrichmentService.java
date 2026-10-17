@@ -45,7 +45,9 @@ public class SpkEnrichmentService {
         } else if (target.getNopol() != null) {
             boolean resolved = resolveFromOwnership(target);
             if (!resolved) {
-                TbPelangganEntity pelanggan = pelangganRepository.find("nopol", target.getNopol()).firstResult();
+                TbPelangganEntity pelanggan = pelangganRepository
+                        .find("nopol", com.github.b3kt.application.helper.NopolNormalizer.normalize(target.getNopol()))
+                        .firstResult();
                 if (pelanggan != null) {
                     target.setPelangganId(pelanggan.getId());
                     target.setNamaPelanggan(pelanggan.getNamaPelanggan());

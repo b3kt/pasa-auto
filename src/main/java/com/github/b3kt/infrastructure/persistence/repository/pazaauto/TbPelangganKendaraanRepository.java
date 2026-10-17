@@ -1,5 +1,6 @@
 package com.github.b3kt.infrastructure.persistence.repository.pazaauto;
 
+import com.github.b3kt.application.helper.NopolNormalizer;
 import com.github.b3kt.infrastructure.persistence.entity.pazaauto.TbPelangganKendaraanEntity;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -48,31 +49,39 @@ public class TbPelangganKendaraanRepository implements PanacheRepositoryBase<TbP
                 WHERE p.deleted_at IS NULL
                   AND btrim(p.nopol) <> ''
                   AND NOT EXISTS (SELECT 1 FROM tb_pelanggan_kendaraan k
-                                  WHERE k.nopol = p.nopol AND k.is_current = true AND k.deleted_at IS NULL)
+                                  WHERE regexp_replace(upper(k.nopol), '[[:space:]]', '', 'g')
+                                        = regexp_replace(upper(p.nopol), '[[:space:]]', '', 'g')
+                                    AND k.is_current = true AND k.deleted_at IS NULL)
                 ORDER BY 1
                 """;
         return em.createNativeQuery(sql).getResultList();
     }
 
     public Optional<TbPelangganKendaraanEntity> findCurrentByNopol(String nopol) {
-        if (nopol == null || nopol.trim().isEmpty()) {
+        String norm = NopolNormalizer.normalize(nopol);
+        if (norm.isEmpty()) {
             return Optional.empty();
         }
-        return find("nopol = ?1 and current = true and deletedAt is null", nopol).firstResultOptional();
+        return find("nopol = ?1 and current = true and deletedAt is null", norm).firstResultOptional();
     }
 
     public Optional<TbPelangganKendaraanEntity> findCurrentByNopolAndPelanggan(String nopol, Long pelangganId) {
-        return find("nopol = ?1 and current = true and pelangganId = ?2 and deletedAt is null", nopol, pelangganId)
+        String norm = NopolNormalizer.normalize(nopol);
+        if (norm.isEmpty()) {
+            return Optional.empty();
+        }
+        return find("nopol = ?1 and current = true and pelangganId = ?2 and deletedAt is null", norm, pelangganId)
                 .firstResultOptional();
     }
 
     public Optional<TbPelangganKendaraanEntity> findExisting(String nopol, Long pelangganId, Long kendaraanId) {
-        return find("nopol = ?1 and pelangganId = ?2 and kendaraanId = ?3 and deletedAt is null", nopol, pelangganId, kendaraanId)
+        return find("nopol = ?1 and pelangganId = ?2 and kendaraanId = ?3 and deletedAt is null",
+                NopolNormalizer.normalize(nopol), pelangganId, kendaraanId)
                 .firstResultOptional();
     }
 
     public List<TbPelangganKendaraanEntity> findByNopolOrderByTanggalMulai(String nopol) {
-        return find("nopol = ?1 and deletedAt is null order by tanggalMulai", nopol).list();
+        return find("nopol = ?1 and deletedAt is null order by tanggalMulai", NopolNormalizer.normalize(nopol)).list();
     }
 
     public List<TbPelangganKendaraanEntity> findByPelangganId(Long pelangganId) {
@@ -92,7 +101,7 @@ public class TbPelangganKendaraanRepository implements PanacheRepositoryBase<TbP
      */
     public Optional<TbPelangganKendaraanEntity> findByNopolActiveOn(String nopol, LocalDate date) {
         return find("nopol = ?1 and tanggalMulai <= ?2 and (tanggalAkhir is null or tanggalAkhir >= ?2) and deletedAt is null order by tanggalMulai",
-                nopol, date, date).firstResultOptional();
+                NopolNormalizer.normalize(nopol), date, date).firstResultOptional();
     }
 
     @Transactional
@@ -105,6 +114,10 @@ public class TbPelangganKendaraanRepository implements PanacheRepositoryBase<TbP
             }
             getEntityManager().merge(row);
         });
+        // Flush now: within one flush Hibernate runs inserts before updates, so a following
+        // openOwnership() insert would still see this row as current and break the partial
+        // unique index idx_pk_current_nopol (nopol where is_current = true).
+        getEntityManager().flush();
     }
 
     @Transactional
@@ -113,7 +126,7 @@ public class TbPelangganKendaraanRepository implements PanacheRepositoryBase<TbP
         TbPelangganKendaraanEntity row = new TbPelangganKendaraanEntity();
         row.setPelangganId(pelangganId);
         row.setKendaraanId(kendaraanId);
-        row.setNopol(nopol);
+        row.setNopol(NopolNormalizer.normalize(nopol));
         row.setTanggalMulai(tanggalMulai);
         row.setTanggalAkhir(null);
         row.setCurrent(true);

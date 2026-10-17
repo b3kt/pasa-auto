@@ -16,9 +16,9 @@ import java.time.LocalDateTime;
  * but keyed by {@code customerAccountId} rather than a staff username - a separate identity space.
  */
 @Entity
-@Table(name = "customer_refresh_tokens", indexes = {
-        @Index(name = "idx_customer_refresh_tokens_account", columnList = "id_customer_account"),
-        @Index(name = "idx_customer_refresh_tokens_family_id", columnList = "family_id")
+@Table(name = "tb_customer_refresh_tokens", indexes = {
+        @Index(name = "idx_tb_customer_refresh_tokens_account", columnList = "id_customer_account"),
+        @Index(name = "idx_tb_customer_refresh_tokens_family_id", columnList = "family_id")
 })
 @Getter
 @Setter

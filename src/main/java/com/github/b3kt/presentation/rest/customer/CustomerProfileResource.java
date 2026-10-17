@@ -2,8 +2,10 @@ package com.github.b3kt.presentation.rest.customer;
 
 import com.github.b3kt.application.dto.ApiResponse;
 import com.github.b3kt.application.dto.customer.UpdateProfileRequest;
+import com.github.b3kt.application.dto.customer.VehicleClaimRequest;
 import com.github.b3kt.application.dto.pazaauto.KendaraanAttachRequest;
 import com.github.b3kt.application.service.customer.CustomerProfileService;
+import com.github.b3kt.application.service.customer.VehicleClaimService;
 import com.github.b3kt.application.service.pazaauto.KendaraanOwnershipService;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbKendaraanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbMerkKendaraanRepository;
@@ -39,6 +41,9 @@ public class CustomerProfileResource {
 
     @Inject
     KendaraanOwnershipService kendaraanOwnershipService;
+
+    @Inject
+    VehicleClaimService vehicleClaimService;
 
     @Inject
     TbMerkKendaraanRepository merkRepository;
@@ -120,6 +125,28 @@ public class CustomerProfileResource {
             );
             return Response.ok(ApiResponse.success("Vehicle deleted successfully",
                     kendaraanOwnershipService.listCurrentVehiclesByPelanggan(principal.pelangganIdOrThrow()))).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
+        }
+    }
+
+    @GET
+    @Path("/vehicles/check-nopol")
+    public Response checkNopol(@QueryParam("nopol") String nopol) {
+        try {
+            return Response.ok(ApiResponse.success(
+                    kendaraanOwnershipService.checkNopol(principal.pelangganIdOrThrow(), nopol))).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
+        }
+    }
+
+    @POST
+    @Path("/vehicles/claim")
+    public Response claimVehicle(@Valid VehicleClaimRequest request) {
+        try {
+            return Response.ok(ApiResponse.success("Vehicle claim received",
+                    vehicleClaimService.requestClaim(principal.customerAccountId(), request.getNopol()))).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         }

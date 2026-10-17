@@ -20,6 +20,9 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
     @Inject
     PelangganOwnershipSyncService ownershipSyncService;
 
+    @Inject
+    PelangganVehicleResolver vehicleResolver;
+
     @Override
     protected PanacheRepositoryBase<TbPelangganEntity, Long> getRepository() {
         throw new UnsupportedOperationException("Use PelangganRepository instead");
@@ -32,17 +35,21 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
 
     @Override
     public List<TbPelangganEntity> findAll() {
-        return pelangganRepository.findAll()
+        List<TbPelangganEntity> rows = pelangganRepository.findAll()
                 .stream()
                 .map(TbPelangganEntity::fromDomain)
                 .toList();
+        rows.forEach(vehicleResolver::enrichVehicleInfo);
+        return rows;
     }
 
     @Override
     public TbPelangganEntity findById(Long id) {
-        return pelangganRepository.findById(id)
+        TbPelangganEntity entity = pelangganRepository.findById(id)
                 .map(TbPelangganEntity::fromDomain)
                 .orElse(null);
+        vehicleResolver.enrichVehicleInfo(entity);
+        return entity;
     }
 
     @Override
@@ -52,6 +59,7 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
                 .stream()
                 .map(TbPelangganEntity::fromDomain)
                 .toList();
+        rows.forEach(vehicleResolver::enrichVehicleInfo);
         return new PageResponse<>(rows, domainPage.getPage(), domainPage.getRowsPerPage(), domainPage.getRowsNumber());
     }
 
@@ -103,9 +111,11 @@ public class TbPelangganService extends AbstractCrudService<TbPelangganEntity, L
     }
 
     public TbPelangganEntity findByNopol(String nopol) {
-        return pelangganRepository.findByNopol(nopol)
+        TbPelangganEntity entity = pelangganRepository.findByNopol(nopol)
                 .map(TbPelangganEntity::fromDomain)
                 .orElse(null);
+        vehicleResolver.enrichVehicleInfo(entity);
+        return entity;
     }
 
     @jakarta.transaction.Transactional

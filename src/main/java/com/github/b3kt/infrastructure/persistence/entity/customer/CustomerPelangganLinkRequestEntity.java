@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  * Only created for the "conflict" path - auto-link never creates a row here. Reviewed by staff.
  */
 @Entity
-@Table(name = "customer_pelanggan_link_requests")
+@Table(name = "tb_customer_pelanggan_link_requests")
 @Getter
 @Setter
 public class CustomerPelangganLinkRequestEntity extends BaseEntity {

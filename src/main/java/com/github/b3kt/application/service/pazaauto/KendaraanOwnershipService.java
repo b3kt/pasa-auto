@@ -1,5 +1,6 @@
 package com.github.b3kt.application.service.pazaauto;
 
+import com.github.b3kt.application.dto.customer.NopolCheckDto;
 import com.github.b3kt.application.dto.pazaauto.KendaraanOwnershipDto;
 import com.github.b3kt.application.dto.pazaauto.PelangganHistoryDto;
 import com.github.b3kt.application.dto.pazaauto.VehicleHistoryDto;
@@ -17,6 +18,8 @@ import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangga
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPelangganRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbPenjualanRepository;
 import com.github.b3kt.infrastructure.persistence.repository.pazaauto.TbSpkRepository;
+import com.github.b3kt.infrastructure.repository.JpaPelangganRepository;
+import com.github.b3kt.application.helper.NopolNormalizer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -54,6 +57,9 @@ public class KendaraanOwnershipService {
     @Inject
     TbPenjualanRepository penjualanRepository;
 
+    @Inject
+    JpaPelangganRepository pelangganNopolRepository;
+
     @Transactional
     public KendaraanOwnershipDto transfer(String nopol, Long idPelangganBaru,
                                           LocalDate tanggalAwal, String keterangan) {
@@ -78,6 +84,7 @@ public class KendaraanOwnershipService {
         ownershipRepository.closeOwnership(current.getId(), mulai.minusDays(1), keterangan);
         TbPelangganKendaraanEntity opened = ownershipRepository.openOwnership(
                 idPelangganBaru, current.getKendaraanId(), nopol, mulai, keterangan);
+        pelangganNopolRepository.invalidateByNopol(nopol);
 
         return toDto(opened);
     }
@@ -86,6 +93,22 @@ public class KendaraanOwnershipService {
         return ownershipRepository.findCurrentByNopol(nopol)
                 .map(this::toDto)
                 .orElse(null);
+    }
+
+    /**
+     * Checks whether a plate is already registered to a customer, so the portal can validate it
+     * before registering. Read-only - never creates an ownership row.
+     */
+    public NopolCheckDto checkNopol(Long pelangganId, String nopol) {
+        String norm = NopolNormalizer.normalize(nopol);
+        if (norm.isEmpty()) {
+            throw new IllegalArgumentException("nopol is required");
+        }
+        return ownershipRepository.findCurrentByNopol(norm)
+                .map(existing -> Objects.equals(existing.getPelangganId(), pelangganId)
+                        ? NopolCheckDto.ownedBySelf(norm)
+                        : NopolCheckDto.ownedByOther(norm))
+                .orElseGet(() -> NopolCheckDto.available(norm));
     }
 
     @Transactional
@@ -106,6 +129,7 @@ public class KendaraanOwnershipService {
                 pelangganId, master.getId(), nopol,
                 tanggalMulai != null ? tanggalMulai : LocalDate.now(), keterangan);
         kendaraanRepository.invalidateKendaraanCache();
+        pelangganNopolRepository.invalidateByNopol(nopol);
         return toDto(opened);
     }
 
@@ -126,6 +150,7 @@ public class KendaraanOwnershipService {
             ownership.setKendaraanId(master.getId());
             ownershipRepository.getEntityManager().merge(ownership);
             kendaraanRepository.invalidateKendaraanCache();
+            pelangganNopolRepository.invalidateByNopol(nopol);
         }
     }
 
@@ -143,6 +168,7 @@ public class KendaraanOwnershipService {
 
         ownership.setDeletedAt(java.time.LocalDateTime.now());
         ownershipRepository.getEntityManager().merge(ownership);
+        pelangganNopolRepository.invalidateByNopol(nopol);
 
         TbPelangganEntity pelanggan = pelangganRepository.findByIdCached(pelangganId)
                 .orElseThrow(() -> new IllegalArgumentException("Pelanggan not found: " + pelangganId));

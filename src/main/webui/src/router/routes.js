@@ -47,6 +47,7 @@ const routes = [
       { path: 'admin/clear-cache', meta: { roles: ROLES_ALL_STAFF }, component: () => import('pages/admin/ClearCachePage.vue') },
       { path: 'admin/audit-trail', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/admin/AuditTrailPage.vue') },
       { path: 'admin/customer-link-requests', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/admin/CustomerLinkRequestsPage.vue') },
+      { path: 'admin/vehicle-claim-requests', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/admin/VehicleClaimRequestsPage.vue') },
       { path: 'admin/customer-bookings', meta: { roles: ROLES_ADMIN_OWNER }, component: () => import('pages/admin/CustomerBookingsPage.vue') },
       { path: 'admin/customer-access', meta: { roles: ROLES_OWNER_ONLY }, component: () => import('pages/admin/CustomerAccessTogglePage.vue') }
     ]

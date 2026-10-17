@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  * order - staff reviews it and converts it into one once the vehicle actually arrives.
  */
 @Entity
-@Table(name = "customer_bookings")
+@Table(name = "tb_customer_bookings")
 @Getter
 @Setter
 public class CustomerBookingEntity extends BaseEntity {

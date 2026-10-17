@@ -358,6 +358,13 @@ const linksList = computed(() => [
         link: '/admin/customer-link-requests'
       },
       {
+        title: 'Permintaan Klaim Kendaraan',
+        caption: 'Persetujuan klaim nopol yang sudah terdaftar',
+        icon: 'directions_car',
+        visible: hasRole('Admin') || hasRole('Owner'),
+        link: '/admin/vehicle-claim-requests'
+      },
+      {
         title: 'Akses Customer Portal',
         caption: 'Aktif/nonaktifkan customer portal',
         icon: 'toggle_on',

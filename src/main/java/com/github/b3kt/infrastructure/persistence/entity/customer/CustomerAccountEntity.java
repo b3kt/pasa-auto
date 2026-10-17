@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  * pelanggan/vehicle history as a separate step. See {@code idPelanggan} for the strict 1:1 link.
  */
 @Entity
-@Table(name = "customer_accounts")
+@Table(name = "tb_customer_accounts")
 @Getter
 @Setter
 public class CustomerAccountEntity extends BaseEntity {
