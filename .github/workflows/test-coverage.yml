@@ -24,7 +24,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Cache Maven packages
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: |
           ~/.m2
@@ -35,7 +35,7 @@ jobs:
     # Quinoa downloads its own Node and runs the Quasar build during `verify`. Both are
     # reproducible from the lockfile, so cache them rather than paying for them every run.
     - name: Cache frontend toolchain
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: |
           .quinoa
